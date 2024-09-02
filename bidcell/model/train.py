@@ -3,6 +3,7 @@ import logging
 import math
 import sys
 import os
+import numpy as np
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -10,6 +11,8 @@ import segmentation_models_pytorch as smp
 import torch
 import torch.optim.lr_scheduler as lr_scheduler
 from torch.utils.data import DataLoader
+
+from .solvers.procrustes_solver import ProcrustesSolver
 
 from .dataio.dataset_input import DataProcessing
 from .model.losses import (
@@ -123,6 +126,14 @@ def train(config: Config):
         sys.exit("Select optimiser from rmsprop or adam")
 
     global_step = 0
+    losses = {
+        "Nuclei Encapsulation Loss": [],
+        "Oversegmentation Loss": [],
+        "Cell Calling Loss": [],
+        "Overlap Loss": [],
+        "Pos-Neg Marker Loss": [],
+        "Total Loss": [],
+    }
 
     # Scheduler https://arxiv.org/pdf/1812.01187.pdf
     lf = (
@@ -179,7 +190,6 @@ def train(config: Config):
             expr_aug_sum,
         ) in enumerate(train_loader):
             # Permute channels axis to batch axis
-            # torch.Size([1, patch_size, patch_size, 313, n_cells]) to [n_cells, 313, patch_size, patch_size]
             batch_x313 = batch_x313[0, :, :, :, :].permute(3, 2, 0, 1)
             batch_sa = batch_sa.permute(3, 0, 1, 2)
             batch_pos = batch_pos.permute(3, 0, 1, 2)
@@ -187,6 +197,7 @@ def train(config: Config):
             batch_n = batch_n.permute(3, 0, 1, 2)
 
             if batch_x313.shape[0] == 0:
+                # Save the model periodically
                 if (step_epoch % model_freq) == 0:
                     save_path = (
                         experiment_path
@@ -223,25 +234,40 @@ def train(config: Config):
             loss_ov = criterion_ov(seg_pred, batch_n)
             loss_pn = criterion_pn(seg_pred, batch_pos, batch_neg)
 
-            loss_ne = loss_ne.squeeze()
-            loss_os = loss_os.squeeze()
-            loss_cc = loss_cc.squeeze()
-            loss_ov = loss_ov.squeeze()
-            loss_pn = loss_pn.squeeze()
+            # Track individual losses
+            losses["Nuclei Encapsulation Loss"].append(loss_ne.item())
+            losses["Oversegmentation Loss"].append(loss_os.item())
+            losses["Cell Calling Loss"].append(loss_cc.item())
+            losses["Overlap Loss"].append(loss_ov.item())
+            losses["Pos-Neg Marker Loss"].append(loss_pn.item())
 
-            loss = loss_ne + loss_os + loss_cc + loss_ov + loss_pn
+            grads = []
+            for loss in [loss_ne, loss_os, loss_cc, loss_ov, loss_pn]:
+                optimizer.zero_grad()  # Clear previous gradients
+                loss.backward(retain_graph=True)  # Retain graph for backpropagation
+                grad = torch.cat([p.grad.flatten() if p.grad is not None else torch.zeros_like(p).flatten() for p in model.parameters()])
+                grads.append(grad)
 
-            # Optimisation
-            loss.backward()
+            grads = torch.stack(grads, dim=0)  # Stack gradients
+
+            # Apply Procrustes Solver
+            grads, weights, singulars = ProcrustesSolver.apply(grads.T.unsqueeze(0))
+            grad, weights = grads[0].sum(-1), weights.sum(-1)
+
+            # Apply aligned gradients to model parameters
+            offset = 0
+            for p in model.parameters():
+                if p.grad is None:
+                    continue
+                _offset = offset + p.grad.shape.numel()
+                p.grad.data = grad[offset:_offset].view_as(p.grad)
+                offset = _offset
+
+            # Perform optimization step
             optimizer.step()
 
-            # step_ne_loss = loss_ne.detach().cpu().numpy() # noqa
-            # step_os_loss = loss_os.detach().cpu().numpy() # noqa
-            # step_cc_loss = loss_cc.detach().cpu().numpy() # noqa
-            # step_ov_loss = loss_ov.detach().cpu().numpy() # noqa
-            # step_pn_loss = loss_pn.detach().cpu().numpy() # noqa
-
-            step_train_loss = loss.detach().cpu().numpy()
+            total_loss = loss_ne + loss_os + loss_cc + loss_ov + loss_pn
+            losses["Total Loss"].append(total_loss.item())  # Track total loss
 
             if (global_step % config.training_params.sample_freq) == 0:
                 coords_h1 = coords_h1.detach().cpu().squeeze().numpy()
@@ -261,18 +287,13 @@ def train(config: Config):
                 save_fig_outputs(sample_seg, sample_n, sample_sa, sample_expr, patch_fp)
 
                 print(
-                    "Epoch[{}/{}], Step[{}], Loss:{:.4f}".format(
+                    "Epoch[{}/{}], Step[{}], Total Loss:{:.4f}".format(
                         epoch + 1,
                         config.training_params.total_epochs,
                         step_epoch,
-                        step_train_loss,
+                        total_loss.item(),
                     )
                 )
-                # print('NE:{:.4f}, TC:{:.4f}, CC:{:.4f}, OV:{:.4f}, PN:{:.4f}'.format(step_ne_loss,
-                #                                                                     step_os_loss,
-                #                                                                     step_cc_loss,
-                #                                                                     step_ov_loss,
-                #                                                                     step_pn_loss))
 
             # Save model
             if (step_epoch % model_freq) == 0:
@@ -298,12 +319,132 @@ def train(config: Config):
         scheduler.step()
         lrs.append(cur_lr)
 
-    # Plot lr scheduler
-    # plt.plot(lrs, ".-", label="LambdaLR")
-    # plt.xlabel("epoch")
-    # plt.ylabel("LR")
-    # plt.tight_layout()
-    # plt.savefig(experiment_path + "/LR.png", dpi=300)
+    # Plot losses
+    plt.figure(figsize=(12, 8))
+
+    plt.plot(losses["Total Loss"], label="Total Loss")
+
+    plt.plot(losses["Nuclei Encapsulation Loss"], label="Nuclei Encapsulation Loss")
+    plt.plot(losses["Oversegmentation Loss"], label="Oversegmentation Loss")
+    plt.plot(losses["Cell Calling Loss"], label="Cell Calling Loss")
+    plt.plot(losses["Overlap Loss"], label="Overlap Loss")
+    plt.plot(losses["Pos-Neg Marker Loss"], label="Pos-Neg Marker Loss")
+
+    for epoch in range(config.training_params.total_epochs):
+        plt.axvline(x=epoch * len(train_loader), color="r", linestyle="--", alpha=0.5)
+    
+    plt.xlabel("Training Step")
+    plt.ylabel("Loss")
+    plt.title("Training Loss Over Time")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(experiment_path, "training_losses.pdf"))
+    plt.show()
+
+    # Plot individual losses
+    plt.figure(figsize=(12, 8))
+    plt.plot(losses["Total Loss"], label="Total Loss")
+    for epoch in range(config.training_params.total_epochs):
+        plt.axvline(x=epoch * len(train_loader), color="r", linestyle="--", alpha=0.5)
+    plt.xlabel("Training Step")
+    plt.ylabel("Loss")
+    plt.title("Total Loss During Training with Procrustes Method")
+    plt.tight_layout()
+    plt.savefig(os.path.join(experiment_path, "training_total_losses.pdf"))
+    plt.show()
+
+    plt.figure(figsize=(12, 8))
+    plt.plot(losses["Nuclei Encapsulation Loss"], label="Nuclei Encapsulation Loss")
+    for epoch in range(config.training_params.total_epochs):
+        plt.axvline(x=epoch * len(train_loader), color="r", linestyle="--", alpha=0.5)
+    plt.xlabel("Training Step")
+    plt.ylabel("Loss")
+    plt.title("Nuclei Encapsulation Loss During Training with Procrustes Method")
+    plt.tight_layout()
+    plt.savefig(os.path.join(experiment_path, "training_os_losses.pdf"))
+    plt.show()
+
+    plt.figure(figsize=(12, 8))
+    plt.plot(losses["Oversegmentation Loss"], label="Oversegmentation Loss")
+    for epoch in range(config.training_params.total_epochs):
+        plt.axvline(x=epoch * len(train_loader), color="r", linestyle="--", alpha=0.5)
+    plt.xlabel("Training Step")
+    plt.ylabel("Loss")
+    plt.title("Oversegmentation Loss During Training with Procrustes Method")
+    plt.tight_layout()
+    plt.savefig(os.path.join(experiment_path, "training_ne_losses.pdf"))
+    plt.show()
+
+    plt.figure(figsize=(12, 8))
+    plt.plot(losses["Cell Calling Loss"], label="Cell Calling Loss")
+    for epoch in range(config.training_params.total_epochs):
+        plt.axvline(x=epoch * len(train_loader), color="r", linestyle="--", alpha=0.5)
+    plt.xlabel("Training Step")
+    plt.ylabel("Loss")
+    plt.title("Cell Calling Loss During Training with Procrustes Method")
+    plt.tight_layout()
+    plt.savefig(os.path.join(experiment_path, "training_cc_losses.pdf"))
+    plt.show()
+
+    plt.figure(figsize=(12, 8))
+    plt.plot(losses["Overlap Loss"], label="Overlap Loss")
+    for epoch in range(config.training_params.total_epochs):
+        plt.axvline(x=epoch * len(train_loader), color="r", linestyle="--", alpha=0.5)
+    plt.xlabel("Training Step")
+    plt.ylabel("Loss")
+    plt.title("Overlap Loss During Training with Procrustes Method")
+    plt.tight_layout()
+    plt.savefig(os.path.join(experiment_path, "training_ov_losses.pdf"))
+    plt.show()
+
+    plt.figure(figsize=(12, 8))
+    plt.plot(losses["Pos-Neg Marker Loss"], label="Pos-Neg Marker Loss")
+    for epoch in range(config.training_params.total_epochs):
+        plt.axvline(x=epoch * len(train_loader), color="r", linestyle="--", alpha=0.5)
+    plt.xlabel("Training Step")
+    plt.ylabel("Loss")
+    plt.title("Positive/Negative Marker Loss During Training with Procrustes Method")
+    plt.tight_layout()
+    plt.savefig(os.path.join(experiment_path, "training_pn_losses.pdf"))
+    plt.show()
+
+    # Plot scaled losses
+    plt.figure(figsize=(12, 8))
+
+    scaled_total_loss = np.array(losses["Total Loss"])
+    scaled_total_loss = scaled_total_loss / scaled_total_loss.max() if scaled_total_loss.max() > 0 else scaled_total_loss
+    plt.plot(scaled_total_loss, label="Scaled Total Loss")
+
+    scaled_ne_loss = np.array(losses["Nuclei Encapsulation Loss"])
+    scaled_ne_loss = scaled_ne_loss / scaled_ne_loss.max() if scaled_ne_loss.max() > 0 else scaled_ne_loss
+    plt.plot(scaled_ne_loss, label="Scaled Nuclei Encapsulation Loss")
+
+    scaled_os_loss = np.array(losses["Oversegmentation Loss"])
+    scaled_os_loss = scaled_os_loss / scaled_os_loss.max() if scaled_os_loss.max() > 0 else scaled_os_loss
+    plt.plot(scaled_os_loss, label="Scaled Oversegmentation Loss")
+
+    scaled_cc_loss = np.array(losses["Cell Calling Loss"])
+    scaled_cc_loss = scaled_cc_loss / scaled_cc_loss.max() if scaled_cc_loss.max() > 0 else scaled_cc_loss
+    plt.plot(scaled_cc_loss, label="Scaled Cell Calling Loss")
+
+    scaled_ov_loss = np.array(losses["Overlap Loss"])
+    scaled_ov_loss = scaled_ov_loss / scaled_ov_loss.max() if scaled_ov_loss.max() > 0 else scaled_ov_loss
+    plt.plot(scaled_ov_loss, label="Scaled Overlap Loss")
+
+    scaled_pn_loss = np.array(losses["Pos-Neg Marker Loss"])
+    scaled_pn_loss = scaled_pn_loss / scaled_pn_loss.max() if scaled_pn_loss.max() > 0 else scaled_pn_loss
+    plt.plot(scaled_ne_loss, label="Scaled Pos-Neg Marker Loss")
+
+    for epoch in range(config.training_params.total_epochs):
+        plt.axvline(x=epoch * len(train_loader), color="r", linestyle="--", alpha=0.5)
+    
+    plt.xlabel("Training Step")
+    plt.ylabel("Loss")
+    plt.title("Training Loss Over Time")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(experiment_path, "rescaled_training_losses.pdf"))
+    plt.show()
 
     logging.info("Training finished")
 
