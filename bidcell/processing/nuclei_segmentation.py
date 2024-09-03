@@ -15,6 +15,7 @@ from ..config import Config, load_config
 def resize_dapi(dapi, new_h, new_w):
     """Resize DAPI image"""
     resized = resize(dapi, (new_h, new_w), preserve_range=True, anti_aliasing=True)
+    resized = resized.astype(dapi.dtype)
     return resized
 
 
