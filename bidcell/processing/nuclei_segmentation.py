@@ -8,7 +8,7 @@ from cellpose import models
 from skimage.transform import resize
 from tqdm import tqdm
 
-from .utils import get_patches_coords
+from .utils import get_patches_coords, check_bit_depth
 from ..config import Config, load_config
 
 
@@ -39,11 +39,7 @@ def segment_nuclei(config: Config):
     dapi = tifffile.imread(fp_dapi)
 
     # Check dtype; uint32 and uint64 are not supported by cellpose transforms because it relies on cv2 for resizing
-    if dapi.dtype == np.uint32 or dapi.dtype == np.uint64:
-        warnings.warn(f"dapi has dtype {dapi.dtype}, which is not supported by cellpose transforms resizing function. "
-                       "It will be converted to np.uint16 for compatibility. Note that this can result in some data loss, especially " 
-                       "for images with very low brightness.")
-        dapi = dapi.astype(np.uint16)
+    dapi = check_bit_depth(dapi)
 
     # Crop to size of transcript map (requires getting transcript maps first)
     if config.nuclei.crop_nuclei_to_ts:
