@@ -237,6 +237,14 @@ def generate_expression_maps(config: Config):
     fp_nuclei = os.path.join(dir_dataset, config.files.fp_nuclei)
     if os.path.exists(fp_nuclei):
         nuclei_img = tifffile.imread(fp_nuclei)
+
+        # Check dtype; uint32 and uint64 are not supported by cellpose transforms because it relies on cv2 for resizing
+        if nuclei_img.dtype == np.uint32 or nuclei_img.dtype == np.uint64:
+            warnings.warn(f"nuclei.tif has dtype {nuclei_img.dtype}, which is not supported by cellpose transforms resizing function. "
+                           "It will be converted to np.uint16 for compatibility. Note that this can result in some data loss, especially " 
+                           "for images with very low brightness.")
+            nuclei_img = nuclei_img.astype(np.uint16)
+        
         nuclei_h = nuclei_img.shape[0]
         nuclei_w = nuclei_img.shape[1]
         if total_height_t <= nuclei_h and total_width_t <= nuclei_w:
