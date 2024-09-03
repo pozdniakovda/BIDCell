@@ -106,7 +106,7 @@ def segment_nuclei(config: Config):
         rh_dapi = sum(rh_patch_sizes)
         rw_dapi = sum(rw_patch_sizes)
         rdapi = np.zeros((rh_dapi, rw_dapi), dtype=dapi.dtype)
-        nuclei = np.zeros((rh_dapi, rw_dapi), dtype=np.uint32)
+        nuclei = np.zeros((rh_dapi, rw_dapi), dtype=np.uint16)
         print(f"Nuclei image h: {rh_dapi} w: {rw_dapi}")
 
         # Divide into patches
@@ -142,7 +142,7 @@ def segment_nuclei(config: Config):
 
     # Save nuclei segmentation
     fp_nuclei = os.path.join(dir_dataset, config.files.fp_nuclei)
-    tifffile.imwrite(fp_nuclei, nuclei.astype(np.uint32), photometric="minisblack")
+    tifffile.imwrite(fp_nuclei, nuclei.astype(np.uint16), photometric="minisblack")
 
 
 if __name__ == "__main__":
