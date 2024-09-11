@@ -176,13 +176,15 @@ class TrainingParams(BaseModel):
     total_epochs: int = 1
     total_steps: int = 4000
     # learning rate of DL model
-    learning_rate: float = 0.00001
+    learning_rate: float = 0.00002
     # adam optimiser beta1
     beta1: float = 0.9
     # adam optimiser beta2
     beta2: float = 0.999
     # adam optimiser weight decay
     weight_decay: float = 0.0001
+    # solver
+    solver: Literal["default", "procrustes"] = "default"
     # optimiser
     optimizer: Literal["adam", "rmsprop"] = "adam"
     ne_weight: float = 1.0
