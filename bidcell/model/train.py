@@ -6,6 +6,7 @@ import os
 import numpy as np
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import segmentation_models_pytorch as smp
 import torch
@@ -30,6 +31,73 @@ from .utils.utils import (
 )
 from ..config import load_config, Config
 
+def default_solver(loss_ne, loss_os, loss_cc, loss_ov, loss_pn, optimizer, tracked_losses):
+    loss_ne = loss_ne.squeeze()
+    loss_os = loss_os.squeeze()
+    loss_cc = loss_cc.squeeze()
+    loss_ov = loss_ov.squeeze()
+    loss_pn = loss_pn.squeeze()
+
+    loss = loss_ne + loss_os + loss_cc + loss_ov + loss_pn
+
+    # Optimisation
+    loss.backward()
+    optimizer.step()
+
+    # Track individual losses
+    step_ne_loss = loss_ne.detach().cpu().numpy() # noqa
+    step_os_loss = loss_os.detach().cpu().numpy() # noqa
+    step_cc_loss = loss_cc.detach().cpu().numpy() # noqa
+    step_ov_loss = loss_ov.detach().cpu().numpy() # noqa
+    step_pn_loss = loss_pn.detach().cpu().numpy() # noqa
+    step_train_loss = loss.detach().cpu().numpy()
+
+    tracked_losses["Nuclei Encapsulation Loss"].append(step_ne_loss)
+    tracked_losses["Oversegmentation Loss"].append(step_os_loss)
+    tracked_losses["Cell Calling Loss"].append(step_cc_loss)
+    tracked_losses["Overlap Loss"].append(step_ov_loss)
+    tracked_losses["Pos-Neg Marker Loss"].append(step_pn_loss)
+    tracked_losses["Total Loss"].append(step_train_loss)
+
+    return step_train_loss
+
+def procrustes_method(loss_ne, loss_os, loss_cc, loss_ov, loss_pn, model, optimizer, tracked_losses): 
+    # Track individual losses
+    tracked_losses["Nuclei Encapsulation Loss"].append(loss_ne.item())
+    tracked_losses["Oversegmentation Loss"].append(loss_os.item())
+    tracked_losses["Cell Calling Loss"].append(loss_cc.item())
+    tracked_losses["Overlap Loss"].append(loss_ov.item())
+    tracked_losses["Pos-Neg Marker Loss"].append(loss_pn.item())
+
+    grads = []
+    for loss in [loss_ne, loss_os, loss_cc, loss_ov, loss_pn]:
+        optimizer.zero_grad()  # Clear previous gradients
+        loss.backward(retain_graph=True)  # Retain graph for backpropagation
+        grad = torch.cat([p.grad.flatten() if p.grad is not None else torch.zeros_like(p).flatten() for p in model.parameters()])
+        grads.append(grad)
+
+    grads = torch.stack(grads, dim=0)  # Stack gradients
+
+    # Apply Procrustes Solver
+    grads, weights, singulars = ProcrustesSolver.apply(grads.T.unsqueeze(0))
+    grad, weights = grads[0].sum(-1), weights.sum(-1)
+
+    # Apply aligned gradients to model parameters
+    offset = 0
+    for p in model.parameters():
+        if p.grad is None:
+            continue
+        _offset = offset + p.grad.shape.numel()
+        p.grad.data = grad[offset:_offset].view_as(p.grad)
+        offset = _offset
+
+    # Perform optimization step
+    optimizer.step()
+
+    total_loss = loss_ne + loss_os + loss_cc + loss_ov + loss_pn
+    tracked_losses["Total Loss"].append(total_loss.item())  # Track total loss
+
+    return total_loss.item()
 
 def train(config: Config):
     logging.basicConfig(
@@ -108,6 +176,9 @@ def train(config: Config):
         device,
     )
 
+    # Solver
+    selected_solver = config.training_params.solver
+
     # Optimiser
     if config.training_params.optimizer == "rmsprop":
         optimizer = torch.optim.RMSprop(
@@ -168,7 +239,10 @@ def train(config: Config):
         assert epoch == resume_epoch
         print("Resume training, successfully loaded " + load_path)
 
-    logging.info("Begin training")
+    if selected_solver == "procrustes":
+        logging.info("Begin training using Procrustes method")
+    else:
+        logging.info("Begin training using default method")
 
     model = model.train()
 
@@ -234,40 +308,11 @@ def train(config: Config):
             loss_ov = criterion_ov(seg_pred, batch_n)
             loss_pn = criterion_pn(seg_pred, batch_pos, batch_neg)
 
-            # Track individual losses
-            losses["Nuclei Encapsulation Loss"].append(loss_ne.item())
-            losses["Oversegmentation Loss"].append(loss_os.item())
-            losses["Cell Calling Loss"].append(loss_cc.item())
-            losses["Overlap Loss"].append(loss_ov.item())
-            losses["Pos-Neg Marker Loss"].append(loss_pn.item())
-
-            grads = []
-            for loss in [loss_ne, loss_os, loss_cc, loss_ov, loss_pn]:
-                optimizer.zero_grad()  # Clear previous gradients
-                loss.backward(retain_graph=True)  # Retain graph for backpropagation
-                grad = torch.cat([p.grad.flatten() if p.grad is not None else torch.zeros_like(p).flatten() for p in model.parameters()])
-                grads.append(grad)
-
-            grads = torch.stack(grads, dim=0)  # Stack gradients
-
-            # Apply Procrustes Solver
-            grads, weights, singulars = ProcrustesSolver.apply(grads.T.unsqueeze(0))
-            grad, weights = grads[0].sum(-1), weights.sum(-1)
-
-            # Apply aligned gradients to model parameters
-            offset = 0
-            for p in model.parameters():
-                if p.grad is None:
-                    continue
-                _offset = offset + p.grad.shape.numel()
-                p.grad.data = grad[offset:_offset].view_as(p.grad)
-                offset = _offset
-
-            # Perform optimization step
-            optimizer.step()
-
-            total_loss = loss_ne + loss_os + loss_cc + loss_ov + loss_pn
-            losses["Total Loss"].append(total_loss.item())  # Track total loss
+            # Apply the Procrustes method
+            if selected_solver == "procrustes":
+                total_loss = procrustes_method(loss_ne, loss_os, loss_cc, loss_ov, loss_pn, model, optimizer, losses)
+            else: 
+                total_loss = default_solver(loss_ne, loss_os, loss_cc, loss_ov, loss_pn, optimizer, losses)
 
             if (global_step % config.training_params.sample_freq) == 0:
                 coords_h1 = coords_h1.detach().cpu().squeeze().numpy()
@@ -291,7 +336,7 @@ def train(config: Config):
                         epoch + 1,
                         config.training_params.total_epochs,
                         step_epoch,
-                        total_loss.item(),
+                        total_loss,
                     )
                 )
 
@@ -335,7 +380,10 @@ def train(config: Config):
     
     plt.xlabel("Training Step")
     plt.ylabel("Loss")
-    plt.title("Training Loss Over Time")
+    if selected_solver == "procrustes":
+        plt.title("Training Loss with Procrustes Method")
+    else:
+        plt.title("Training Loss with Default Method")
     plt.legend()
     plt.tight_layout()
     plt.savefig(os.path.join(experiment_path, "training_losses.pdf"))
@@ -348,7 +396,10 @@ def train(config: Config):
         plt.axvline(x=epoch * len(train_loader), color="r", linestyle="--", alpha=0.5)
     plt.xlabel("Training Step")
     plt.ylabel("Loss")
-    plt.title("Total Loss During Training with Procrustes Method")
+    if selected_solver == "procrustes":
+        plt.title("Total Loss During Training with Procrustes Method")
+    else: 
+        plt.title("Total Loss During Training with Default Method")
     plt.tight_layout()
     plt.savefig(os.path.join(experiment_path, "training_total_losses.pdf"))
     plt.show()
@@ -359,9 +410,12 @@ def train(config: Config):
         plt.axvline(x=epoch * len(train_loader), color="r", linestyle="--", alpha=0.5)
     plt.xlabel("Training Step")
     plt.ylabel("Loss")
-    plt.title("Nuclei Encapsulation Loss During Training with Procrustes Method")
+    if selected_solver == "procrustes":
+        plt.title("Nuclei Encapsulation Loss During Training with Procrustes Method")
+    else: 
+        plt.title("Nuclei Encapsulation Loss During Training with Default Method")
     plt.tight_layout()
-    plt.savefig(os.path.join(experiment_path, "training_os_losses.pdf"))
+    plt.savefig(os.path.join(experiment_path, "training_ne_losses.pdf"))
     plt.show()
 
     plt.figure(figsize=(12, 8))
@@ -370,9 +424,12 @@ def train(config: Config):
         plt.axvline(x=epoch * len(train_loader), color="r", linestyle="--", alpha=0.5)
     plt.xlabel("Training Step")
     plt.ylabel("Loss")
-    plt.title("Oversegmentation Loss During Training with Procrustes Method")
+    if selected_solver == "procrustes":
+        plt.title("Oversegmentation Loss During Training with Procrustes Method")
+    else: 
+        plt.title("Oversegmentation Loss During Training with Default Method")
     plt.tight_layout()
-    plt.savefig(os.path.join(experiment_path, "training_ne_losses.pdf"))
+    plt.savefig(os.path.join(experiment_path, "training_os_losses.pdf"))
     plt.show()
 
     plt.figure(figsize=(12, 8))
@@ -381,7 +438,10 @@ def train(config: Config):
         plt.axvline(x=epoch * len(train_loader), color="r", linestyle="--", alpha=0.5)
     plt.xlabel("Training Step")
     plt.ylabel("Loss")
-    plt.title("Cell Calling Loss During Training with Procrustes Method")
+    if selected_solver == "procrustes":
+        plt.title("Cell Calling Loss During Training with Procrustes Method")
+    else: 
+        plt.title("Cell Calling Loss During Training with Default Method")
     plt.tight_layout()
     plt.savefig(os.path.join(experiment_path, "training_cc_losses.pdf"))
     plt.show()
@@ -392,7 +452,10 @@ def train(config: Config):
         plt.axvline(x=epoch * len(train_loader), color="r", linestyle="--", alpha=0.5)
     plt.xlabel("Training Step")
     plt.ylabel("Loss")
-    plt.title("Overlap Loss During Training with Procrustes Method")
+    if selected_solver == "procrustes":
+        plt.title("Overlap Loss During Training with Procrustes Method")
+    else:
+        plt.title("Overlap Loss During Training with Default Method")
     plt.tight_layout()
     plt.savefig(os.path.join(experiment_path, "training_ov_losses.pdf"))
     plt.show()
@@ -403,47 +466,12 @@ def train(config: Config):
         plt.axvline(x=epoch * len(train_loader), color="r", linestyle="--", alpha=0.5)
     plt.xlabel("Training Step")
     plt.ylabel("Loss")
-    plt.title("Positive/Negative Marker Loss During Training with Procrustes Method")
+    if selected_solver == "procrustes":
+        plt.title("Positive/Negative Marker Loss During Training with Procrustes Method")
+    else:
+        plt.title("Positive/Negative Marker Loss During Training with Default Method")
     plt.tight_layout()
     plt.savefig(os.path.join(experiment_path, "training_pn_losses.pdf"))
-    plt.show()
-
-    # Plot scaled losses
-    plt.figure(figsize=(12, 8))
-
-    scaled_total_loss = np.array(losses["Total Loss"])
-    scaled_total_loss = scaled_total_loss / scaled_total_loss.max() if scaled_total_loss.max() > 0 else scaled_total_loss
-    plt.plot(scaled_total_loss, label="Scaled Total Loss")
-
-    scaled_ne_loss = np.array(losses["Nuclei Encapsulation Loss"])
-    scaled_ne_loss = scaled_ne_loss / scaled_ne_loss.max() if scaled_ne_loss.max() > 0 else scaled_ne_loss
-    plt.plot(scaled_ne_loss, label="Scaled Nuclei Encapsulation Loss")
-
-    scaled_os_loss = np.array(losses["Oversegmentation Loss"])
-    scaled_os_loss = scaled_os_loss / scaled_os_loss.max() if scaled_os_loss.max() > 0 else scaled_os_loss
-    plt.plot(scaled_os_loss, label="Scaled Oversegmentation Loss")
-
-    scaled_cc_loss = np.array(losses["Cell Calling Loss"])
-    scaled_cc_loss = scaled_cc_loss / scaled_cc_loss.max() if scaled_cc_loss.max() > 0 else scaled_cc_loss
-    plt.plot(scaled_cc_loss, label="Scaled Cell Calling Loss")
-
-    scaled_ov_loss = np.array(losses["Overlap Loss"])
-    scaled_ov_loss = scaled_ov_loss / scaled_ov_loss.max() if scaled_ov_loss.max() > 0 else scaled_ov_loss
-    plt.plot(scaled_ov_loss, label="Scaled Overlap Loss")
-
-    scaled_pn_loss = np.array(losses["Pos-Neg Marker Loss"])
-    scaled_pn_loss = scaled_pn_loss / scaled_pn_loss.max() if scaled_pn_loss.max() > 0 else scaled_pn_loss
-    plt.plot(scaled_ne_loss, label="Scaled Pos-Neg Marker Loss")
-
-    for epoch in range(config.training_params.total_epochs):
-        plt.axvline(x=epoch * len(train_loader), color="r", linestyle="--", alpha=0.5)
-    
-    plt.xlabel("Training Step")
-    plt.ylabel("Loss")
-    plt.title("Training Loss Over Time")
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(os.path.join(experiment_path, "rescaled_training_losses.pdf"))
     plt.show()
 
     logging.info("Training finished")
