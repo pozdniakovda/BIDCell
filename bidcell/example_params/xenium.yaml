@@ -49,8 +49,9 @@ model_params:
   - SMC
 
 training_params:
-  total_epochs: 1 # number of training epochs; default: 1
+  total_epochs: 10 # number of training epochs; default: 1
   total_steps: 4000 # number of training steps; default: 4000
+  solver: "procrustes" # whether to use default vs. Procrustes multi-objective training
   ne_weight: 1.0 # weight for nuclei encapsulation loss; default: 1.0
   os_weight: 1.0 # weight for oversegmentation loss; default: 1.0
   cc_weight: 1.0 # weight for cell-calling loss; default: 1.0
@@ -59,7 +60,7 @@ training_params:
   neg_weight: 1.0 # weight for negative marker loss; default: 1.0
 
 testing_params:
-  test_epoch: 1 # epoch to test; default: 1
+  test_epoch: 10 # epoch to test; default: 1
   test_step: 4000 # step number to test; default: 4000
 
 experiment_dirs:
