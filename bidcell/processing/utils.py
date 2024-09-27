@@ -29,6 +29,14 @@ def check_bit_depth(img, disallowed=map_bit_depth):
     for dtype_from, dtype_to in map_bit_depth.items():
         if img.dtype == dtype_from:
             warnings.warn(f"Image dtype was {img.dtype}, which is incompatible; converting to {dtype_to}")
-            img.astype(dtype_to)
+
+            img_float = img.astype(float)
+            img_float = img_float / img_float.max() if img_float.max() > 0 else img_float
+            
+            max_in_dtype = np.iinfo(dtype_to).max
+            scaled_img = img_float * max_in_dtype
+            
+            img = scaled_img.astype(dtype_to)
             break
+    
     return img
