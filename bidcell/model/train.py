@@ -387,7 +387,7 @@ def train(config: Config):
     plt.legend()
     plt.tight_layout()
     plt.savefig(os.path.join(experiment_path, "training_losses.pdf"))
-    plt.show()
+    #plt.show()
 
     # Plot individual losses
     plt.figure(figsize=(12, 8))
@@ -402,7 +402,7 @@ def train(config: Config):
         plt.title("Total Loss During Training with Default Method")
     plt.tight_layout()
     plt.savefig(os.path.join(experiment_path, "training_total_losses.pdf"))
-    plt.show()
+    #plt.show()
 
     plt.figure(figsize=(12, 8))
     plt.plot(losses["Nuclei Encapsulation Loss"], label="Nuclei Encapsulation Loss")
@@ -416,7 +416,7 @@ def train(config: Config):
         plt.title("Nuclei Encapsulation Loss During Training with Default Method")
     plt.tight_layout()
     plt.savefig(os.path.join(experiment_path, "training_ne_losses.pdf"))
-    plt.show()
+    #plt.show()
 
     plt.figure(figsize=(12, 8))
     plt.plot(losses["Oversegmentation Loss"], label="Oversegmentation Loss")
@@ -430,7 +430,7 @@ def train(config: Config):
         plt.title("Oversegmentation Loss During Training with Default Method")
     plt.tight_layout()
     plt.savefig(os.path.join(experiment_path, "training_os_losses.pdf"))
-    plt.show()
+    #plt.show()
 
     plt.figure(figsize=(12, 8))
     plt.plot(losses["Cell Calling Loss"], label="Cell Calling Loss")
@@ -444,7 +444,7 @@ def train(config: Config):
         plt.title("Cell Calling Loss During Training with Default Method")
     plt.tight_layout()
     plt.savefig(os.path.join(experiment_path, "training_cc_losses.pdf"))
-    plt.show()
+    #plt.show()
 
     plt.figure(figsize=(12, 8))
     plt.plot(losses["Overlap Loss"], label="Overlap Loss")
@@ -458,7 +458,7 @@ def train(config: Config):
         plt.title("Overlap Loss During Training with Default Method")
     plt.tight_layout()
     plt.savefig(os.path.join(experiment_path, "training_ov_losses.pdf"))
-    plt.show()
+    #plt.show()
 
     plt.figure(figsize=(12, 8))
     plt.plot(losses["Pos-Neg Marker Loss"], label="Pos-Neg Marker Loss")
@@ -472,7 +472,7 @@ def train(config: Config):
         plt.title("Positive/Negative Marker Loss During Training with Default Method")
     plt.tight_layout()
     plt.savefig(os.path.join(experiment_path, "training_pn_losses.pdf"))
-    plt.show()
+    #plt.show()
 
     logging.info("Training finished")
 
