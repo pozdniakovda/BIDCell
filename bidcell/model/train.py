@@ -180,6 +180,7 @@ def train(config: Config):
     selected_solver = config.training_params.solver
 
     # Optimiser
+    print(f"Current learning rate: {config.training_params.learning_rate}")
     if config.training_params.optimizer == "rmsprop":
         optimizer = torch.optim.RMSprop(
             model.parameters(),
