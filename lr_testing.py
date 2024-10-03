@@ -9,6 +9,7 @@ xenium_config_path = "xenium_example_config.yaml"
 temp_config_paths = []
 learning_rates = [0.0001, 0.00001, 0.000001]
 
+print(f"Creating temporary configs for lr=0.0001, lr=0.00001, and lr=0.000001, with or without the Procrustes Solver")
 for solver in ["default", "procrustes"]:
 	for learning_rate in learning_rates:
 		yaml = YAML()
@@ -25,12 +26,18 @@ for solver in ["default", "procrustes"]:
 		temp_config_paths.append(temp_config_path)
 
 # Do BIDCell training for each variant
+print(f"Starting BIDCell variant training...")
 for temp_config_path in temp_config_paths:
+	print(f"Training using config: {temp_config_path}")
 	model = BIDCellModel(temp_config_path)
+	print(f"Preprocessing data...")
 	model.preprocess()
+	print(f"Training model...")
 	model.train()
+	print(f"Done this variant.")
 	del model
 
 # Delete temp yaml files
+print(f"Cleaning up temp config files...")
 for temp_config_path in temp_config_paths:
 	os.remove(temp_config_path)
