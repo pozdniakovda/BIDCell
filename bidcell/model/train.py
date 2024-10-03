@@ -99,7 +99,7 @@ def procrustes_method(loss_ne, loss_os, loss_cc, loss_ov, loss_pn, model, optimi
 
     return total_loss.item()
 
-def train(config: Config):
+def train(config: Config, learning_rate = None, selected_solver = None):
     logging.basicConfig(
         format="%(asctime)s %(levelname)s %(message)s",
         level=logging.INFO,
@@ -116,15 +116,6 @@ def train(config: Config):
         make_new = True
     else:
         make_new = False
-
-    timestamp = get_experiment_id(
-        make_new,
-        config.experiment_dirs.dir_id,
-        config.files.data_dir,
-    )
-    experiment_path = os.path.join(config.files.data_dir, "model_outputs", timestamp)
-    make_dir(experiment_path + "/" + config.experiment_dirs.model_dir)
-    make_dir(experiment_path + "/" + config.experiment_dirs.samples_dir)
 
     if config.training_params.model_freq <= config.testing_params.test_step:
         model_freq = config.training_params.model_freq
@@ -176,21 +167,34 @@ def train(config: Config):
         device,
     )
 
-    # Solver
-    selected_solver = config.training_params.solver
+    # Solver and learning rate
+    if selected_solver is None: 
+        selected_solver = config.training_params.solver
+    if learning_rate is None:
+        learning_rate = config.training_params.learning_rate
+
+    # Generate path for saving outputs
+    timestamp = get_experiment_id(
+        make_new,
+        config.experiment_dirs.dir_id,
+        config.files.data_dir,
+    )
+    experiment_path = os.path.join(config.files.data_dir, "model_outputs", f"{timestamp}_{selected_solver}_lr-{learning_rate}")
+    make_dir(experiment_path + "/" + config.experiment_dirs.model_dir)
+    make_dir(experiment_path + "/" + config.experiment_dirs.samples_dir)
 
     # Optimiser
-    print(f"Current learning rate: {config.training_params.learning_rate}")
+    print(f"Current learning rate: {learning_rate}")
     if config.training_params.optimizer == "rmsprop":
         optimizer = torch.optim.RMSprop(
             model.parameters(),
-            lr=config.training_params.learning_rate,
+            lr=learning_rate,
             weight_decay=1e-8,
         )
     elif config.training_params.optimizer == "adam":
         optimizer = torch.optim.Adam(
             model.parameters(),
-            lr=config.training_params.learning_rate,
+            lr=learning_rate,
             betas=(config.training_params.beta1, config.training_params.beta2),
             weight_decay=config.training_params.weight_decay,
         )
