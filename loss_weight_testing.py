@@ -6,6 +6,11 @@ from bidcell import BIDCellModel
 cwd = os.getcwd()
 xenium_config_path = "xenium_example_config.yaml"
 
+with open(os.path.join(cwd, xenium_config_path), "r") as file:
+    config = yaml.load(file)
+epochs = config["training_params"]["total_epochs"]
+solver = config["training_params"]["solver"]
+
 # Create temp yaml variants
 temp_config_paths = []
 
@@ -57,12 +62,7 @@ for temp_config_path in temp_config_paths:
 
 # Generate the overlaid graphs
 print(f"Generating overlaid graphs...")
-
 graph_data_keys = ["Total Loss", "Nuclei Encapsulation Loss", "Oversegmentation Loss", "Cell Calling Loss", "Overlap Loss", "Pos-Neg Marker Loss"]
-with open(os.path.join(cwd, xenium_config_path), "r") as file:
-    config = yaml.load(file)
-epochs = config["training_params"]["total_epochs"]
-solver = config["training_params"]["solver"]
 
 for graph_data_key in graph_data_keys: 
     plt.figure(figsize=(18, 8))
