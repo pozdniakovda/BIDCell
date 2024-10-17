@@ -369,11 +369,11 @@ def train(config: Config, learning_rate = None, selected_solver = None):
         scheduler.step()
         lrs.append(cur_lr)
 
-    # Calculate loss moving averages as 1% increments (e.g. 10 epochs x 1000 steps/epoch = 10,000 steps, i.e. 100 steps per point. 
+    # Calculate loss moving averages as 2.5% increments (e.g. 10 epochs x 1000 steps/epoch = 10,000 steps, i.e. 250 steps per point. 
     ma_losses = {}
     
     for loss_name, loss_vals in losses.items():
-        window_width = int(len(loss_vals) / 100)
+        window_width = int(len(loss_vals) / 40)
         loss_vals = np.array(loss_vals)
         
         moving_averages = []
