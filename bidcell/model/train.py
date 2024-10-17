@@ -511,7 +511,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
 
     logging.info("Training finished")
 
-    return losses, ma_losses
+    return losses, ma_losses, experiment_path
 
 
 if __name__ == "__main__":
