@@ -376,7 +376,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
         window_width = int(len(loss_vals) / 100)
         loss_vals = np.array(loss_vals)
         
-        moving_avaerages = []
+        moving_averages = []
         for i in np.arange(window_width):
             moving_averages.append(loss_vals[:i].mean())
         for i in np.arange(window_width, len(loss_vals)):
