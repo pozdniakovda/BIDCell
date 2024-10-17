@@ -31,9 +31,10 @@ for emphasized_key, color, loss_weights in zip(emphasized_keys, emphasized_color
     yaml.preserve_quotes = True
     with open(os.path.join(cwd, xenium_config_path), "r") as file:
         config = yaml.load(file)
-    
+
+    loss_weights = list(loss_weights)
     for key, weight in zip(loss_weight_keys, loss_weights):
-        config["training_params"][key] = weight
+        config["training_params"][key] = float(weight)
 
     temp_config_path = xenium_config_path.split(".yaml")[0] + f"_{solver}_emphasis={emphasized_key}.yaml"
     with open(temp_config_path, "w") as file:
