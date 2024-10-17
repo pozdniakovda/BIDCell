@@ -90,4 +90,5 @@ for graph_data_key in graph_data_keys:
         plt.title("{graph_data_key} During Training with Default Method (Emphasis: {emphasized_key})")
     
     plt.tight_layout()        
-    plt.savefig(os.path.join(parent_path, "training_total_losses.pdf"))
+    filename = "training_" + "_".join(graph_data_key.lower().split(" ")) + "_overlaid.pdf"
+    plt.savefig(os.path.join(parent_path, filename))
