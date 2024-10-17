@@ -18,22 +18,20 @@ loss_weight_keys = ["ne_weight", "os_weight", "cc_weight", "ov_weight", "pos_wei
 emphasized_keys = ["equal"] + loss_weight_keys
 emphasized_colors = ["black", "blue", "magenta", "darkgreen", "orange", "green", "red"] # equal, ne_weight, os_weight, cc_weight, ov_weight, pos_weight, neg_weight
 
-print(f"Creating temporary configs where a single loss is held at weight 0.5 while the remaining 5 losses are held at 0.1, with or without the Procrustes Solver")
-for solver in ["default", "procrustes"]:
-    for emphasized_key, color, loss_weights in zip(emphasized_keys, emphasized_colors, loss_weights_arrs):
-        yaml = YAML()
-        yaml.preserve_quotes = True
-        with open(os.path.join(cwd, xenium_config_path), "r") as file:
-            config = yaml.load(file)
+print(f"Creating temporary configs where a single loss is held at weight 0.5 while the remaining 5 losses are held at 0.1")
+for emphasized_key, color, loss_weights in zip(emphasized_keys, emphasized_colors, loss_weights_arrs):
+    yaml = YAML()
+    yaml.preserve_quotes = True
+    with open(os.path.join(cwd, xenium_config_path), "r") as file:
+        config = yaml.load(file)
+    
+    for key, weight in zip(loss_weight_keys, loss_weights):
+        config["training_params"][key] = weight
 
-        config["training_params"]["solver"] = solver
-        for key, weight in zip(loss_weight_keys, loss_weights):
-            config["training_params"][key] = weight
-
-        temp_config_path = xenium_config_path.split(".yaml")[0] + f"_{solver}_emphasis={emphasized_key}.yaml"
-        with open(temp_config_path, "w") as file:
-            yaml.dump(config, file)
-        temp_config_paths.append((temp_config_path, emphasized_key, color))
+    temp_config_path = xenium_config_path.split(".yaml")[0] + f"_{solver}_emphasis={emphasized_key}.yaml"
+    with open(temp_config_path, "w") as file:
+        yaml.dump(config, file)
+    temp_config_paths.append((temp_config_path, emphasized_key, color))
 
 # Do BIDCell training for each variant
 print(f"Starting BIDCell variant training...")
@@ -64,6 +62,8 @@ graph_data_keys = ["Total Loss", "Nuclei Encapsulation Loss", "Oversegmentation 
 with open(os.path.join(cwd, xenium_config_path), "r") as file:
     config = yaml.load(file)
 epochs = config["training_params"]["total_epochs"]
+solver = config["training_params"]["solver"]
+selected_solver = 
 
 for graph_data_key in graph_data_keys: 
     plt.figure(figsize=(18, 8))
@@ -84,7 +84,7 @@ for graph_data_key in graph_data_keys:
     
     plt.xlabel("Training Step")
     plt.ylabel("Loss")
-    if selected_solver == "procrustes":
+    if solver == "procrustes":
         plt.title("{graph_data_key} During Training with Procrustes Method (Emphasis: {emphasized_key})")
     else: 
         plt.title("{graph_data_key} During Training with Default Method (Emphasis: {emphasized_key})")
