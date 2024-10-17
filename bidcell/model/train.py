@@ -396,7 +396,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     plt.plot(losses["Pos-Neg Marker Loss"], label="Pos-Neg Marker Loss", linewidth=0.5)
 
     ma_loss_vals, ma_window_width = ma_losses["Total Loss"]
-    plt.plot(ma_loss_vals, label=f"Total Loss (moving average, {ma_window_width})", linewidth=1.5)
+    plt.plot(ma_loss_vals, label=f"Total Loss (moving average, {ma_window_width})", linewidth=2)
 
     for epoch in range(config.training_params.total_epochs):
         plt.axvline(x=epoch * len(train_loader), color="r", linestyle="--", alpha=0.5)
@@ -414,9 +414,9 @@ def train(config: Config, learning_rate = None, selected_solver = None):
 
     # Plot individual losses
     plt.figure(figsize=(18, 8))
-    plt.plot(losses["Total Loss"], label="Total Loss", linewidth=0.75)
+    plt.plot(losses["Total Loss"], label="Total Loss", linewidth=0.5)
     ma_loss_vals, ma_window_width = ma_losses["Total Loss"]
-    plt.plot(ma_loss_vals, label=f"Total Loss (moving average, {ma_window_width})", linewidth=1.5)
+    plt.plot(ma_loss_vals, label=f"Total Loss (moving average, {ma_window_width})", linewidth=2)
     for epoch in range(config.training_params.total_epochs):
         plt.axvline(x=epoch * len(train_loader), color="r", linestyle="--", alpha=0.5)
     plt.xlabel("Training Step")
@@ -430,9 +430,9 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     #plt.show()
 
     plt.figure(figsize=(18, 8))
-    plt.plot(losses["Nuclei Encapsulation Loss"], label="Nuclei Encapsulation Loss", linewidth=0.75)
+    plt.plot(losses["Nuclei Encapsulation Loss"], label="Nuclei Encapsulation Loss", linewidth=0.5, alpha=0.5)
     ma_loss_vals, ma_window_width = ma_losses["Nuclei Encapsulation Loss"]
-    plt.plot(ma_loss_vals, label=f"Nuclei Encapsulation Loss (moving average, {ma_window_width})", linewidth=1.5)
+    plt.plot(ma_loss_vals, label=f"Nuclei Encapsulation Loss (moving average, {ma_window_width})", linewidth=2)
     for epoch in range(config.training_params.total_epochs):
         plt.axvline(x=epoch * len(train_loader), color="r", linestyle="--", alpha=0.5)
     plt.xlabel("Training Step")
@@ -446,9 +446,9 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     #plt.show()
 
     plt.figure(figsize=(18, 8))
-    plt.plot(losses["Oversegmentation Loss"], label="Oversegmentation Loss", linewidth=0.75)
+    plt.plot(losses["Oversegmentation Loss"], label="Oversegmentation Loss", linewidth=0.5, alpha=0.5)
     ma_loss_vals, ma_window_width = ma_losses["Oversegmentation Loss"]
-    plt.plot(ma_loss_vals, label=f"Oversegmentation Loss (moving average, {ma_window_width})", linewidth=1.5)
+    plt.plot(ma_loss_vals, label=f"Oversegmentation Loss (moving average, {ma_window_width})", linewidth=2)
     for epoch in range(config.training_params.total_epochs):
         plt.axvline(x=epoch * len(train_loader), color="r", linestyle="--", alpha=0.5)
     plt.xlabel("Training Step")
@@ -462,9 +462,9 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     #plt.show()
 
     plt.figure(figsize=(18, 8))
-    plt.plot(losses["Cell Calling Loss"], label="Cell Calling Loss", linewidth=0.75)
+    plt.plot(losses["Cell Calling Loss"], label="Cell Calling Loss", linewidth=0.5, alpha=0.5)
     ma_loss_vals, ma_window_width = ma_losses["Cell Calling Loss"]
-    plt.plot(ma_loss_vals, label=f"Cell Calling Loss (moving average, {ma_window_width})", linewidth=1.5)
+    plt.plot(ma_loss_vals, label=f"Cell Calling Loss (moving average, {ma_window_width})", linewidth=2)
     for epoch in range(config.training_params.total_epochs):
         plt.axvline(x=epoch * len(train_loader), color="r", linestyle="--", alpha=0.5)
     plt.xlabel("Training Step")
@@ -478,9 +478,9 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     #plt.show()
 
     plt.figure(figsize=(18, 8))
-    plt.plot(losses["Overlap Loss"], label="Overlap Loss", linewidth=0.75)
+    plt.plot(losses["Overlap Loss"], label="Overlap Loss", linewidth=0.5, alpha=0.5)
     ma_loss_vals, ma_window_width = ma_losses["Overlap Loss"]
-    plt.plot(ma_loss_vals, label=f"Overlap Loss (moving average, {ma_window_width})", linewidth=1.5)
+    plt.plot(ma_loss_vals, label=f"Overlap Loss (moving average, {ma_window_width})", linewidth=2)
     for epoch in range(config.training_params.total_epochs):
         plt.axvline(x=epoch * len(train_loader), color="r", linestyle="--", alpha=0.5)
     plt.xlabel("Training Step")
@@ -494,9 +494,9 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     #plt.show()
 
     plt.figure(figsize=(18, 8))
-    plt.plot(losses["Pos-Neg Marker Loss"], label="Pos-Neg Marker Loss", linewidth=0.75)
+    plt.plot(losses["Pos-Neg Marker Loss"], label="Pos-Neg Marker Loss", linewidth=0.5, alpha=0.5)
     ma_loss_vals, ma_window_width = ma_losses["Pos-Neg Marker Loss"]
-    plt.plot(ma_loss_vals, label=f"Pos-Neg Marker Loss (moving average, {ma_window_width})", linewidth=1.5)
+    plt.plot(ma_loss_vals, label=f"Pos-Neg Marker Loss (moving average, {ma_window_width})", linewidth=2)
     for epoch in range(config.training_params.total_epochs):
         plt.axvline(x=epoch * len(train_loader), color="r", linestyle="--", alpha=0.5)
     plt.xlabel("Training Step")
