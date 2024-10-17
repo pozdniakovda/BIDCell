@@ -53,7 +53,7 @@ for temp_config_path, emphasized_key, color in temp_config_paths:
     
     print(f"\tTraining model...")
     model.train()
-    graphing_data.append((emphasized_key, color, model.loss_histories, model.ma_loss_histories, ma.experiment_path))
+    graphing_data.append((emphasized_key, color, model.loss_histories, model.ma_loss_histories, model.experiment_path))
     
     print(f"\tDone this variant.")
     del model
