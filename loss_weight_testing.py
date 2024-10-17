@@ -6,6 +6,8 @@ from bidcell import BIDCellModel
 cwd = os.getcwd()
 xenium_config_path = "xenium_example_config.yaml"
 
+yaml = YAML()
+yaml.preserve_quotes = True
 with open(os.path.join(cwd, xenium_config_path), "r") as file:
     config = yaml.load(file)
 epochs = config["training_params"]["total_epochs"]
