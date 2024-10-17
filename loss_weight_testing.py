@@ -63,7 +63,6 @@ with open(os.path.join(cwd, xenium_config_path), "r") as file:
     config = yaml.load(file)
 epochs = config["training_params"]["total_epochs"]
 solver = config["training_params"]["solver"]
-selected_solver = 
 
 for graph_data_key in graph_data_keys: 
     plt.figure(figsize=(18, 8))
