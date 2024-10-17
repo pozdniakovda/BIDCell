@@ -380,7 +380,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
         for i in np.arange(window_width):
             moving_averages.append(loss_vals[:i].mean())
         for i in np.arange(window_width, len(loss_vals)):
-            moving_averages.append(loss_vals[i-window_widith:i].mean())
+            moving_averages.append(loss_vals[i-window_width:i].mean())
 
         ma_losses[loss_name] = (moving_averages, window_width)
 
