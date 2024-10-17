@@ -111,7 +111,7 @@ class BIDCellModel:
     def train(self) -> None:
         """Train the model.
         """
-        train(self.config)
+        self.loss_histories, self.ma_loss_histories = train(self.config)
 
     def predict(self) -> None:
         """Segment and annotate the cells.
