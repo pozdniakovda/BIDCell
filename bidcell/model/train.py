@@ -511,6 +511,8 @@ def train(config: Config, learning_rate = None, selected_solver = None):
 
     logging.info("Training finished")
 
+    return losses, ma_losses
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
