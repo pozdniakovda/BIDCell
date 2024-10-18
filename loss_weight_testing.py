@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import matplotlib.pyplot as plt
 from ruamel.yaml import YAML
 from bidcell import BIDCellModel
 
