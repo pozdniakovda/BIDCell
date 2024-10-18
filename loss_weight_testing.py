@@ -79,7 +79,7 @@ for graph_data_key in graph_data_keys:
     for emphasized_key, color, _, ma_loss_histories, experiment_path in graphing_data: 
         ma_loss_vals, ma_window_width = ma_loss_histories[graph_data_key]
         ma_label = f"{graph_data_key}, emphasis = {emphasized_key}, (moving average, {ma_window_width})"
-        plt.plot(model.ma_loss_histories, label=ma_label, linewidth=2, color=color)
+        plt.plot(ma_loss_vals, label=ma_label, linewidth=2, color=color)
 
     steps_per_epoch = round(epochs / steps)
     for epoch in range(epochs):
