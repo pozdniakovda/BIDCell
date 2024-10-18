@@ -61,7 +61,7 @@ for temp_config_path, emphasized_key, color in temp_config_paths:
 # Delete temp yaml files
 print(f"Cleaning up temp config files...")
 for temp_config_path in temp_config_paths:
-    os.remove(temp_config_path)
+    os.remove(temp_config_path[0])
 
 # Generate the overlaid graphs
 print(f"Generating overlaid graphs...")
