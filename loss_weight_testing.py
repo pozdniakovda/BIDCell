@@ -19,7 +19,7 @@ temp_config_paths = []
 
 loss_weights_arrs = np.full(shape=(6, 6), fill_value=0.1, dtype=float)
 np.fill_diagonal(loss_weights_arrs, 0.5)
-equal_weights_arr = np.full(shape=6, fill_value=0.2, dtype=float)
+equal_weights_arr = np.full(shape=6, fill_value=(1/6), dtype=float)
 loss_weights_arrs = np.vstack([equal_weights_arr, loss_weights_arrs])
 
 loss_weight_keys = ["ne_weight", "os_weight", "cc_weight", "ov_weight", "pos_weight", "neg_weight"]
