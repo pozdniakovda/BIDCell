@@ -73,12 +73,21 @@ for graph_data_key in graph_data_keys:
     for emphasized_key, color, loss_histories, _, experiment_path in graphing_data: 
         parent_path = os.path.dirname(experiment_path)
         steps = len(loss_histories[graph_data_key])
+        
         label = f"{graph_data_key}, emphasis = {emphasized_key}"
-        plt.plot(loss_histories[graph_data_key], label=label, linewidth=0.5, color=color, alpha=0.5)
+        
+        histories = loss_histories[graph_data_key]
+        histories = np.array(histories)
+        scaled_histories = histories / histories.max() if histories.max() != 0 else histories
+        
+        plt.plot(scaled_histories, label=label, linewidth=0.5, color=color, alpha=0.5)
 
     for emphasized_key, color, _, ma_loss_histories, experiment_path in graphing_data: 
         ma_loss_vals, ma_window_width = ma_loss_histories[graph_data_key]
+        ma_loss_vals = np.array(ma_loss_vals)
         ma_label = f"{graph_data_key}, emphasis = {emphasized_key}, (moving average, {ma_window_width})"
+
+        scaled_moving_avgs = ma_loss_vals / ma_loss_values.max() if ma_loss_values.max() != 0 else ma_loss_vals
         plt.plot(ma_loss_vals, label=ma_label, linewidth=2, color=color)
 
     steps_per_epoch = round(epochs / steps)
@@ -86,11 +95,14 @@ for graph_data_key in graph_data_keys:
         plt.axvline(x=epoch*steps_per_epoch, color="darkgray", linestyle="--", alpha=0.5)
     
     plt.xlabel("Training Step")
-    plt.ylabel("Loss")
+    plt.ylabel("Normalized Loss")
+    
     if solver == "procrustes":
         plt.title(f"{graph_data_key} During Training with Procrustes Method (Emphasis: {emphasized_key})")
     else: 
         plt.title(f"{graph_data_key} During Training with Default Method (Emphasis: {emphasized_key})")
+
+    plt.yscale("log")
     
     plt.tight_layout()        
     filename = "training_" + "_".join(graph_data_key.lower().split(" ")) + "_overlaid.pdf"
