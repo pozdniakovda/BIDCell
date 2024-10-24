@@ -88,9 +88,9 @@ for graph_data_key in graph_data_keys:
     plt.xlabel("Training Step")
     plt.ylabel("Loss")
     if solver == "procrustes":
-        plt.title("{graph_data_key} During Training with Procrustes Method (Emphasis: {emphasized_key})")
+        plt.title(f"{graph_data_key} During Training with Procrustes Method (Emphasis: {emphasized_key})")
     else: 
-        plt.title("{graph_data_key} During Training with Default Method (Emphasis: {emphasized_key})")
+        plt.title(f"{graph_data_key} During Training with Default Method (Emphasis: {emphasized_key})")
     
     plt.tight_layout()        
     filename = "training_" + "_".join(graph_data_key.lower().split(" ")) + "_overlaid.pdf"
