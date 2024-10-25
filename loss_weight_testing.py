@@ -87,7 +87,7 @@ for graph_data_key in graph_data_keys:
         ma_loss_vals = np.array(ma_loss_vals)
         ma_label = f"{graph_data_key}, emphasis = {emphasized_key}, (moving average, {ma_window_width})"
 
-        scaled_moving_avgs = ma_loss_vals / ma_loss_values.max() if ma_loss_values.max() != 0 else ma_loss_vals
+        scaled_moving_avgs = ma_loss_vals / ma_loss_vals.max() if ma_loss_vals.max() != 0 else ma_loss_vals
         plt.plot(ma_loss_vals, label=ma_label, linewidth=2, color=color)
 
     steps_per_epoch = round(epochs / steps)
