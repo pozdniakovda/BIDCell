@@ -61,7 +61,7 @@ def default_solver(loss_ne, loss_os, loss_cc, loss_ov, loss_pn, optimizer, track
 
     return step_train_loss
 
-def procrustes_method(loss_ne, loss_os, loss_cc, loss_ov, loss_pn, model, optimizer, tracked_losses): 
+def procrustes_method(loss_ne, loss_os, loss_cc, loss_ov, loss_pn, model, optimizer, tracked_losses, scale_mode = "min"): 
     # Track individual losses
     tracked_losses["Nuclei Encapsulation Loss"].append(loss_ne.item())
     tracked_losses["Oversegmentation Loss"].append(loss_os.item())
@@ -79,7 +79,7 @@ def procrustes_method(loss_ne, loss_os, loss_cc, loss_ov, loss_pn, model, optimi
     grads = torch.stack(grads, dim=0)  # Stack gradients
 
     # Apply Procrustes Solver
-    grads, weights, singulars = ProcrustesSolver.apply(grads.T.unsqueeze(0))
+    grads, weights, singulars = ProcrustesSolver.apply(grads.T.unsqueeze(0), scale_mode)
     grad, weights = grads[0].sum(-1), weights.sum(-1)
 
     # Apply aligned gradients to model parameters
@@ -244,7 +244,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
         assert epoch == resume_epoch
         print("Resume training, successfully loaded " + load_path)
 
-    if selected_solver == "procrustes":
+    if "procrustes" in selected_solver:
         logging.info("Begin training using Procrustes method")
     else:
         logging.info("Begin training using default method")
@@ -252,6 +252,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     model = model.train()
 
     lrs = []
+    scale_mode = ""
 
     for epoch in range(initial_epoch, config.training_params.total_epochs):
         cur_lr = optimizer.param_groups[0]["lr"]
@@ -314,8 +315,9 @@ def train(config: Config, learning_rate = None, selected_solver = None):
             loss_pn = criterion_pn(seg_pred, batch_pos, batch_neg)
 
             # Apply the Procrustes method
-            if selected_solver == "procrustes":
-                total_loss = procrustes_method(loss_ne, loss_os, loss_cc, loss_ov, loss_pn, model, optimizer, losses)
+            if "procrustes" in selected_solver:
+                scale_mode = "median" if "median" in selected_solver else "rmse" if "rmse" in selected_solver else "min"
+                total_loss = procrustes_method(loss_ne, loss_os, loss_cc, loss_ov, loss_pn, model, optimizer, losses, scale_mode)
             else: 
                 total_loss = default_solver(loss_ne, loss_os, loss_cc, loss_ov, loss_pn, optimizer, losses)
 
@@ -385,6 +387,8 @@ def train(config: Config, learning_rate = None, selected_solver = None):
         ma_losses[loss_name] = (moving_averages, window_width)
 
     # Plot losses
+    use_procrustes_title = "procrustes" in selected_solver
+    
     plt.figure(figsize=(18, 8))
 
     plt.plot(losses["Total Loss"], label="Total Loss", linewidth=1)
@@ -403,8 +407,8 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     
     plt.xlabel("Training Step")
     plt.ylabel("Loss")
-    if selected_solver == "procrustes":
-        plt.title("Training Loss with Procrustes Method")
+    if use_procrustes_title:
+        plt.title(f"Training Loss with Procrustes Method (scaling mode: {scale_mode})")
     else:
         plt.title("Training Loss with Default Method")
     plt.legend()
@@ -421,8 +425,8 @@ def train(config: Config, learning_rate = None, selected_solver = None):
         plt.axvline(x=epoch * len(train_loader), color="r", linestyle="--", alpha=0.5)
     plt.xlabel("Training Step")
     plt.ylabel("Loss")
-    if selected_solver == "procrustes":
-        plt.title("Total Loss During Training with Procrustes Method")
+    if use_procrustes_title:
+        plt.title(f"Total Loss During Training with Procrustes Method (scaling mode: {scale_mode})")
     else: 
         plt.title("Total Loss During Training with Default Method")
     plt.tight_layout()
@@ -437,8 +441,8 @@ def train(config: Config, learning_rate = None, selected_solver = None):
         plt.axvline(x=epoch * len(train_loader), color="r", linestyle="--", alpha=0.5)
     plt.xlabel("Training Step")
     plt.ylabel("Loss")
-    if selected_solver == "procrustes":
-        plt.title("Nuclei Encapsulation Loss During Training with Procrustes Method")
+    if use_procrustes_title:
+        plt.title(f"Nuclei Encapsulation Loss During Training with Procrustes Method (scaling mode: {scale_mode})")
     else: 
         plt.title("Nuclei Encapsulation Loss During Training with Default Method")
     plt.tight_layout()
@@ -453,7 +457,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
         plt.axvline(x=epoch * len(train_loader), color="r", linestyle="--", alpha=0.5)
     plt.xlabel("Training Step")
     plt.ylabel("Loss")
-    if selected_solver == "procrustes":
+    if use_procrustes_title:
         plt.title("Oversegmentation Loss During Training with Procrustes Method")
     else: 
         plt.title("Oversegmentation Loss During Training with Default Method")
@@ -469,8 +473,8 @@ def train(config: Config, learning_rate = None, selected_solver = None):
         plt.axvline(x=epoch * len(train_loader), color="r", linestyle="--", alpha=0.5)
     plt.xlabel("Training Step")
     plt.ylabel("Loss")
-    if selected_solver == "procrustes":
-        plt.title("Cell Calling Loss During Training with Procrustes Method")
+    if use_procrustes_title:
+        plt.title(f"Cell Calling Loss During Training with Procrustes Method (scaling mode: {scale_mode})")
     else: 
         plt.title("Cell Calling Loss During Training with Default Method")
     plt.tight_layout()
@@ -485,8 +489,8 @@ def train(config: Config, learning_rate = None, selected_solver = None):
         plt.axvline(x=epoch * len(train_loader), color="r", linestyle="--", alpha=0.5)
     plt.xlabel("Training Step")
     plt.ylabel("Loss")
-    if selected_solver == "procrustes":
-        plt.title("Overlap Loss During Training with Procrustes Method")
+    if use_procrustes_title:
+        plt.title(f"Overlap Loss During Training with Procrustes Method (scaling mode: {scale_mode})")
     else:
         plt.title("Overlap Loss During Training with Default Method")
     plt.tight_layout()
@@ -501,8 +505,8 @@ def train(config: Config, learning_rate = None, selected_solver = None):
         plt.axvline(x=epoch * len(train_loader), color="r", linestyle="--", alpha=0.5)
     plt.xlabel("Training Step")
     plt.ylabel("Loss")
-    if selected_solver == "procrustes":
-        plt.title("Positive/Negative Marker Loss During Training with Procrustes Method")
+    if use_procrustes_title:
+        plt.title(f"Positive/Negative Marker Loss During Training with Procrustes Method (scaling mode: {scale_mode})")
     else:
         plt.title("Positive/Negative Marker Loss During Training with Default Method")
     plt.tight_layout()
