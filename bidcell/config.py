@@ -184,7 +184,7 @@ class TrainingParams(BaseModel):
     # adam optimiser weight decay
     weight_decay: float = 0.0001
     # solver
-    solver: Literal["default", "procrustes"] = "default"
+    solver: Literal["default", "procrustes", "procrustes-min", "procrustes-median", "procrustes-rmse"] = "default"
     # optimiser
     optimizer: Literal["adam", "rmsprop"] = "adam"
     ne_weight: float = 1.0
