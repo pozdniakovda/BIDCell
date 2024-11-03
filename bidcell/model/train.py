@@ -169,6 +169,22 @@ def train(config: Config, learning_rate = None, selected_solver = None):
         device,
     )
 
+    # Whether to use static or dynamic loss weighting
+    weight_mode = config.training_params.weight_mode
+
+    # Combined loss functions if desired
+    combine_losses = config.training_params.combine_losses
+    if combine_losses: 
+        criterion_ne_ov = NucEncapOverlapLoss(config.training_params.ne_weight, config.training_params.ov_weight, device)
+        criterion_cc_pn = CellCallingMarkerLoss(
+            config.training_params.cc_weight,
+            config.training_params.pos_weight,
+            config.training_params.neg_weight,
+            device,
+        )
+    else: 
+        criterion_ne_ov, criterion_cc_pn = None, None
+
     # Solver and learning rate
     if selected_solver is None: 
         selected_solver = config.training_params.solver
