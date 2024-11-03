@@ -70,7 +70,7 @@ def procrustes_method(loss_ne, loss_os, loss_cc, loss_ov, loss_pn, model, optimi
     tracked_losses["Pos-Neg Marker Loss"].append(loss_pn.item())
     
     total_unscaled_loss = loss_ne + loss_os + loss_cc + loss_ov + loss_pn
-    tracked_losses["Total Loss"].append(total_loss.item())  # Track total loss
+    tracked_losses["Total Loss"].append(total_unscaled_loss.item())  # Track total loss
     
     grads = []
     for loss in [loss_ne, loss_os, loss_cc, loss_ov, loss_pn]:
