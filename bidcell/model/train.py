@@ -22,6 +22,8 @@ from .model.losses import (
     OverlapLoss,
     Oversegmentation,
     PosNegMarkerLoss,
+    NucEncapOverlapLoss,
+    CellCallingMarkerLoss
 )
 from .model.model import SegmentationModel as Network
 from .utils.utils import (
