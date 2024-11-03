@@ -13,11 +13,17 @@ class NucEncapOverlapLoss(nn.Module):
         self.ov_weight = ov_weight
         self.device = device
 
-    def forward(self, seg_pred, batch_n):
+    def forward(self, seg_pred, batch_n, ne_weight=None, ov_weight=None):
+        # Optionally override weights
+        if ne_weight is None:
+            ne_weight = self.ne_weight
+        if ov_weight is None:
+            ov_weight = self.ov_weight
+        
         # Nuclei encapsulation loss
         criterion_ce = torch.nn.CrossEntropyLoss(reduction="mean")
         ne_loss = criterion_ce(seg_pred, batch_n[:, 0, :, :])
-        weighted_ne_loss = self.ne_weight * ne_loss
+        weighted_ne_loss = ne_weight * ne_loss
 
         # Overlap loss
         batch_n = batch_n[:, 0, :, :]
@@ -42,7 +48,7 @@ class NucEncapOverlapLoss(nn.Module):
 
         scale = seg_pred.shape[0] * seg_pred.shape[2] * seg_pred.shape[3]
         ov_loss = ov_loss / scale
-        weighted_ov_loss = self.ov_weight * ov_loss
+        weighted_ov_loss = ov_weight * ov_loss
 
         combined_weighted_loss = weighted_ne_loss + weighted_ov_loss
         return combined_weighted_loss
@@ -60,7 +66,15 @@ class CellCallingMarkerLoss(nn.Module):
         self.neg_weight = neg_weight
         self.device = device
 
-    def forward(self, seg_pred, batch_sa, batch_pos, batch_neg):
+    def forward(self, seg_pred, batch_sa, batch_pos, batch_neg, pos_weight=None, neg_weight=None):
+        # If no override weights are given, use the defaults
+        if cc_weight is None:
+            cc_weight = self.cc_weight
+        if pos_weight is None:
+            pos_weight = self.pos_weight
+        if neg_weight is None: 
+            neg_weight = self.neg_weight
+        
         # Limit to searchable area where there is detected expression
         penalisable = batch_sa * 1
         criterion_ce = torch.nn.CrossEntropyLoss(reduction="none")
@@ -68,7 +82,7 @@ class CellCallingMarkerLoss(nn.Module):
 
         cc_loss_total = torch.sum(loss)
         cc_loss_total = cc_loss_total / seg_pred.shape[0]
-        weighted_cc_total = self.cc_weight * cc_loss_total
+        weighted_cc_total = cc_weight * cc_loss_total
 
         # Positive/negative marker losses
         batch_pos = batch_pos[:, 0, :, :]
@@ -91,7 +105,7 @@ class CellCallingMarkerLoss(nn.Module):
 
         loss_neg = torch.sum(preds_cells * batch_neg)
 
-        weighted_pn_total = (self.pos_weight * loss_pos + self.neg_weight * loss_neg) / seg_pred.shape[0]
+        weighted_pn_total = (pos_weight * loss_pos + neg_weight * loss_neg) / seg_pred.shape[0]
 
         # Pull it all together
         combined_weighted_loss = weighted_cc_total + weighted_pn_total
@@ -109,11 +123,14 @@ class NucleiEncapsulationLoss(nn.Module):
         self.weight = weight
         self.device = device
 
-    def forward(self, seg_pred, batch_n):
+    def forward(self, seg_pred, batch_n, weight=None):
+        if weight is None:
+            weight = self.weight
+        
         criterion_ce = torch.nn.CrossEntropyLoss(reduction="mean")
         loss = criterion_ce(seg_pred, batch_n[:, 0, :, :])
 
-        return self.weight * loss
+        return weight * loss
 
 
 class Oversegmentation(nn.Module):
@@ -126,7 +143,10 @@ class Oversegmentation(nn.Module):
         self.weight = weight
         self.device = device
 
-    def forward(self, seg_pred, batch_n):
+    def forward(self, seg_pred, batch_n, weight=None):
+        if weight is None:
+            weight = self.weight
+        
         batch_n = batch_n[:, 0, :, :]
 
         seg_probs = torch.nn.functional.softmax(seg_pred, dim=1)
@@ -152,7 +172,7 @@ class Oversegmentation(nn.Module):
 
         loss = loss / seg_pred.shape[0]
 
-        return self.weight * loss
+        return weight * loss
 
 
 class CellCallingLoss(nn.Module):
@@ -165,7 +185,10 @@ class CellCallingLoss(nn.Module):
         self.weight = weight
         self.device = device
 
-    def forward(self, seg_pred, batch_sa):
+    def forward(self, seg_pred, batch_sa, weight=None):
+        if weight is None:
+            weight = self.weight
+        
         # Limit to searchable area where there is detected expression
         penalisable = batch_sa * 1
         criterion_ce = torch.nn.CrossEntropyLoss(reduction="none")
@@ -175,7 +198,7 @@ class CellCallingLoss(nn.Module):
 
         loss_total = loss_total / seg_pred.shape[0]
 
-        return self.weight * loss_total
+        return weight * loss_total
 
 
 class OverlapLoss(nn.Module):
@@ -188,7 +211,10 @@ class OverlapLoss(nn.Module):
         self.weight = weight
         self.device = device
 
-    def forward(self, seg_pred, batch_n):
+    def forward(self, seg_pred, batch_n, weight=None):
+        if weight is None:
+            weight = self.weight
+        
         batch_n = batch_n[:, 0, :, :]
         seg_probs = torch.nn.functional.softmax(seg_pred, dim=1)
 
@@ -212,7 +238,7 @@ class OverlapLoss(nn.Module):
         scale = seg_pred.shape[0] * seg_pred.shape[2] * seg_pred.shape[3]
         loss = loss / scale
 
-        return self.weight * loss
+        return weight * loss
 
 
 class PosNegMarkerLoss(nn.Module):
@@ -226,7 +252,12 @@ class PosNegMarkerLoss(nn.Module):
         self.weight_neg = weight_neg
         self.device = device
 
-    def forward(self, seg_pred, batch_pos, batch_neg):
+    def forward(self, seg_pred, batch_pos, batch_neg, weight_pos=None, weight_neg=None):
+        if weight_pos is None:
+            weight_pos = self.weight_pos
+        if weight_neg is None:
+            weight_neg = self.weight_neg
+        
         batch_pos = batch_pos[:, 0, :, :]
         batch_neg = batch_neg[:, 0, :, :]
 
@@ -250,7 +281,7 @@ class PosNegMarkerLoss(nn.Module):
         loss_neg = torch.sum(preds_cells * batch_neg)
 
         loss_total = (
-            self.weight_pos * loss_pos + self.weight_neg * loss_neg
+            weight_pos * loss_pos + weight_neg * loss_neg
         ) / seg_pred.shape[0]
 
         return loss_total
