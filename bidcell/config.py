@@ -187,12 +187,15 @@ class TrainingParams(BaseModel):
     solver: Literal["default", "procrustes", "procrustes-min", "procrustes-median", "procrustes-rmse"] = "default"
     # optimiser
     optimizer: Literal["adam", "rmsprop"] = "adam"
+    # static weights
     ne_weight: float = 1.0
     os_weight: float = 1.0
     cc_weight: float = 1.0
     ov_weight: float = 1.0
     pos_weight: float = 1.0
     neg_weight: float = 1.0
+    # weight mode
+    weight_mode: Literal["static", "dynamic"] = "static"
     # number of training steps per model save
     model_freq: int = 1000
     # number of training steps per sample save
