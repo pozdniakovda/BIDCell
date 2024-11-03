@@ -60,6 +60,7 @@ training_params:
   pos_weight: 1.0 # weight for positive marker loss; default: 1.0
   neg_weight: 1.0 # weight for negative marker loss; default: 1.0
   weight_mode: "dynamic" # "dynamic" for dynamic weight adjustment; "static" to use initial loss weights only
+  combine_losses: True # combines ne_loss+ov_loss and cc_loss+pn_loss to reduce the number of losses during multi-objective training
 
 testing_params:
   test_epoch: 5 # epoch to test; default: 1
