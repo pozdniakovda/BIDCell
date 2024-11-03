@@ -59,6 +59,7 @@ training_params:
   ov_weight: 1.0 # weight for oversegmentation loss; default: 1.0
   pos_weight: 1.0 # weight for positive marker loss; default: 1.0
   neg_weight: 1.0 # weight for negative marker loss; default: 1.0
+  weight_mode: "dynamic" # "dynamic" for dynamic weight adjustment; "static" to use initial loss weights only
 
 testing_params:
   test_epoch: 5 # epoch to test; default: 1
