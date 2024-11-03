@@ -196,6 +196,8 @@ class TrainingParams(BaseModel):
     neg_weight: float = 1.0
     # weight mode
     weight_mode: Literal["static", "dynamic"] = "static"
+    # loss combination
+    combine_losses: bool = True
     # number of training steps per model save
     model_freq: int = 1000
     # number of training steps per sample save
