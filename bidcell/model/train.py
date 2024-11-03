@@ -68,7 +68,10 @@ def procrustes_method(loss_ne, loss_os, loss_cc, loss_ov, loss_pn, model, optimi
     tracked_losses["Cell Calling Loss"].append(loss_cc.item())
     tracked_losses["Overlap Loss"].append(loss_ov.item())
     tracked_losses["Pos-Neg Marker Loss"].append(loss_pn.item())
-
+    
+    total_unscaled_loss = loss_ne + loss_os + loss_cc + loss_ov + loss_pn
+    tracked_losses["Total Loss"].append(total_loss.item())  # Track total loss
+    
     grads = []
     for loss in [loss_ne, loss_os, loss_cc, loss_ov, loss_pn]:
         optimizer.zero_grad()  # Clear previous gradients
@@ -95,7 +98,7 @@ def procrustes_method(loss_ne, loss_os, loss_cc, loss_ov, loss_pn, model, optimi
     optimizer.step()
 
     total_loss = loss_ne + loss_os + loss_cc + loss_ov + loss_pn
-    tracked_losses["Total Loss"].append(total_loss.item())  # Track total loss
+    tracked_losses["Total Scaled Loss"].append(total_loss.item())  # Track total scaled loss
 
     return total_loss.item()
 
@@ -209,6 +212,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
         "Overlap Loss": [],
         "Pos-Neg Marker Loss": [],
         "Total Loss": [],
+        "Total Scaled Loss": []
     }
 
     # Scheduler https://arxiv.org/pdf/1812.01187.pdf
@@ -392,6 +396,9 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     plt.figure(figsize=(18, 8))
 
     plt.plot(losses["Total Loss"], label="Total Loss", linewidth=1)
+    
+    if use_procrustes_title:
+        plt.plot(losses["Total Scaled Loss"], label="Total Scaled Loss", linewidth=1)
 
     plt.plot(losses["Nuclei Encapsulation Loss"], label="Nuclei Encapsulation Loss", linewidth=0.5)
     plt.plot(losses["Oversegmentation Loss"], label="Oversegmentation Loss", linewidth=0.5)
@@ -432,6 +439,20 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     plt.tight_layout()
     plt.savefig(os.path.join(experiment_path, "training_total_losses.pdf"))
     #plt.show()
+
+    if use_procrustes_title:
+        plt.figure(figsize=(18, 8))
+        plt.plot(losses["Total Scaled Loss"], label="Total Scaled Loss", linewidth=0.5)
+        ma_loss_vals, ma_window_width = ma_losses["Total Scaled Loss"]
+        plt.plot(ma_loss_vals, label=f"Total Loss (moving average, {ma_window_width})", linewidth=2)
+        for epoch in range(config.training_params.total_epochs):
+            plt.axvline(x=epoch * len(train_loader), color="r", linestyle="--", alpha=0.5)
+        plt.xlabel("Training Step")
+        plt.ylabel("Loss")
+        plt.title(f"Total Loss During Training with Procrustes Method (scaling mode: {scale_mode})")
+        plt.tight_layout()
+        plt.savefig(os.path.join(experiment_path, "training_total_scaled_losses.pdf"))
+        #plt.show()
 
     plt.figure(figsize=(18, 8))
     plt.plot(losses["Nuclei Encapsulation Loss"], label="Nuclei Encapsulation Loss", linewidth=0.5, alpha=0.5)
