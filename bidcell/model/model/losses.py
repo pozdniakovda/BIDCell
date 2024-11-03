@@ -2,6 +2,52 @@ import torch
 import torch.nn as nn
 
 
+class NucEncapOverlapLoss(nn.Module):
+    """
+    Ensure that nuclei are fully within predicted cells
+    """
+
+    def __init__(self, ne_weight, ov_weight, device) -> None:
+        super(NucleiEncapsulationLoss, self).__init__()
+        self.ne_weight = ne_weight
+        self.ov_weight = ov_weight
+        self.device = device
+
+    def forward(self, seg_pred, batch_n):
+        # Nuclei encapsulation loss
+        criterion_ce = torch.nn.CrossEntropyLoss(reduction="mean")
+        ne_loss = criterion_ce(seg_pred, batch_n[:, 0, :, :])
+        weighted_ne_loss = self.ne_weight * ne_loss
+
+        # Overlap loss
+        batch_n = batch_n[:, 0, :, :]
+        seg_probs = torch.nn.functional.softmax(seg_pred, dim=1)
+
+        all_nuclei = torch.sum(batch_n, 0)
+        all_not_nuclei = torch.ones(batch_n.shape).to(self.device) - all_nuclei
+
+        probs_cyto = seg_probs[:, 1, :, :] * all_not_nuclei
+
+        ones = torch.ones(probs_cyto.shape).to(self.device)
+        zeros = torch.zeros(probs_cyto.shape).to(self.device)
+
+        # Penalise overlap loss if number of cell prob > 0.5 is > 1
+        alpha = 1.0
+        preds_cyto = torch.sigmoid((probs_cyto - 0.5) * alpha) * (ones - zeros) + zeros
+        count_cyto_overlap = torch.sum(preds_cyto, 0) - all_not_nuclei
+        m = torch.nn.ReLU()
+        count_cyto_overlap = m(count_cyto_overlap)
+
+        ov_loss = torch.sum(count_cyto_overlap)
+
+        scale = seg_pred.shape[0] * seg_pred.shape[2] * seg_pred.shape[3]
+        ov_loss = ov_loss / scale
+        weighted_ov_loss = self.ov_weight * ov_loss
+
+        combined_weighted_loss = weighted_ne_loss + weighted_ov_loss
+        return combined_weighted_loss
+
+
 class NucleiEncapsulationLoss(nn.Module):
     """
     Ensure that nuclei are fully within predicted cells
