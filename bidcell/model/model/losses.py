@@ -4,7 +4,7 @@ import torch.nn as nn
 
 class NucEncapOverlapLoss(nn.Module):
     """
-    Ensure that nuclei are fully within predicted cells
+    Ensure that nuclei are fully within predicted cells AND penalise overlaps between different cells
     """
 
     def __init__(self, ne_weight, ov_weight, device) -> None:
@@ -45,6 +45,57 @@ class NucEncapOverlapLoss(nn.Module):
         weighted_ov_loss = self.ov_weight * ov_loss
 
         combined_weighted_loss = weighted_ne_loss + weighted_ov_loss
+        return combined_weighted_loss
+
+
+class CellCallingMarkerLoss(nn.Module):
+    """
+    Maximise assignment of transcripts to cells
+    """
+
+    def __init__(self, cc_weight, pos_weight, neg_weight, device) -> None:
+        super(CellCallingLoss, self).__init__()
+        self.cc_weight = cc_weight
+        self.pos_weight = pos_weight
+        self.neg_weight = neg_weight
+        self.device = device
+
+    def forward(self, seg_pred, batch_sa, batch_pos, batch_neg):
+        # Limit to searchable area where there is detected expression
+        penalisable = batch_sa * 1
+        criterion_ce = torch.nn.CrossEntropyLoss(reduction="none")
+        loss = criterion_ce(seg_pred, penalisable[:, 0, :, :])
+
+        cc_loss_total = torch.sum(loss)
+        cc_loss_total = cc_loss_total / seg_pred.shape[0]
+        weighted_cc_total = self.cc_weight * cc_loss_total
+
+        # Positive/negative marker losses
+        batch_pos = batch_pos[:, 0, :, :]
+        batch_neg = batch_neg[:, 0, :, :]
+
+        # POSITIVE markers
+        criterion_ce = torch.nn.CrossEntropyLoss(reduction="sum")
+        loss_pos = criterion_ce(seg_pred, batch_pos)
+
+        # NEGATIVE markers
+        seg_probs = torch.nn.functional.softmax(seg_pred, dim=1)
+        probs_cells = seg_probs[:, 1, :, :]
+
+        ones = torch.ones(probs_cells.shape).to(self.device)
+        zeros = torch.zeros(probs_cells.shape).to(self.device)
+
+        alpha = 1.0
+
+        preds_cells = (torch.sigmoid((probs_cells - 0.5) * alpha) * (ones - zeros) + zeros)
+
+        loss_neg = torch.sum(preds_cells * batch_neg)
+
+        weighted_pn_total = (self.pos_weight * loss_pos + self.neg_weight * loss_neg) / seg_pred.shape[0]
+
+        # Pull it all together
+        combined_weighted_loss = weighted_cc_total + weighted_pn_total
+        
         return combined_weighted_loss
 
 
