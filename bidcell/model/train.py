@@ -34,25 +34,36 @@ from .utils.utils import (
 )
 from ..config import load_config, Config
 
-def default_solver(loss_ne, loss_os, loss_cc, loss_ov, loss_pn, optimizer, tracked_losses):
-    loss_ne = loss_ne.squeeze()
-    loss_os = loss_os.squeeze()
-    loss_cc = loss_cc.squeeze()
-    loss_ov = loss_ov.squeeze()
-    loss_pn = loss_pn.squeeze()
+def default_solver(optimizer, tracked_losses, loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_pn = None, loss_ne_ov = None, loss_cc_pn = None):
+    loss_ne = loss_ne.squeeze() if loss_ne is not None else None
+    loss_os = loss_os.squeeze() if loss_os is not None else None
+    loss_cc = loss_cc.squeeze() if loss_cc is not None else None
+    loss_ov = loss_ov.squeeze() if loss_ov is not None else None
+    loss_pn = loss_pn.squeeze() if loss_pn is not None else None
+    loss_ne_ov = loss_ne_ov.squeeze() if loss_ne_ov is not None else None
+    loss_cc_pn = loss_cc_pn.squeeze() if loss_cc_pn is not None else None
 
-    loss = loss_ne + loss_os + loss_cc + loss_ov + loss_pn
+    if loss_ne_ov is not None and loss_cc_pn is not None:
+        loss = loss_ne_ov + loss_cc_pn + loss_os
+    elif loss_ne_ov is not None:
+        loss = loss_ne_ov + loss_os + loss_cc + loss_pn
+    elif loss_cc_pn is not None: 
+        loss = loss_cc_pn + loss_ne + loss_os + loss_ov
+    else:
+        loss = loss_ne + loss_os + loss_cc + loss_ov + loss_pn
 
     # Optimisation
     loss.backward()
     optimizer.step()
 
     # Track individual losses
-    step_ne_loss = loss_ne.detach().cpu().numpy() # noqa
-    step_os_loss = loss_os.detach().cpu().numpy() # noqa
-    step_cc_loss = loss_cc.detach().cpu().numpy() # noqa
-    step_ov_loss = loss_ov.detach().cpu().numpy() # noqa
-    step_pn_loss = loss_pn.detach().cpu().numpy() # noqa
+    step_ne_loss = loss_ne.detach().cpu().numpy() if loss_ne is not None else None # noqa
+    step_os_loss = loss_os.detach().cpu().numpy() if loss_os is not None else None # noqa
+    step_cc_loss = loss_cc.detach().cpu().numpy() if loss_cc is not None else None # noqa
+    step_ov_loss = loss_ov.detach().cpu().numpy() if loss_ov is not None else None # noqa
+    step_pn_loss = loss_pn.detach().cpu().numpy() if loss_pn is not None else None # noqa
+    step_ne_ov_loss = loss_ne_ov.detach().cpu().numpy() if loss_ne_ov is not None else None # noqa
+    step_cc_pn_loss = loss_cc_pn.detach().cpu().numpy() if loss_cc_pn is not None else None # noqa
     step_train_loss = loss.detach().cpu().numpy()
 
     tracked_losses["Nuclei Encapsulation Loss"].append(step_ne_loss)
@@ -61,6 +72,8 @@ def default_solver(loss_ne, loss_os, loss_cc, loss_ov, loss_pn, optimizer, track
     tracked_losses["Overlap Loss"].append(step_ov_loss)
     tracked_losses["Pos-Neg Marker Loss"].append(step_pn_loss)
     tracked_losses["Total Loss"].append(step_train_loss)
+    tracked_losses["Combined Nuclei Encapsulation + Overlap Loss"].append(loss_ne_ov.item())
+    tracked_losses["Combined Cell Calling + Marker Loss"].append(loss_cc_pn.item())
 
     return step_train_loss
 
@@ -408,7 +421,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
                 scale_mode = "median" if "median" in selected_solver else "rmse" if "rmse" in selected_solver else "min"
                 total_loss = procrustes_method(model, optimizer, losses, loss_ne, loss_os, loss_cc, loss_ov, loss_pn, scale_mode=scale_mode)
             else: 
-                total_loss = default_solver(loss_ne, loss_os, loss_cc, loss_ov, loss_pn, optimizer, losses)
+                total_loss = default_solver(optimizer, losses, loss_ne, loss_os, loss_cc, loss_ov, loss_pn)
 
             if (global_step % config.training_params.sample_freq) == 0:
                 coords_h1 = coords_h1.detach().cpu().squeeze().numpy()
