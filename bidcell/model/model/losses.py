@@ -66,7 +66,7 @@ class CellCallingMarkerLoss(nn.Module):
         self.neg_weight = neg_weight
         self.device = device
 
-    def forward(self, seg_pred, batch_sa, batch_pos, batch_neg, pos_weight=None, neg_weight=None):
+    def forward(self, seg_pred, batch_sa, batch_pos, batch_neg, cc_weight=None, pos_weight=None, neg_weight=None):
         # If no override weights are given, use the defaults
         if cc_weight is None:
             cc_weight = self.cc_weight
