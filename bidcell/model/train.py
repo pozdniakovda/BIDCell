@@ -299,6 +299,8 @@ def train(config: Config, learning_rate = None, selected_solver = None):
         "Cell Calling Loss": [],
         "Overlap Loss": [],
         "Pos-Neg Marker Loss": [],
+        "Combined Nuclei Encapsulation + Overlap Loss": [], 
+        "Combined Cell Calling + Marker Loss": [],
         "Total Loss": [],
     }
 
