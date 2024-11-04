@@ -158,16 +158,20 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     n_train_examples = len(train_loader)
     logging.info("Total number of training examples: %d" % n_train_examples)
 
+    # Loss weights
+    ne_weight = config.training_params.ne_weight
+    os_weight = config.training_params.os_weight
+    cc_weight = config.training_params.cc_weight
+    ov_weight = config.training_params.ov_weight
+    pos_weight = config.training_params.pos_weight
+    neg_weight = config.training_params.neg_weight
+    
     # Loss functions
-    criterion_ne = NucleiEncapsulationLoss(config.training_params.ne_weight, device)
-    criterion_os = Oversegmentation(config.training_params.os_weight, device)
-    criterion_cc = CellCallingLoss(config.training_params.cc_weight, device)
-    criterion_ov = OverlapLoss(config.training_params.ov_weight, device)
-    criterion_pn = PosNegMarkerLoss(
-        config.training_params.pos_weight,
-        config.training_params.neg_weight,
-        device,
-    )
+    criterion_ne = NucleiEncapsulationLoss(ne_weight, device)
+    criterion_os = Oversegmentation(os_weight, device)
+    criterion_cc = CellCallingLoss(cc_weight, device)
+    criterion_ov = OverlapLoss(ov_weight, device)
+    criterion_pn = PosNegMarkerLoss(pos_weight, neg_weight, device)
 
     # Whether to use static or dynamic loss weighting
     weight_mode = config.training_params.weight_mode
@@ -175,13 +179,8 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     # Combined loss functions if desired
     combine_losses = config.training_params.combine_losses
     if combine_losses: 
-        criterion_ne_ov = NucEncapOverlapLoss(config.training_params.ne_weight, config.training_params.ov_weight, device)
-        criterion_cc_pn = CellCallingMarkerLoss(
-            config.training_params.cc_weight,
-            config.training_params.pos_weight,
-            config.training_params.neg_weight,
-            device,
-        )
+        criterion_ne_ov = NucEncapOverlapLoss(ne_weight, ov_weight, device)
+        criterion_cc_pn = CellCallingMarkerLoss(cc_weight, pos_weight, neg_weight, device)
     else: 
         criterion_ne_ov, criterion_cc_pn = None, None
 
@@ -271,7 +270,8 @@ def train(config: Config, learning_rate = None, selected_solver = None):
 
     lrs = []
     scale_mode = ""
-
+    
+    first_step_done = False
     for epoch in range(initial_epoch, config.training_params.total_epochs):
         cur_lr = optimizer.param_groups[0]["lr"]
         print("\nEpoch =", (epoch + 1), " lr =", cur_lr)
@@ -326,11 +326,31 @@ def train(config: Config, learning_rate = None, selected_solver = None):
             seg_pred = model(batch_x313)
 
             # Compute losses
-            loss_ne = criterion_ne(seg_pred, batch_n)
             loss_os = criterion_os(seg_pred, batch_n)
-            loss_cc = criterion_cc(seg_pred, batch_sa)
-            loss_ov = criterion_ov(seg_pred, batch_n)
-            loss_pn = criterion_pn(seg_pred, batch_pos, batch_neg)
+            if combine_losses and not first_step_done:
+                loss_ne = criterion_ne(seg_pred, batch_n)
+                loss_ov = criterion_ov(seg_pred, batch_n)
+                ne_ov_ratio = loss_ne.item() / loss_ov.item() if loss_ov.item() != 0 else 1
+                if ne_ov_ratio != 1: 
+                    ov_weight = ov_weight * ne_ov_ratio
+                    logging.info(f"ne_ov_ratio={ne_ov_ratio}; ov_weight adjusted to new value of {ov_weight} to compensate.")
+                
+                loss_cc = criterion_cc(seg_pred, batch_sa)
+                loss_pn = criterion_pn(seg_pred, batch_pos, batch_neg)
+                cc_pn_ratio = loss_cc.item() / loss_pn.item() if loss_pn.item() != 0 else 1
+                if cc_pn_ratio != 1:
+                    pos_weight = pos_weight * cc_pn_ratio
+                    neg_weight = neg_weight * cc_pn_ratio
+                    logging.info(f"cc_pn_ratio={cc_pn_ratio}; pos_weight adjusted to new value of {pos_weight}"
+                                 "and neg_weight adjusted to new value of {neg_weight} to compensate.")
+            else:
+                loss_ne, loss_cc, loss_ov, loss_pn = None, None, None, None
+
+            if combine_losses:
+                loss_ne_ov = criterion_ne_ov(seg_pred, batch_n)
+                loss_cc_pn = criterion_cc_pn(seg_pred, batch_sa, batch_pos, batch_neg)
+            else: 
+                loss_ne_ov, loss_cc_pn = None, None
 
             # Apply the Procrustes method
             if "procrustes" in selected_solver:
