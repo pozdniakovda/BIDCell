@@ -8,7 +8,7 @@ class NucEncapOverlapLoss(nn.Module):
     """
 
     def __init__(self, ne_weight, ov_weight, device) -> None:
-        super(NucleiEncapsulationLoss, self).__init__()
+        super(NucEncapOverlapLoss, self).__init__()
         self.ne_weight = ne_weight
         self.ov_weight = ov_weight
         self.device = device
@@ -60,7 +60,7 @@ class CellCallingMarkerLoss(nn.Module):
     """
 
     def __init__(self, cc_weight, pos_weight, neg_weight, device) -> None:
-        super(CellCallingLoss, self).__init__()
+        super(CellCallingMarkerLoss, self).__init__()
         self.cc_weight = cc_weight
         self.pos_weight = pos_weight
         self.neg_weight = neg_weight
