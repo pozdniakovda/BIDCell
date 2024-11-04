@@ -1,5 +1,6 @@
 import argparse
 import logging
+import warnings
 import math
 import sys
 import os
@@ -63,16 +64,58 @@ def default_solver(loss_ne, loss_os, loss_cc, loss_ov, loss_pn, optimizer, track
 
     return step_train_loss
 
-def procrustes_method(loss_ne, loss_os, loss_cc, loss_ov, loss_pn, model, optimizer, tracked_losses, scale_mode = "min"): 
+def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_pn = None, loss_ne_ov = None, loss_cc_pn = None, scale_mode = "min"): 
+    # Check validity of given arguments
+    if loss_ne_ov is None:
+        if loss_ne is None and loss_ov is None:
+            raise Exception(f"Missing loss_ne and loss_ov")
+        elif loss_ne is None:
+            raise Exception(f"Missing loss_ne.")
+        elif loss_ov is None:
+            raise Exception(f"Missing loss_ov.")
+    elif loss_ne is not None and loss_ov is not None:
+        warnings.warn(f"loss_ne and loss_ov were given, but they were ignored, as loss_ne_ov was also given.")
+    elif loss_ne is not None:
+        warnings.warn(f"loss_ne was given, but it was ignored, as loss_ne_ov was also given.")
+    elif loss_ov is not None:
+        warnings.warn(f"loss_ov was given, but it was ignored, as loss_ne_ov was also given.")
+
+    if loss_cc_pn is None:
+        if loss_cc is None and loss_pn is None:
+            raise Exception(f"Missing loss_cc and loss_pn")
+        elif loss_cc is None:
+            raise Exception(f"Missing loss_cc.")
+        elif loss_pn is None:
+            raise Exception(f"Missing loss_pn.")
+    elif loss_cc is not None and loss_pn is not None:
+        warnings.warn(f"loss_cc and loss_pn were given, but they were ignored, as loss_cc_pn was also given.")
+    elif loss_cc is not None:
+        warnings.warn(f"loss_cc was given, but it was ignored, as loss_cc_pn was also given.")
+    elif loss_pn is not None:
+        warnings.warn(f"loss_pn was given, but it was ignored, as loss_cc_pn was also given.")
+    
     # Track individual losses
     tracked_losses["Nuclei Encapsulation Loss"].append(loss_ne.item())
     tracked_losses["Oversegmentation Loss"].append(loss_os.item())
     tracked_losses["Cell Calling Loss"].append(loss_cc.item())
     tracked_losses["Overlap Loss"].append(loss_ov.item())
     tracked_losses["Pos-Neg Marker Loss"].append(loss_pn.item())
+    tracked_losses["Combined Nuclei Encapsulation + Overlap Loss"].append(loss_ne_ov.item())
+    tracked_losses["Combined Cell Calling + Marker Loss"].append(loss_cc_pn.item())
 
+    # Get the gradients
+    loss_vals = [loss_os]
+    if loss_ne_ov is not None:
+        loss_vals.append(loss_ne_ov)
+    else:
+        loss_vals.extend([loss_ne, loss_ov])
+    if loss_cc_pn is not None:
+        loss_vals.append(loss_cc_pn)
+    else:
+        loss_vals.extend([loss_cc, loss_pn])
+        
     grads = []
-    for loss in [loss_ne, loss_os, loss_cc, loss_ov, loss_pn]:
+    for loss in loss_vals:
         optimizer.zero_grad()  # Clear previous gradients
         loss.backward(retain_graph=True)  # Retain graph for backpropagation
         grad = torch.cat([p.grad.flatten() if p.grad is not None else torch.zeros_like(p).flatten() for p in model.parameters()])
@@ -96,7 +139,15 @@ def procrustes_method(loss_ne, loss_os, loss_cc, loss_ov, loss_pn, model, optimi
     # Perform optimization step
     optimizer.step()
 
-    total_loss = loss_ne + loss_os + loss_cc + loss_ov + loss_pn
+    if loss_ne_ov is not None and loss_cc_pn is not None:
+        total_loss = loss_ne_ov + loss_cc_pn + loss_os
+    elif loss_ne_ov is not None:
+        total_loss = loss_ne_ov + loss_os + loss_cc + loss_pn
+    elif loss_cc_pn is not None: 
+        total_loss = loss_cc_pn + loss_ne + loss_os + loss_ov
+    else:
+        total_loss = loss_ne + loss_os + loss_cc + loss_ov + loss_pn
+    
     tracked_losses["Total Loss"].append(total_loss.item())  # Track total loss
 
     return total_loss.item()
@@ -355,7 +406,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
             # Apply the Procrustes method
             if "procrustes" in selected_solver:
                 scale_mode = "median" if "median" in selected_solver else "rmse" if "rmse" in selected_solver else "min"
-                total_loss = procrustes_method(loss_ne, loss_os, loss_cc, loss_ov, loss_pn, model, optimizer, losses, scale_mode)
+                total_loss = procrustes_method(model, optimizer, losses, loss_ne, loss_os, loss_cc, loss_ov, loss_pn, scale_mode=scale_mode)
             else: 
                 total_loss = default_solver(loss_ne, loss_os, loss_cc, loss_ov, loss_pn, optimizer, losses)
 
