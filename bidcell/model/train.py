@@ -457,34 +457,37 @@ def train(config: Config, learning_rate = None, selected_solver = None):
             seg_pred = model(batch_x313)
 
             # Compute losses
-            loss_os = criterion_os(seg_pred, batch_n)
+            loss_os = criterion_os(seg_pred, batch_n, os_weight)
             compute_individual_losses = not first_step_done if combine_losses else True
             if compute_individual_losses:
-                loss_ne = criterion_ne(seg_pred, batch_n)
-                loss_ov = criterion_ov(seg_pred, batch_n)
-                if combine_losses and weight_mode == "dynamic":
-                    ne_ov_ratio = loss_ne.item() / loss_ov.item() if loss_ov.item() != 0 else 1
-                    if ne_ov_ratio != 1: 
-                        ov_weight = ov_weight * ne_ov_ratio
-                        logging.info(f"ne_ov_ratio={ne_ov_ratio}; ov_weight adjusted to new value of {ov_weight} to compensate.")
-                
-                loss_cc = criterion_cc(seg_pred, batch_sa)
-                loss_pn = criterion_pn(seg_pred, batch_pos, batch_neg)
-                if combine_losses and weight_mode == "dynamic":
-                    cc_pn_ratio = loss_cc.item() / loss_pn.item() if loss_pn.item() != 0 else 1
-                    if cc_pn_ratio != 1:
-                        pos_weight = pos_weight * cc_pn_ratio
-                        neg_weight = neg_weight * cc_pn_ratio
-                        logging.info(f"cc_pn_ratio={cc_pn_ratio}; pos_weight adjusted to new value of {pos_weight}"
-                                     "and neg_weight adjusted to new value of {neg_weight} to compensate.")
+                loss_ne = criterion_ne(seg_pred, batch_n, ne_weight)
+                loss_ov = criterion_ov(seg_pred, batch_n, ov_weight)
+                loss_cc = criterion_cc(seg_pred, batch_sa, cc_weight)
+                loss_pn = criterion_pn(seg_pred, batch_pos, batch_neg, pos_weight, neg_weight)
+
+                if combine_losses:
+                    logging.info(f"Computed individual losses for first step; all subsequent steps will use combined losses.")
+                    if weight_mode == "dynamic":
+                        # Adjust loss weights to compensate for different magnitudes of initial values
+                        ne_ov_ratio = loss_ne.item() / loss_ov.item() if loss_ov.item() != 0 else 1
+                        if ne_ov_ratio != 1: 
+                            ov_weight = ov_weight * ne_ov_ratio
+                            logging.info(f"ne_ov_ratio={ne_ov_ratio}; ov_weight adjusted to new value of {ov_weight} to compensate.")
+                        
+                        cc_pn_ratio = loss_cc.item() / loss_pn.item() if loss_pn.item() != 0 else 1
+                        if cc_pn_ratio != 1:
+                            pos_weight = pos_weight * cc_pn_ratio
+                            neg_weight = neg_weight * cc_pn_ratio
+                            logging.info(f"cc_pn_ratio={cc_pn_ratio}; pos_weight adjusted to new value of {pos_weight}"
+                                         "and neg_weight adjusted to new value of {neg_weight} to compensate.")
 
                 first_step_done = True
             else:
                 loss_ne, loss_cc, loss_ov, loss_pn = None, None, None, None
 
             if combine_losses:
-                loss_ne_ov = criterion_ne_ov(seg_pred, batch_n)
-                loss_cc_pn = criterion_cc_pn(seg_pred, batch_sa, batch_pos, batch_neg)
+                loss_ne_ov = criterion_ne_ov(seg_pred, batch_n, ne_weight, ov_weight)
+                loss_cc_pn = criterion_cc_pn(seg_pred, batch_sa, batch_pos, batch_neg, cc_weight, pos_weight, neg_weight)
             else: 
                 loss_ne_ov, loss_cc_pn = None, None
 
