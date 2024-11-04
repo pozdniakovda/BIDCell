@@ -34,7 +34,43 @@ from .utils.utils import (
 )
 from ..config import load_config, Config
 
+def check_loss_args(loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_pn = None, loss_ne_ov = None, loss_cc_pn = None):
+    # Check validity of given arguments
+    if loss_ne_ov is None:
+        if loss_ne is None and loss_ov is None:
+            raise Exception(f"Missing loss_ne and loss_ov")
+        elif loss_ne is None:
+            raise Exception(f"Missing loss_ne.")
+        elif loss_ov is None:
+            raise Exception(f"Missing loss_ov.")
+    elif loss_ne is not None and loss_ov is not None:
+        warnings.warn(f"loss_ne and loss_ov were given, but they were ignored, as loss_ne_ov was also given.")
+    elif loss_ne is not None:
+        warnings.warn(f"loss_ne was given, but it was ignored, as loss_ne_ov was also given.")
+    elif loss_ov is not None:
+        warnings.warn(f"loss_ov was given, but it was ignored, as loss_ne_ov was also given.")
+
+    if loss_cc_pn is None:
+        if loss_cc is None and loss_pn is None:
+            raise Exception(f"Missing loss_cc and loss_pn")
+        elif loss_cc is None:
+            raise Exception(f"Missing loss_cc.")
+        elif loss_pn is None:
+            raise Exception(f"Missing loss_pn.")
+    elif loss_cc is not None and loss_pn is not None:
+        warnings.warn(f"loss_cc and loss_pn were given, but they were ignored, as loss_cc_pn was also given.")
+    elif loss_cc is not None:
+        warnings.warn(f"loss_cc was given, but it was ignored, as loss_cc_pn was also given.")
+    elif loss_pn is not None:
+        warnings.warn(f"loss_pn was given, but it was ignored, as loss_cc_pn was also given.")
+
+    # Return True if no errors were encountered
+    return True
+
 def default_solver(optimizer, tracked_losses, loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_pn = None, loss_ne_ov = None, loss_cc_pn = None):
+    # Check validity of given arguments
+    check_loss_args(loss_ne, loss_os, loss_cc, loss_ov, loss_pn, loss_ne_ov, loss_cc_pn)
+    
     loss_ne = loss_ne.squeeze() if loss_ne is not None else None
     loss_os = loss_os.squeeze() if loss_os is not None else None
     loss_cc = loss_cc.squeeze() if loss_cc is not None else None
@@ -79,33 +115,7 @@ def default_solver(optimizer, tracked_losses, loss_ne = None, loss_os = None, lo
 
 def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_pn = None, loss_ne_ov = None, loss_cc_pn = None, scale_mode = "min"): 
     # Check validity of given arguments
-    if loss_ne_ov is None:
-        if loss_ne is None and loss_ov is None:
-            raise Exception(f"Missing loss_ne and loss_ov")
-        elif loss_ne is None:
-            raise Exception(f"Missing loss_ne.")
-        elif loss_ov is None:
-            raise Exception(f"Missing loss_ov.")
-    elif loss_ne is not None and loss_ov is not None:
-        warnings.warn(f"loss_ne and loss_ov were given, but they were ignored, as loss_ne_ov was also given.")
-    elif loss_ne is not None:
-        warnings.warn(f"loss_ne was given, but it was ignored, as loss_ne_ov was also given.")
-    elif loss_ov is not None:
-        warnings.warn(f"loss_ov was given, but it was ignored, as loss_ne_ov was also given.")
-
-    if loss_cc_pn is None:
-        if loss_cc is None and loss_pn is None:
-            raise Exception(f"Missing loss_cc and loss_pn")
-        elif loss_cc is None:
-            raise Exception(f"Missing loss_cc.")
-        elif loss_pn is None:
-            raise Exception(f"Missing loss_pn.")
-    elif loss_cc is not None and loss_pn is not None:
-        warnings.warn(f"loss_cc and loss_pn were given, but they were ignored, as loss_cc_pn was also given.")
-    elif loss_cc is not None:
-        warnings.warn(f"loss_cc was given, but it was ignored, as loss_cc_pn was also given.")
-    elif loss_pn is not None:
-        warnings.warn(f"loss_pn was given, but it was ignored, as loss_cc_pn was also given.")
+    check_loss_args(loss_ne, loss_os, loss_cc, loss_ov, loss_pn, loss_ne_ov, loss_cc_pn)
     
     # Track individual losses
     tracked_losses["Nuclei Encapsulation Loss"].append(loss_ne.item())
