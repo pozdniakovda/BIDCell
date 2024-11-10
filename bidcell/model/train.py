@@ -129,10 +129,10 @@ def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os 
     if loss_pn is not None:
         tracked_losses["Pos-Neg Marker Loss"].append(loss_pn.item())
     if loss_ne_ov is not None:
-        tracked_losses["Combined Nuclei Encapsulation + Overlap Loss"].append(loss_ne_ov.item())
+        tracked_losses["Combined Nuclei Encapsulation and Overlap Loss"].append(loss_ne_ov.item())
         #print(f"loss_ne_ov = {loss_ne_ov.item()}")
     if loss_cc_pn is not None:
-        tracked_losses["Combined Cell Calling + Marker Loss"].append(loss_cc_pn.item())
+        tracked_losses["Combined Cell Calling and Marker Loss"].append(loss_cc_pn.item())
         #print(f"loss_cc_pn = {loss_cc_pn.item()}")
 
     # Get the gradients
@@ -400,8 +400,8 @@ def train(config: Config, learning_rate = None, selected_solver = None):
         "Cell Calling Loss": [],
         "Overlap Loss": [],
         "Pos-Neg Marker Loss": [],
-        "Combined Nuclei Encapsulation + Overlap Loss": [], 
-        "Combined Cell Calling + Marker Loss": [],
+        "Combined Nuclei Encapsulation and Overlap Loss": [], 
+        "Combined Cell Calling and Marker Loss": [],
         "Total Loss": [],
     }
 
@@ -626,7 +626,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     total_loss_vals = losses["Total Loss"]
     total_loss_ma = ma_losses["Total Loss"]
     if combine_losses:
-        keys = ["Combined Nuclei Encapsulation + Overlap Loss", "Combined Cell Calling + Marker Loss"]
+        keys = ["Combined Nuclei Encapsulation and Overlap Loss", "Combined Cell Calling and Marker Loss", "Oversegmentation Loss"]
     else: 
         keys = ["Nuclei Encapsulation Loss", "Oversegmentation Loss", "Cell Calling Loss", "Overlap Loss", "Pos-Neg Marker Loss"]
     other_loss_vals = {key:losses[key] for key in keys}
