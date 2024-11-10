@@ -184,7 +184,7 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
 
     if rescaling:
         divisor = max(total_loss_vals) / 1000 if max(total_loss_vals) != 0 else 1
-        total_loss_vals = total_loss_vals / divisor
+        total_loss_vals = [val/divisor for val in total_loss_vals]
     plt.plot(total_loss_vals, label="Total Loss", linewidth=1)
 
     divisors = {}
@@ -192,19 +192,19 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
         divisor = max(loss_vals) / 1000 if max(loss_vals) != 0 else 1
         if rescaling:
             divisors[label] = divisor
-            loss_vals = loss_vals / divisor
+            loss_vals = [val/divisor for val in loss_vals]
         plt.plot(loss_vals, label=label, linewidth=0.5, alpha=0.5)
 
     ma_loss_vals, ma_window_width = total_loss_ma
     if rescaling:
         divisor = max(ma_loss_vals) / 1000 if max(ma_loss_vals) != 0 else 1
-        ma_loss_vals = ma_loss_vals / divisor
+        ma_loss_vals = [val/divisor for val in ma_loss_vals]
     plt.plot(ma_loss_vals, label=f"Total Loss (moving average, {ma_window_width})", linewidth=2)
     
     for label, loss_ma in other_loss_ma.items():
         if rescaling:
             divisor = divisors[label]
-            loss_ma = loss_ma / divisor
+            loss_ma = [val/divisor for val in loss_ma]
         plt.plot(loss_ma, label=label, linewidth=1, alpha=0.5)
 
     for epoch in range(total_epochs):
