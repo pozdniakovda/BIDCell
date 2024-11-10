@@ -176,18 +176,37 @@ def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os 
     return total_loss.item()
 
 def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_loss_ma, total_epochs, 
-                         train_loader_len, use_procrustes_title, experiment_path, scale_mode=None, log_scale=True):
+                         train_loader_len, use_procrustes_title, experiment_path, scale_mode=None, 
+                         log_scale=True, rescaling=True):
     # Plots all the losses on one graph
     
     plt.figure(figsize=(18, 8))
 
+    if rescaling:
+        total_loss_vals = np.array(total_loss_vals).copy()
+        total_loss_vals /= total_loss_vals.max() if total_loss_vals.max() != 0 else 1
+        total_loss_vals *= 1000
     plt.plot(total_loss_vals, label="Total Loss", linewidth=1)
+    
     for label, loss_vals in other_loss_vals.items():
+        if rescaling:
+            loss_vals = np.array(loss_vals).copy()
+            loss_vals /= loss_vals.max() if loss_vals.max() != 0 else 1
+            loss_vals *= 1000
         plt.plot(loss_vals, label=label, linewidth=0.5, alpha=0.5)
 
     ma_loss_vals, ma_window_width = total_loss_ma
+    if rescaling:
+        ma_loss_vals = np.array(ma_loss_vals).copy()
+        ma_loss_vals /= ma_loss_vals.max() if ma_loss_vals.max() != 0 else 1
+        ma_loss_vals *= 1000
     plt.plot(ma_loss_vals, label=f"Total Loss (moving average, {ma_window_width})", linewidth=2)
+    
     for label, loss_ma in other_loss_ma.items():
+        if rescaling:
+            loss_ma = np.array(loss_ma).copy()
+            loss_ma /= loss_ma.max() if loss_ma.max() != 0 else 1
+            loss_ma *= 1000
         plt.plot(loss_ma, label=label, linewidth=1, alpha=0.5)
 
     for epoch in range(total_epochs):
@@ -198,21 +217,33 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
                              
     plt.xlabel("Training Step")
     plt.ylabel("Loss")
-    if use_procrustes_title:
-        plt.title(f"Training Loss with Procrustes Method (scaling mode: {scale_mode})")
-    else:
-        plt.title("Training Loss with Default Method")
+    title = f"Training Loss with Procrustes Method (scaling mode: {scale_mode})" if use_procrustes_title else "Training Loss with Default Method"
+    if rescaling:
+        title = title + " (rescaled to max=1000)"
     plt.legend()
     plt.tight_layout()
-    plt.savefig(os.path.join(experiment_path, "training_losses.pdf"))
+
+    filename = "training_losses_overlaid.pdf" if not rescaling else "training_losses_overlaid_rescaled.pdf"
+    save_path = os.path.join(experiment_path, filename)
+    plt.savefig(save_path)
     #plt.show()
 
-def plot_loss(loss_vals, ma_loss_vals, label, total_epochs, use_procrustes_title, scale_mode=None, log_scale=True):
+def plot_loss(loss_vals, ma_loss_vals, label, total_epochs, use_procrustes_title, 
+              scale_mode=None, log_scale=True, rescaling=True):
     # Plots a single objective's values over the course of the training cycle
+    ma_loss_vals, ma_window_width = ma_loss_vals
+    if rescaling:
+        loss_vals = np.array(loss_vals).copy()
+        max_val = loss_vals.max() if loss_vals.max() != 0 else 1
+        loss_vals /= max_val
+        loss_vals *= 1000
+        
+        ma_loss_vals = np.array(ma_loss_vals).copy()
+        ma_loss_vals /= max_val
+        ma_loss_vals *= 1000
     
     plt.figure(figsize=(18, 8))
     plt.plot(loss_vals, label=label, linewidth=0.5)
-    ma_loss_vals, ma_window_width = ma_loss_vals
     
     plt.plot(ma_loss_vals, label=f"{label} (moving average, {ma_window_width})", linewidth=2)
     
@@ -226,13 +257,18 @@ def plot_loss(loss_vals, ma_loss_vals, label, total_epochs, use_procrustes_title
     plt.ylabel("Loss")
     
     if use_procrustes_title:
-        plt.title(f"{label} During Training with Procrustes Method (scaling mode: {scale_mode})")
+        title = f"{label} During Training with Procrustes Method (scaling mode: {scale_mode})"
     else: 
-        plt.title(f"{label} During Training with Default Method")
-    
+        title = f"{label} During Training with Default Method"
+
+    if rescaling:
+        title = title + " (rescaled to max=1000)"
+    plt.title(title)
     plt.tight_layout()
+    
     underscored_label = "_".join(label.lower().split(" "))
-    plt.savefig(os.path.join(experiment_path, f"training_{underscored_label}.pdf"))
+    filename = f"training_{underscored_label}.pdf" if not rescaling else f"training_{underscored_label}_rescaled.pdf"
+    plt.savefig(os.path.join(experiment_path, filename))
     #plt.show()
 
 def train(config: Config, learning_rate = None, selected_solver = None):
@@ -592,11 +628,15 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     other_loss_ma = {key:ma_losses[key] for key in keys}
     plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_loss_ma, total_epochs, 
                          train_loader_len, use_procrustes_title, experiment_path, scale_mode, log_scale=True)
+    plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_loss_ma, total_epochs, 
+                         train_loader_len, use_procrustes_title, experiment_path, scale_mode, log_scale=True, rescaling=True)
 
     # Plot individual losses
     plot_loss(losses["Total Loss"], ma_losses["Total Loss"], "Total Loss", total_epochs, use_procrustes_title, scale_mode, log_scale=True)
+    plot_loss(losses["Total Loss"], ma_losses["Total Loss"], "Total Loss", total_epochs, use_procrustes_title, scale_mode, log_scale=True, rescaling=True)
     for key in keys:
         plot_loss(losses[key], ma_losses[key], key, total_epochs, use_procrustes_title, scale_mode, log_scale=True)
+        plot_loss(losses[key], ma_losses[key], key, total_epochs, use_procrustes_title, scale_mode, log_scale=True, rescaling=True)
 
     logging.info("Training finished")
 
