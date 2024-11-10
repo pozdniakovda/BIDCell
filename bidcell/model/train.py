@@ -619,6 +619,10 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     ma_losses = {}
     
     for loss_name, loss_vals in losses.items():
+        if len(loss_vals) == 0: 
+            ma_losses[loss_name] = ([], 0)
+            continue
+        
         window_width = max(1, int(len(loss_vals) / 40))  # Ensure window width is at least 1
         loss_vals = np.array(loss_vals)
     
