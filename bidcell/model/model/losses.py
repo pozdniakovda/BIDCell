@@ -187,11 +187,11 @@ class NucleiEncapsulationLoss(nn.Module):
 
     def get_max(self, seg_pred, weight=None):
     # Calculate the maximum possible loss value
-
-    weight = self.weight if weight is None else weight
-    C = seg_pred.shape[1]
-    max_ce_loss = torch.log(torch.tensor(C, dtype=torch.float32))
-    max_loss = weight * max_ce_loss.item()
+    
+        weight = self.weight if weight is None else weight
+        C = seg_pred.shape[1]
+        max_ce_loss = torch.log(torch.tensor(C, dtype=torch.float32))
+        max_loss = weight * max_ce_loss.item()
     
     return max_loss
 
