@@ -193,7 +193,7 @@ class NucleiEncapsulationLoss(nn.Module):
         max_ce_loss = torch.log(torch.tensor(C, dtype=torch.float32))
         max_loss = weight * max_ce_loss.item()
     
-    return max_loss
+        return max_loss
 
 
 class Oversegmentation(nn.Module):
