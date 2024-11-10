@@ -193,7 +193,7 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
 
     if rescaling:
         divisor = max(total_loss_vals) / 1000 if max(total_loss_vals) != 0 else 1
-        total_loss_vals = [val/divisor for val in total_loss_vals]
+        total_loss_vals = np.divide(total_loss_vals, divisor)
     plt.plot(total_loss_vals, label="Total Loss", linewidth=1)
 
     divisors = {}
@@ -201,23 +201,19 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
         divisor = max(loss_vals) / 1000 if max(loss_vals) != 0 else 1
         if rescaling:
             divisors[label] = divisor
-            loss_vals = [val/divisor for val in loss_vals]
+            loss_vals = np.divide(loss_vals, divisor)
         plt.plot(loss_vals, label=label, linewidth=0.5, alpha=0.5)
 
     ma_loss_vals, ma_window_width = total_loss_ma
     if rescaling:
         divisor = max(ma_loss_vals) / 1000 if max(ma_loss_vals) != 0 else 1
-        ma_loss_vals = [val/divisor for val in ma_loss_vals]
+        ma_loss_vals = np.divide(ma_loss_vals, divisor)
     plt.plot(ma_loss_vals, label=f"Total Loss (moving average, {ma_window_width})", linewidth=2)
     
     for label, loss_ma in other_loss_ma.items():
         if rescaling:
             divisor = divisors[label]
-            try:
-                loss_ma = [val/divisor for val in loss_ma]
-            except Exception as e:
-                print(f"Encountered the following exception when label={label}")
-                raise e
+            loss_ma = np.divide(loss_ma, divisor)
         plt.plot(loss_ma, label=label, linewidth=1, alpha=0.5)
 
     for epoch in range(total_epochs):
@@ -623,6 +619,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     train_loader_len = len(train_loader)
 
     # Plot all losses on one graph
+    print(f"Graphing overlaid losses...")
     total_loss_vals = losses["Total Loss"]
     total_loss_ma = ma_losses["Total Loss"]
     if combine_losses:
@@ -633,14 +630,26 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     other_loss_ma = {key:ma_losses[key] for key in keys}
     plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_loss_ma, total_epochs, 
                          train_loader_len, use_procrustes_title, experiment_path, scale_mode, log_scale=True)
-    plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_loss_ma, total_epochs, 
-                         train_loader_len, use_procrustes_title, experiment_path, scale_mode, log_scale=True, rescaling=True)
 
     # Plot individual losses
+    print(f"Graphing total loss...")
     plot_loss(losses["Total Loss"], ma_losses["Total Loss"], "Total Loss", total_epochs, use_procrustes_title, scale_mode, log_scale=True)
-    plot_loss(losses["Total Loss"], ma_losses["Total Loss"], "Total Loss", total_epochs, use_procrustes_title, scale_mode, log_scale=True, rescaling=True)
+    
+    print(f"Graphing individual losses...")
     for key in keys:
         plot_loss(losses[key], ma_losses[key], key, total_epochs, use_procrustes_title, scale_mode, log_scale=True)
+        plot_loss(losses[key], ma_losses[key], key, total_epochs, use_procrustes_title, scale_mode, log_scale=True, rescaling=True)
+
+    # Repeat for rescaled versions
+    print(f"Graphing overlaid rescaled losses...")
+    plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_loss_ma, total_epochs, 
+                         train_loader_len, use_procrustes_title, experiment_path, scale_mode, log_scale=True, rescaling=True)
+    
+    print(f"Graphing rescaled total loss...")
+    plot_loss(losses["Total Loss"], ma_losses["Total Loss"], "Total Loss", total_epochs, use_procrustes_title, scale_mode, log_scale=True, rescaling=True)
+
+    print(f"Graphing rescaled individual losses...")
+    for key in keys:
         plot_loss(losses[key], ma_losses[key], key, total_epochs, use_procrustes_title, scale_mode, log_scale=True, rescaling=True)
 
     logging.info("Training finished")
