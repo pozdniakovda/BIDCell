@@ -242,9 +242,9 @@ def plot_loss(loss_vals, ma_loss_vals, label, total_epochs, use_procrustes_title
     ma_loss_vals, ma_window_width = ma_loss_vals
     if rescaling:
         divisor = max(loss_vals) / 1000 if max(loss_vals) != 0 else 1
-        loss_vals = loss_vals / divisor
+        loss_vals = np.divide(loss_vals, divisor)
         if show_moving_averages:
-            ma_loss_vals = ma_loss_vals / divisor
+            ma_loss_vals = np.divide(ma_loss_vals, divisor)
     
     plt.figure(figsize=(18, 8))
     plt.plot(loss_vals, label=label, linewidth=0.5)
