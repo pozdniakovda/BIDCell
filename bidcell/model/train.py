@@ -236,7 +236,7 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
     plt.savefig(save_path)
     #plt.show()
 
-def plot_loss(loss_vals, ma_loss_vals, label, total_epochs, use_procrustes_title, train_loader_len,
+def plot_loss(loss_vals, ma_loss_vals, label, total_epochs, use_procrustes_title, experiment_path, train_loader_len,
               scale_mode=None, log_scale=True, rescaling=True, show_moving_averages=False):
     # Plots a single objective's values over the course of the training cycle
     ma_loss_vals, ma_window_width = ma_loss_vals
@@ -636,11 +636,11 @@ def train(config: Config, learning_rate = None, selected_solver = None):
 
     # Plot individual losses
     print(f"Graphing total loss...")
-    plot_loss(losses["Total Loss"], ma_losses["Total Loss"], "Total Loss", total_epochs, use_procrustes_title, train_loader_len, scale_mode, log_scale=True, rescaling=False)
+    plot_loss(losses["Total Loss"], ma_losses["Total Loss"], "Total Loss", total_epochs, use_procrustes_title, experiment_path, train_loader_len, scale_mode, log_scale=True, rescaling=False)
     
     print(f"Graphing individual losses...")
     for key in keys:
-        plot_loss(losses[key], ma_losses[key], key, total_epochs, use_procrustes_title, train_loader_len, scale_mode, log_scale=True, rescaling=False)
+        plot_loss(losses[key], ma_losses[key], key, total_epochs, use_procrustes_title, experiment_path, train_loader_len, scale_mode, log_scale=True, rescaling=False)
 
     # Repeat for rescaled versions
     print(f"Graphing overlaid rescaled losses...")
@@ -648,11 +648,11 @@ def train(config: Config, learning_rate = None, selected_solver = None):
                          train_loader_len, use_procrustes_title, experiment_path, scale_mode, log_scale=True, rescaling=True)
     
     print(f"Graphing rescaled total loss...")
-    plot_loss(losses["Total Loss"], ma_losses["Total Loss"], "Total Loss", total_epochs, use_procrustes_title, train_loader_len, scale_mode, log_scale=True, rescaling=True)
+    plot_loss(losses["Total Loss"], ma_losses["Total Loss"], "Total Loss", total_epochs, use_procrustes_title, experiment_path, train_loader_len, scale_mode, log_scale=True, rescaling=True)
 
     print(f"Graphing rescaled individual losses...")
     for key in keys:
-        plot_loss(losses[key], ma_losses[key], key, total_epochs, use_procrustes_title, train_loader_len, scale_mode, log_scale=True, rescaling=True)
+        plot_loss(losses[key], ma_losses[key], key, total_epochs, use_procrustes_title, experiment_path, train_loader_len, scale_mode, log_scale=True, rescaling=True)
 
     logging.info("Training finished")
 
