@@ -183,30 +183,28 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
     plt.figure(figsize=(18, 8))
 
     if rescaling:
-        total_loss_vals = np.array(total_loss_vals).copy()
-        total_loss_vals /= total_loss_vals.max() if total_loss_vals.max() != 0 else 1
-        total_loss_vals *= 1000
+        divisor = max(total_loss_vals) / 1000 if max(total_loss_vals) != 0 else 1
+        total_loss_vals = total_loss_vals / divisor
     plt.plot(total_loss_vals, label="Total Loss", linewidth=1)
-    
+
+    divisors = {}
     for label, loss_vals in other_loss_vals.items():
+        divisor = max(loss_vals) / 1000 if max(loss_vals) != 0 else 1
         if rescaling:
-            loss_vals = np.array(loss_vals).copy()
-            loss_vals /= loss_vals.max() if loss_vals.max() != 0 else 1
-            loss_vals *= 1000
+            divisors[label] = divisor
+            loss_vals = loss_vals / divisor
         plt.plot(loss_vals, label=label, linewidth=0.5, alpha=0.5)
 
     ma_loss_vals, ma_window_width = total_loss_ma
     if rescaling:
-        ma_loss_vals = np.array(ma_loss_vals).copy()
-        ma_loss_vals /= ma_loss_vals.max() if ma_loss_vals.max() != 0 else 1
-        ma_loss_vals *= 1000
+        divisor = max(ma_loss_vals) / 1000 if max(ma_loss_vals) != 0 else 1
+        ma_loss_vals = ma_loss_vals / divisor
     plt.plot(ma_loss_vals, label=f"Total Loss (moving average, {ma_window_width})", linewidth=2)
     
     for label, loss_ma in other_loss_ma.items():
         if rescaling:
-            loss_ma = np.array(loss_ma).copy()
-            loss_ma /= loss_ma.max() if loss_ma.max() != 0 else 1
-            loss_ma *= 1000
+            divisor = divisors[label]
+            loss_ma = loss_ma / divisor
         plt.plot(loss_ma, label=label, linewidth=1, alpha=0.5)
 
     for epoch in range(total_epochs):
@@ -233,18 +231,12 @@ def plot_loss(loss_vals, ma_loss_vals, label, total_epochs, use_procrustes_title
     # Plots a single objective's values over the course of the training cycle
     ma_loss_vals, ma_window_width = ma_loss_vals
     if rescaling:
-        loss_vals = np.array(loss_vals).copy()
-        max_val = loss_vals.max() if loss_vals.max() != 0 else 1
-        loss_vals /= max_val
-        loss_vals *= 1000
-        
-        ma_loss_vals = np.array(ma_loss_vals).copy()
-        ma_loss_vals /= max_val
-        ma_loss_vals *= 1000
+        divisor = max(loss_vals) / 1000 if max(loss_vals) != 0 else 1
+        loss_vals = loss_vals / divisor
+        ma_loss_vals = ma_loss_vals / divisor
     
     plt.figure(figsize=(18, 8))
     plt.plot(loss_vals, label=label, linewidth=0.5)
-    
     plt.plot(ma_loss_vals, label=f"{label} (moving average, {ma_window_width})", linewidth=2)
     
     for epoch in range(total_epochs):
