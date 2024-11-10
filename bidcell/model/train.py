@@ -130,10 +130,10 @@ def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os 
         tracked_losses["Pos-Neg Marker Loss"].append(loss_pn.item())
     if loss_ne_ov is not None:
         tracked_losses["Combined Nuclei Encapsulation + Overlap Loss"].append(loss_ne_ov.item())
-        print(f"loss_ne_ov len={len(loss_ne_ov})")
+        print(f"loss_ne_ov len={len(loss_ne_ov)}")
     if loss_cc_pn is not None:
         tracked_losses["Combined Cell Calling + Marker Loss"].append(loss_cc_pn.item())
-        print(f"loss_cc_pn len={len(loss_cc_pn})")
+        print(f"loss_cc_pn len={len(loss_cc_pn)}")
 
     # Get the gradients
     loss_vals = [loss_os]
