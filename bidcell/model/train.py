@@ -521,7 +521,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
                             pos_weight = pos_weight * cc_pn_ratio
                             neg_weight = neg_weight * cc_pn_ratio
                             logging.info(f"cc_pn_ratio={cc_pn_ratio}; pos_weight adjusted to new value of {pos_weight} "
-                                         "and neg_weight adjusted to new value of {neg_weight} to compensate.")
+                                         f"and neg_weight adjusted to new value of {neg_weight} to compensate.")
 
                 first_step_done = True
             else:
