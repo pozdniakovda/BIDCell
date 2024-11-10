@@ -619,15 +619,12 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     ma_losses = {}
     
     for loss_name, loss_vals in losses.items():
-        window_width = int(len(loss_vals) / 40)
+        window_width = max(1, int(len(loss_vals) / 40))  # Ensure window width is at least 1
         loss_vals = np.array(loss_vals)
-        
-        moving_averages = []
-        for i in np.arange(window_width):
-            moving_averages.append(loss_vals[:i].mean())
-        for i in np.arange(window_width, len(loss_vals)):
-            moving_averages.append(loss_vals[i-window_width:i].mean())
-
+    
+        moving_averages = np.convolve(loss_vals, np.ones(window_width) / window_width, mode="valid") # main convolution
+        moving_averages = np.concatenate([np.full(window_width - 1, moving_averages[0]), moving_averages]) # padding
+    
         ma_losses[loss_name] = (moving_averages, window_width)
 
     # Plot losses
