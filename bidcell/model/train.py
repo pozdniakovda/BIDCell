@@ -176,7 +176,7 @@ def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os 
     return total_loss.item()
 
 def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_loss_ma, total_epochs, 
-                         train_loader_len, use_procrustes_title, experiment_path, scale_mode=None):
+                         train_loader_len, use_procrustes_title, experiment_path, scale_mode=None, log_scale=True):
     # Plots all the losses on one graph
     
     plt.figure(figsize=(18, 8))
@@ -192,7 +192,10 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
 
     for epoch in range(total_epochs):
         plt.axvline(x=epoch * train_loader_len, color="r", linestyle="--", alpha=0.5)
-    
+
+    if log_scale:
+        plt.yscale("log")
+                             
     plt.xlabel("Training Step")
     plt.ylabel("Loss")
     if use_procrustes_title:
@@ -204,7 +207,7 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
     plt.savefig(os.path.join(experiment_path, "training_losses.pdf"))
     #plt.show()
 
-def plot_loss(loss_vals, ma_loss_vals, label, total_epochs, use_procrustes_title, scale_mode=None):
+def plot_loss(loss_vals, ma_loss_vals, label, total_epochs, use_procrustes_title, scale_mode=None, log_scale=True):
     # Plots a single objective's values over the course of the training cycle
     
     plt.figure(figsize=(18, 8))
@@ -215,6 +218,9 @@ def plot_loss(loss_vals, ma_loss_vals, label, total_epochs, use_procrustes_title
     
     for epoch in range(total_epochs):
         plt.axvline(x=epoch * len(train_loader), color="r", linestyle="--")
+    
+    if log_scale:
+        plt.yscale("log")
     
     plt.xlabel("Training Step")
     plt.ylabel("Loss")
@@ -585,12 +591,12 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     other_loss_vals = {key:losses[key] for key in keys}
     other_loss_ma = {key:ma_losses[key] for key in keys}
     plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_loss_ma, total_epochs, 
-                         train_loader_len, use_procrustes_title, experiment_path, scale_mode)
+                         train_loader_len, use_procrustes_title, experiment_path, scale_mode, log_scale=True)
 
     # Plot individual losses
-    plot_loss(losses["Total Loss"], ma_losses["Total Loss"], "Total Loss", total_epochs, use_procrustes_title, scale_mode)
+    plot_loss(losses["Total Loss"], ma_losses["Total Loss"], "Total Loss", total_epochs, use_procrustes_title, scale_mode, log_scale=True)
     for key in keys:
-        plot_loss(losses[key], ma_losses[key], key, total_epochs, use_procrustes_title, scale_mode)
+        plot_loss(losses[key], ma_losses[key], key, total_epochs, use_procrustes_title, scale_mode, log_scale=True)
 
     logging.info("Training finished")
 
