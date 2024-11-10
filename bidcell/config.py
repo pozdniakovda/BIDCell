@@ -198,6 +198,7 @@ class TrainingParams(BaseModel):
     weight_mode: Literal["static", "dynamic"] = "static"
     # loss combination
     combine_losses: bool = True
+    combine_mode: Literal["max", "top"] = "top"
     # number of training steps per model save
     model_freq: int = 1000
     # number of training steps per sample save
