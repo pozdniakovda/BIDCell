@@ -204,7 +204,11 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
     for label, loss_ma in other_loss_ma.items():
         if rescaling:
             divisor = divisors[label]
-            loss_ma = [val/divisor for val in loss_ma]
+            try:
+                loss_ma = [val/divisor for val in loss_ma]
+            except Exception as e:
+                print(f"Encountered the following exception when label={label}")
+                raise e
         plt.plot(loss_ma, label=label, linewidth=1, alpha=0.5)
 
     for epoch in range(total_epochs):
