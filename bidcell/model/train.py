@@ -186,7 +186,7 @@ def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os 
 
 def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_loss_ma, total_epochs, 
                          train_loader_len, use_procrustes_title, experiment_path, scale_mode=None, 
-                         log_scale=True, rescaling=True, show_moving_averages=False):
+                         log_scale=True, rescaling=True, show_moving_averages=True):
     # Plots all the losses on one graph
     
     plt.figure(figsize=(18, 8))
@@ -237,7 +237,7 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
     #plt.show()
 
 def plot_loss(loss_vals, ma_loss_vals, label, total_epochs, use_procrustes_title, experiment_path, train_loader_len,
-              scale_mode=None, log_scale=True, rescaling=True, show_moving_averages=False):
+              scale_mode=None, log_scale=True, rescaling=True, show_moving_averages=True):
     # Plots a single objective's values over the course of the training cycle
     ma_loss_vals, ma_window_width = ma_loss_vals
     if rescaling:
