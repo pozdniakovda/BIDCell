@@ -186,7 +186,7 @@ def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os 
 
 def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_loss_ma, total_epochs, 
                          train_loader_len, use_procrustes_title, experiment_path, scale_mode=None, 
-                         log_scale=True, rescaling=True):
+                         log_scale=True, rescaling=True, show_moving_averages=False):
     # Plots all the losses on one graph
     
     plt.figure(figsize=(18, 8))
@@ -204,17 +204,18 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
             loss_vals = np.divide(loss_vals, divisor)
         plt.plot(loss_vals, label=label, linewidth=0.5, alpha=0.5)
 
-    ma_loss_vals, ma_window_width = total_loss_ma
-    if rescaling:
-        divisor = max(ma_loss_vals) / 1000 if max(ma_loss_vals) != 0 else 1
-        ma_loss_vals = np.divide(ma_loss_vals, divisor)
-    plt.plot(ma_loss_vals, label=f"Total Loss (moving average, {ma_window_width})", linewidth=2)
-    
-    for label, loss_ma in other_loss_ma.items():
+    if show_moving_averages:
+        ma_loss_vals, ma_window_width = total_loss_ma
         if rescaling:
-            divisor = divisors[label]
-            loss_ma = np.divide(loss_ma, divisor)
-        plt.plot(loss_ma, label=label, linewidth=1, alpha=0.5)
+            divisor = max(ma_loss_vals) / 1000 if max(ma_loss_vals) != 0 else 1
+            ma_loss_vals = np.divide(ma_loss_vals, divisor)
+        plt.plot(ma_loss_vals, label=f"Total Loss (moving average, {ma_window_width})", linewidth=2)
+    
+        for label, loss_ma in other_loss_ma.items():
+            if rescaling:
+                divisor = divisors[label]
+                loss_ma = np.divide(loss_ma, divisor)
+            plt.plot(loss_ma, label=label, linewidth=1, alpha=0.5)
 
     for epoch in range(total_epochs):
         plt.axvline(x=epoch * train_loader_len, color="r", linestyle="--", alpha=0.5)
@@ -236,17 +237,19 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
     #plt.show()
 
 def plot_loss(loss_vals, ma_loss_vals, label, total_epochs, use_procrustes_title, 
-              scale_mode=None, log_scale=True, rescaling=True):
+              scale_mode=None, log_scale=True, rescaling=True, show_moving_averages=False):
     # Plots a single objective's values over the course of the training cycle
     ma_loss_vals, ma_window_width = ma_loss_vals
     if rescaling:
         divisor = max(loss_vals) / 1000 if max(loss_vals) != 0 else 1
         loss_vals = loss_vals / divisor
-        ma_loss_vals = ma_loss_vals / divisor
+        if show_moving_averages:
+            ma_loss_vals = ma_loss_vals / divisor
     
     plt.figure(figsize=(18, 8))
     plt.plot(loss_vals, label=label, linewidth=0.5)
-    plt.plot(ma_loss_vals, label=f"{label} (moving average, {ma_window_width})", linewidth=2)
+    if show_moving_averages:
+        plt.plot(ma_loss_vals, label=f"{label} (moving average, {ma_window_width})", linewidth=2)
     
     for epoch in range(total_epochs):
         plt.axvline(x=epoch * len(train_loader), color="r", linestyle="--")
