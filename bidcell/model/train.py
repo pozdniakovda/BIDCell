@@ -629,16 +629,15 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     other_loss_vals = {key:losses[key] for key in keys}
     other_loss_ma = {key:ma_losses[key] for key in keys}
     plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_loss_ma, total_epochs, 
-                         train_loader_len, use_procrustes_title, experiment_path, scale_mode, log_scale=True)
+                         train_loader_len, use_procrustes_title, experiment_path, scale_mode, log_scale=True, rescaling=False)
 
     # Plot individual losses
     print(f"Graphing total loss...")
-    plot_loss(losses["Total Loss"], ma_losses["Total Loss"], "Total Loss", total_epochs, use_procrustes_title, scale_mode, log_scale=True)
+    plot_loss(losses["Total Loss"], ma_losses["Total Loss"], "Total Loss", total_epochs, use_procrustes_title, scale_mode, log_scale=True, rescaling=False)
     
     print(f"Graphing individual losses...")
     for key in keys:
-        plot_loss(losses[key], ma_losses[key], key, total_epochs, use_procrustes_title, scale_mode, log_scale=True)
-        plot_loss(losses[key], ma_losses[key], key, total_epochs, use_procrustes_title, scale_mode, log_scale=True, rescaling=True)
+        plot_loss(losses[key], ma_losses[key], key, total_epochs, use_procrustes_title, scale_mode, log_scale=True, rescaling=False)
 
     # Repeat for rescaled versions
     print(f"Graphing overlaid rescaled losses...")
