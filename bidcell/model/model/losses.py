@@ -174,26 +174,40 @@ class NucleiEncapsulationLoss(nn.Module):
     def __init__(self, weight, device) -> None:
         super(NucleiEncapsulationLoss, self).__init__()
         self.weight = weight
+        self.init_weight = weight
         self.device = device
 
     def forward(self, seg_pred, batch_n, weight=None):
-        if weight is None:
-            weight = self.weight
-        
+        # Overwrite self.weight if new weight is given; original is preserved as self.init_weight
+        if weight is not None:
+            self.weight = weight
+
+        # This loss is simply a CrossEntropyLoss
         criterion_ce = torch.nn.CrossEntropyLoss(reduction="mean")
         loss = criterion_ce(seg_pred, batch_n[:, 0, :, :])
 
-        return weight * loss
+        return self.weight * loss
 
-    def get_max(self, seg_pred, weight=None):
-    # Calculate the maximum possible loss value
+    def get_max(self, input_shape, weight=None):
+        '''
+        CrossEntropyLoss is maximized when predictions are completely wrong.
+        The worst-case scenario assumes that for every pixel, the predicted class has the lowest probability 
+        (close to zero), and the true class is completely misclassified.
+        '''
+        
+        batch_size, num_classes, height, width = input_shape
     
+        # The maximum loss per pixel is given by -log(1/num_classes).
+        max_loss_per_pixel = -torch.log(torch.tensor(1.0 / num_classes)).to(self.device)
+    
+        # Compute the total maximum loss for all pixels in the batch
+        total_max_loss = max_loss_per_pixel * batch_size * height * width
+
+        # Apply the weight
         weight = self.weight if weight is None else weight
-        C = seg_pred.shape[1]
-        max_ce_loss = torch.log(torch.tensor(C, dtype=torch.float32))
-        max_loss = weight * max_ce_loss.item()
-    
-        return max_loss
+        max_loss = weight * max_loss
+
+        return max_loss.item()
 
 
 class Oversegmentation(nn.Module):
@@ -204,60 +218,63 @@ class Oversegmentation(nn.Module):
     def __init__(self, weight, device) -> None:
         super(Oversegmentation, self).__init__()
         self.weight = weight
+        self.init_weight = weight
         self.device = device
-
+    
     def forward(self, seg_pred, batch_n, weight=None):
-        if weight is None:
-            weight = self.weight
-        
+        # Overwrite self.weight if new weight is given; original is preserved as self.init_weight
+        if weight is not None:
+            self.weight = weight
+    
+        # Use the ground truth nuclei mask
         batch_n = batch_n[:, 0, :, :]
-
+    
+        # Compute class probabilities using softmax
         seg_probs = torch.nn.functional.softmax(seg_pred, dim=1)
+    
+        # Nuclei predictions masked by the ground truth
         probs_nuc = seg_probs[:, 1, :, :] * batch_n
-
-        mask_cyto = torch.ones(batch_n.shape).to(self.device) - batch_n
+    
+        # Cytoplasm predictions masked by non-nuclei regions
+        mask_cyto = 1.0 - batch_n
         probs_cyto = seg_probs[:, 1, :, :] * mask_cyto
-
-        ones = torch.ones(probs_cyto.shape).to(self.device)
-        zeros = torch.zeros(probs_cyto.shape).to(self.device)
-
-        alpha = 1.0
-
-        preds_nuc = torch.sigmoid((probs_nuc - 0.5) * alpha) * (ones - zeros) + zeros
+    
+        # Apply sigmoid to emphasize probabilities > 0.5
+        preds_nuc = torch.sigmoid((probs_nuc - 0.5))
         count_nuc = torch.sum(preds_nuc)
-
-        preds_cyto = torch.sigmoid((probs_cyto - 0.5) * alpha) * (ones - zeros) + zeros
+    
+        preds_cyto = torch.sigmoid((probs_cyto - 0.5))
         count_cyto = torch.sum(preds_cyto)
-
-        extra = count_cyto - count_nuc
-        m = torch.nn.ReLU()
-        loss = m(extra)
-
-        loss = loss / seg_pred.shape[0]
-
-        return weight * loss
     
-    def get_max(self, seg_pred, batch_n, weight=None):
-        # Calculate the maximum possible value of Oversegmentation loss.
+        # Compute extra cytoplasm predictions (oversegmentation)
+        extra = torch.nn.ReLU()(count_cyto - count_nuc)
+    
+        # Normalize by batch size and apply weight
+        loss = (extra / seg_pred.shape[0]) * self.weight
+    
+        return loss
 
+    def get_max(self, input_shape, weight=None):
+        '''
+        In the worst-case scenario, the entire image is predicted as cytoplasm,
+        and there are no nuclei predictions, which maximizes the count difference.
+        '''
+        
+        batch_size, num_classes, height, width = input_shape
+
+        max_count_cyto = batch_size * height * width  # All pixels are cytoplasm
+        max_count_nuc = 0  # No pixels are classified as nuclei
+    
+        # The maximum extra count is the difference: max_count_cyto - max_count_nuc
+        max_extra = max_count_cyto - max_count_nuc
+    
+        # Since ReLU is applied, max_extra is already non-negative.
+        max_loss = max_extra / batch_size # normalize by the batch size (as in the forward method)
+
+        # Apply the weight
         weight = self.weight if weight is None else weight
-        N, C, H, W = seg_pred.shape
-    
-        # Calculate the number of nucleus and non-nucleus pixels
-        total_pixels = N * H * W
-        num_nucleus_pixels = torch.sum(batch_n[:, 0, :, :])
-        num_non_nucleus_pixels = total_pixels - num_nucleus_pixels
-    
-        # Maximize count_cyto (all non-nucleus pixels predicted as cytoplasm)
-        max_count_cyto = num_non_nucleus_pixels
-    
-        # Minimize count_nuc (all nucleus pixels predicted as non-nucleus)
-        min_count_nuc = 0
-    
-        # Calculate the maximum extra overlap, then normalize and apply weight
-        max_extra = max_count_cyto - min_count_nuc
-        max_loss = (max_extra / N) * weight
-    
+        max_loss = weight * max_loss
+        
         return max_loss.item()
 
 
@@ -269,11 +286,13 @@ class CellCallingLoss(nn.Module):
     def __init__(self, weight, device) -> None:
         super(CellCallingLoss, self).__init__()
         self.weight = weight
+        self.init_weight = weight
         self.device = device
 
     def forward(self, seg_pred, batch_sa, weight=None):
-        if weight is None:
-            weight = self.weight
+        # Overwrite self.weight if new weight is given; original is preserved as self.init_weight
+        if weight is not None:
+            self.weight = weight
         
         # Limit to searchable area where there is detected expression
         penalisable = batch_sa * 1
@@ -284,29 +303,31 @@ class CellCallingLoss(nn.Module):
 
         loss_total = loss_total / seg_pred.shape[0]
 
-        return weight * loss_total
+        return self.weight * loss_total
 
-    def get_max(self, seg_pred, batch_sa, weight=None):
-        # Calculate the maximum possible value of CellCallingLoss.
+    def get_max(self, input_shape, weight=None):
+        '''
+        In the worst-case scenario, every pixel within the searchable area
+        is misclassified, maximizing the CrossEntropy loss.
+        '''
         
-        # Determine the number of classes (C) from seg_pred
-        C = seg_pred.shape[1]
-        N = seg_pred.shape[0]
+        batch_size, num_classes, height, width = input_shape
     
-        # Calculate the maximum CrossEntropy loss per pixel
-        max_ce_loss = torch.log(torch.tensor(C, dtype=torch.float32))
+        # The maximum loss per pixel occurs when the predicted probability for the true class is zero.
+        # This corresponds to a loss of -log(1/num_classes) for each pixel.
+        max_loss_per_pixel = -torch.log(torch.tensor(1.0 / num_classes)).to(self.device)
     
-        # Calculate the total number of searchable (penalisable) pixels
-        total_penalisable_pixels = torch.sum(batch_sa[:, 0, :, :])
+        # Total maximum loss across all pixels in the batch
+        max_loss_total = max_loss_per_pixel * batch_size * height * width
     
-        # Compute the maximum total loss (averaged over batch size)
-        max_loss = (max_ce_loss * total_penalisable_pixels) / N
+        # Normalize by the batch size (as in the forward method)
+        max_loss = max_loss_total / batch_size
     
-        # Scale by the weight
+        # Apply the weight
         weight = self.weight if weight is None else weight
-        max_loss = weight * max_loss.item()
-    
-        return max_loss
+        max_loss = weight * max_loss
+        
+        return max_loss.item()
 
 
 class OverlapLoss(nn.Module):
@@ -317,11 +338,13 @@ class OverlapLoss(nn.Module):
     def __init__(self, weight, device) -> None:
         super(OverlapLoss, self).__init__()
         self.weight = weight
+        self.init_weight = weight
         self.device = device
 
     def forward(self, seg_pred, batch_n, weight=None):
-        if weight is None:
-            weight = self.weight
+        # Overwrite self.weight if new weight is given; original is preserved as self.init_weight
+        if weight is not None:
+            self.weight = weight
         
         batch_n = batch_n[:, 0, :, :]
         seg_probs = torch.nn.functional.softmax(seg_pred, dim=1)
@@ -346,22 +369,26 @@ class OverlapLoss(nn.Module):
         scale = seg_pred.shape[0] * seg_pred.shape[2] * seg_pred.shape[3]
         loss = loss / scale
 
-        return weight * loss
-
-    def get_max(self, seg_pred, batch_n, weight=None):
-        # Calculate the maximum possible value of OverlapLoss.
+        return self.weight * loss
+    
+    def get_max(self, input_shape, weight=None):
+        '''
+        In the worst-case scenario, every pixel is predicted as cytoplasm with high overlap,
+        resulting in the maximum possible overlap penalty.
+        '''
         
-        # Calculate the non-nuclei area
-        all_nuclei = torch.sum(batch_n[:, 0, :, :], 0)
-        all_not_nuclei = torch.ones_like(all_nuclei) - all_nuclei
+        batch_size, num_classes, height, width = input_shape
     
-        # Calculate the maximum count of cytoplasm overlap
-        max_count_overlap = torch.sum(all_not_nuclei)
+        # In the worst case, every pixel is classified as cytoplasm with maximum probability.
+        max_count_cyto_overlap = batch_size * height * width  # All pixels contribute to overlap
     
-        # Normalize by the total number of pixels in the batch
+        # Normalization factor based on the total number of pixels
+        scale = batch_size * height * width
+        max_loss = max_count_cyto_overlap / scale
+    
+        # Apply the weight
         weight = self.weight if weight is None else weight
-        N, C, H, W = seg_pred.shape
-        max_loss = (max_count_overlap / (N * H * W)) * weight
+        max_loss = weight * max_loss
     
         return max_loss.item()
 
@@ -375,13 +402,16 @@ class PosNegMarkerLoss(nn.Module):
         super(PosNegMarkerLoss, self).__init__()
         self.weight_pos = weight_pos
         self.weight_neg = weight_neg
+        self.init_weight_pos = weight_pos
+        self.init_weight_neg = weight_neg
         self.device = device
 
     def forward(self, seg_pred, batch_pos, batch_neg, weight_pos=None, weight_neg=None):
-        if weight_pos is None:
-            weight_pos = self.weight_pos
-        if weight_neg is None:
-            weight_neg = self.weight_neg
+        # Overwrite weights if new weights are given; originals are preserved as self.init_weight_pos or _neg
+        if weight_pos is not None:
+            self.weight_pos = weight_pos
+        if weight_neg is not None:
+            self.weight_neg = weight_neg
         
         batch_pos = batch_pos[:, 0, :, :]
         batch_neg = batch_neg[:, 0, :, :]
@@ -411,27 +441,33 @@ class PosNegMarkerLoss(nn.Module):
 
         return loss_total
 
-    def get_max(self, seg_pred, batch_pos, batch_neg, weight_pos=None, weight_neg=None):
-        # Calculate the maximum possible value of PosNegMarkerLoss.
-
-        # Determine the number of classes (C) from seg_pred
-        C = seg_pred.shape[1]
-        N = seg_pred.shape[0]
+    def get_max(self, input_shape, weight_pos=None, weight_neg=None):
+        '''
+        In the worst-case scenario:
+        - For positive markers, every pixel is misclassified, maximizing CrossEntropy loss.
+        - For negative markers, every pixel is predicted as a cell, maximizing the overlap with the negative mask.
+        '''
     
-        # Calculate the maximum CrossEntropy loss per positive pixel
-        max_ce_loss = torch.log(torch.tensor(C, dtype=torch.float32))
+        batch_size, num_classes, height, width = input_shape
     
-        # Total number of positive and negative pixels
-        total_pos_pixels = torch.sum(batch_pos[:, 0, :, :])
-        total_neg_pixels = torch.sum(batch_neg[:, 0, :, :])
-    
-        # Calculate the maximum possible positive and negative losses
+        # Set default weights if not provided
         weight_pos = self.weight_pos if weight_pos is None else weight_pos
         weight_neg = self.weight_neg if weight_neg is None else weight_neg
-        max_loss_pos = weight_pos * max_ce_loss * total_pos_pixels
-        max_loss_neg = weight_neg * total_neg_pixels
     
-        # Normalize by the batch size
-        max_loss = (max_loss_pos + max_loss_neg) / N
+        # MAXIMUM POSITIVE LOSS:
+        # Assume every pixel is misclassified for the positive markers (worst case).
+        max_loss_pos_per_pixel = -torch.log(torch.tensor(1.0 / num_classes)).to(self.device)
+        max_loss_pos = max_loss_pos_per_pixel * batch_size * height * width
+    
+        # MAXIMUM NEGATIVE LOSS:
+        # Assume every pixel is classified as a cell, maximizing overlap with the negative mask.
+        max_loss_neg = batch_size * height * width  # All pixels contribute to the negative loss.
+    
+        # Normalize losses by the batch size
+        max_loss_pos = max_loss_pos / batch_size
+        max_loss_neg = max_loss_neg / batch_size
+    
+        # Apply weights
+        max_loss = (weight_pos * max_loss_pos) + (weight_neg * max_loss_neg)
     
         return max_loss.item()
