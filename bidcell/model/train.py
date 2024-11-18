@@ -560,11 +560,8 @@ def train(config: Config, learning_rate = None, selected_solver = None):
             is_first_step = False
 
             # Calculate combined losses if required
-            if combine_losses:
-                loss_ne_ov = criterion_ne_ov(seg_pred, batch_n, ne_weight, ov_weight)
-                loss_cc_pn = criterion_cc_pn(seg_pred, batch_sa, batch_pos, batch_neg, cc_weight, pos_weight, neg_weight)
-            else: 
-                loss_ne_ov, loss_cc_pn = None, None
+            loss_ne_ov = criterion_ne_ov(seg_pred, batch_n, ne_weight, ov_weight) if combine_ne_ov else None
+            loss_cc_pn = criterion_cc_pn(seg_pred, batch_sa, batch_pos, batch_neg, cc_weight, pos_weight, neg_weight) if combine_cc_pn else None
 
             # Apply the Procrustes method
             if "procrustes" in selected_solver:
