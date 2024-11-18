@@ -272,6 +272,34 @@ def plot_loss(loss_vals, ma_loss_vals, label, total_epochs, use_procrustes_title
     plt.savefig(os.path.join(experiment_path, filename))
     #plt.show()
 
+def get_weighting_ratio(loss1, loss2, criterion_loss1, criterion_loss2, weights1, weights2, 
+                        weights1_names, weights2_names, input_shape, combine_mode, logging):
+    if combine_mode == "top":
+        logging.info(f"Dynamically adjusting weights based on loss values at first step.")
+        ratio = loss1.item() / loss2.item() if loss1.item() != 0 and loss2.item() != 0 else None
+    elif combine_mode == "max": 
+        logging.info(f"Dynamically adjusting weights based on maximum theoretical loss values.")
+        max_loss1 = criterion_loss1.get_max(input_shape, *weights1)
+        max_loss2 = criterion_loss2.get_max(input_shape, *weights2)
+        ratio = max_loss1 / max_loss2 if max_loss1 != 0 and max_loss2 != 0 else None
+    else:
+        raise ValueError(f"combine_mode must be top, max, or static, but was given as {combine_mode}")
+
+    if ratio is not None: 
+        for i, weight2 in enumerate(weights2):
+            weight2 = weight2 * ratio
+            weights2[i] = weight2
+        
+        message = f"ratio={ratio}"
+        for weight_name, weight_val in zip(weights2_names, weights2):
+            message = f"{message}; {weight_name} adjusted to new value of {weight_val}"
+        logging.info(message)
+    
+    else: 
+        logging.info(f"ratio={ratio}; no adjustment made.")
+
+    return ratio, weights1, weights2
+
 def train(config: Config, learning_rate = None, selected_solver = None):
     logging.basicConfig(
         format="%(asctime)s %(levelname)s %(message)s",
@@ -330,7 +358,6 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     logging.info("Total number of training examples: %d" % n_train_examples)
 
     # Loss weights
-    weight_mode = config.training_params.weight_mode
     ne_weight = config.training_params.ne_weight
     os_weight = config.training_params.os_weight
     cc_weight = config.training_params.cc_weight
@@ -345,17 +372,14 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     criterion_ov = OverlapLoss(ov_weight, device)
     criterion_pn = PosNegMarkerLoss(pos_weight, neg_weight, device)
 
-    # Whether to use static or dynamic loss weighting
-    weight_mode = config.training_params.weight_mode
-
     # Combined loss functions if desired
-    combine_losses = config.training_params.combine_losses
-    combine_mode = config.training_params.combine_mode
-    if combine_losses: 
-        criterion_ne_ov = NucEncapOverlapLoss(ne_weight, ov_weight, device)
-        criterion_cc_pn = CellCallingMarkerLoss(cc_weight, pos_weight, neg_weight, device)
-    else: 
-        criterion_ne_ov, criterion_cc_pn = None, None
+    combine_ne_ov = config.training_params.combine_ne_ov
+    combine_ne_ov_mode = config.training_params.combine_ne_ov_mode
+    criterion_ne_ov = NucEncapOverlapLoss(ne_weight, ov_weight, device) if combine_ne_ov else None
+    
+    combine_cc_pn = config.training_params.combine_cc_pn
+    combine_cc_pn_mode = config.training_params.combine_cc_pn_mode
+    criterion_cc_pn = CellCallingMarkerLoss(cc_weight, pos_weight, neg_weight, device) if combine_cc_pn else None
 
     # Solver and learning rate
     if selected_solver is None: 
@@ -500,52 +524,42 @@ def train(config: Config, learning_rate = None, selected_solver = None):
 
             seg_pred = model(batch_x313)
 
-            # Compute losses
+            # Compute individual losses as appropriate
             loss_os = criterion_os(seg_pred, batch_n, os_weight)
-            compute_individual_losses = is_first_step if combine_losses else True
-            if compute_individual_losses:
+            if is_first_step or not combine_ne_ov:
+                if combine_ne_ov:
+                    logging.info(f"Computing nuclei encapsulation and overlap losses for first step; all subsequent steps will use combined ne_ov_loss.")
                 loss_ne = criterion_ne(seg_pred, batch_n, ne_weight)
                 loss_ov = criterion_ov(seg_pred, batch_n, ov_weight)
+            else: 
+                loss_ne, loss_ov = None, None
+            
+            if is_first_step or not combine_cc_pn:
+                if combine_cc_pn:
+                    logging.info(f"Computing cell calling and marker losses for first step; all subsequent steps will use combined cc_pn_loss.")
                 loss_cc = criterion_cc(seg_pred, batch_sa, cc_weight)
                 loss_pn = criterion_pn(seg_pred, batch_pos, batch_neg, pos_weight, neg_weight)
-                if combine_losses: 
-                    logging.info(f"Computed individual losses for first step; all subsequent steps will use combined losses.")
             else:
-                loss_ne, loss_cc, loss_ov, loss_pn = None, None, None, None
+                loss_cc, loss_pn = None, None
 
-            if combine_losses:
-                if weight_mode == "dynamic" and is_first_step:
+            # Dynamic or static weighting of combined losses if required
+            if combine_ne_ov:
+                if combine_ne_ov_mode != "static" and is_first_step:
                     # Adjust loss weights to compensate for different magnitudes of initial values
-                    if combine_mode == "top":
-                        logging.info(f"Dynamically adjusting weights based on loss values at first step.")
-                        ne_ov_ratio = loss_ne.item() / loss_ov.item() if loss_ov.item() != 0 else 1
-                        cc_pn_ratio = loss_cc.item() / loss_pn.item() if loss_pn.item() != 0 else 1
-                    else: 
-                        logging.info(f"Dynamically adjusting weights based on maximum theoretical loss values.")
-                        max_ne_loss = criterion_ne.get_max(seg_pred.shape, ne_weight)
-                        max_ov_loss = criterion_ov.get_max(ov_weight)
-                        ne_ov_ratio = max_ne_loss / max_ov_loss if max_ne_loss != 0 and max_ov_loss != 0 else None
-                        
-                        max_cc_loss = criterion_cc.get_max(seg_pred.shape, cc_weight)
-                        max_pn_loss = criterion_pn.get_max(seg_pred.shape, pos_weight, neg_weight)
-                        cc_pn_ratio = max_cc_loss / max_pn_loss if max_cc_loss != 0 and max_pn_loss != 0 else None
+                    ratio, weights1, weights2 = get_weighting_ratio(loss_ne, loss_ov, criterion_ne, criterion_ov, [ne_weight], [ov_weight], 
+                                                                    ["ne_weight"], ["ov_weight"], seg_pred.shape, combine_ne_ov_mode, logging)
+                    ne_weight, ov_weight = weights1[0], weights2[0]
+            if combine_cc_pn:
+                if combine_cc_pn_mode != "static" and is_first_step:
+                    # Adjust loss weights to compensate for different magnitudes of initial values
+                    ratio, weights1, weights2 = get_weighting_ratio(loss_cc, loss_pn, criterion_cc, criterion_pn, [cc_weight], [pos_weight, neg_weight], 
+                                                                    ["cc_weight"], ["pos_weight", "neg_weight"], seg_pred.shape, combine_cc_pn_mode, logging)
+                    cc_weight = weights1[0]
+                    pos_weight, neg_weight = weights2
+            
+            is_first_step = False
 
-                    if ne_ov_ratio is not None: 
-                        ov_weight = ov_weight * ne_ov_ratio
-                        logging.info(f"ne_ov_ratio={ne_ov_ratio}; ov_weight adjusted to new value of {ov_weight} to compensate.")
-                    else: 
-                        logging.info(f"ne_ov_ratio={ne_ov_ratio}; no adjustment made.")
-                    
-                    if cc_pn_ratio is not None:
-                        pos_weight = pos_weight * cc_pn_ratio
-                        neg_weight = neg_weight * cc_pn_ratio
-                        logging.info(f"cc_pn_ratio={cc_pn_ratio}; pos_weight adjusted to new value of {pos_weight} "
-                                     f"and neg_weight adjusted to new value of {neg_weight} to compensate.")
-                    else:
-                        logging.info(f"cc_pn_ratio={cc_pn_ratio}; no adjustment made.")
-
-                    is_first_step = False
-                        
+            # Calculate combined losses if required
             if combine_losses:
                 loss_ne_ov = criterion_ne_ov(seg_pred, batch_n, ne_weight, ov_weight)
                 loss_cc_pn = criterion_cc_pn(seg_pred, batch_sa, batch_pos, batch_neg, cc_weight, pos_weight, neg_weight)
