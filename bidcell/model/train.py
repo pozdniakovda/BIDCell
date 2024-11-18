@@ -524,7 +524,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
                     else: 
                         logging.info(f"Dynamically adjusting weights based on maximum theoreticacl loss values.")
                         max_ne_loss = criterion_ne.get_max(seg_pred.shape, ne_weight)
-                        max_ov_loss = criterion_ov.get_max(seg_pred.shape, ov_weight)
+                        max_ov_loss = criterion_ov.get_max(ov_weight)
                         ne_ov_ratio = max_ne_loss / max_ov_loss if max_ne_loss != 0 and max_ov_loss != 0 else None
                         
                         max_cc_loss = criterion_cc.get_max(seg_pred.shape, cc_weight)
