@@ -22,7 +22,9 @@ from .model.losses import (
     NucleiEncapsulationLoss,
     OverlapLoss,
     Oversegmentation,
-    PosNegMarkerLoss,
+    PosNegMarkerLoss
+)
+from .model.combined_losses import (
     NucEncapOverlapLoss,
     CellCallingMarkerLoss
 )
@@ -102,22 +104,12 @@ def default_solver(optimizer, tracked_losses, loss_ne = None, loss_os = None, lo
     step_cc_pn_loss = loss_cc_pn.detach().cpu().numpy() if loss_cc_pn is not None else 0 # noqa
     step_train_loss = loss.detach().cpu().numpy()
 
-    tracked_losses["Nuclei Encapsulation Loss"].append(step_ne_loss)
-    tracked_losses["Oversegmentation Loss"].append(step_os_loss)
-    tracked_losses["Cell Calling Loss"].append(step_cc_loss)
-    tracked_losses["Overlap Loss"].append(step_ov_loss)
-    tracked_losses["Pos-Neg Marker Loss"].append(step_pn_loss)
-    tracked_losses["Total Loss"].append(step_train_loss)
-    tracked_losses["Combined Nuclei Encapsulation + Overlap Loss"].append(step_ne_ov_loss.item())
-    tracked_losses["Combined Cell Calling + Marker Loss"].append(step_cc_pn_loss.item())
+    track_losses(tracked_losses, step_ne_loss, step_os_loss, step_cc_loss, step_ov_loss, step_pn_loss, step_ne_ov_loss, step_cc_pn_loss, step_train_loss)
 
     return step_train_loss
 
-def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_pn = None, loss_ne_ov = None, loss_cc_pn = None, scale_mode = "min"): 
-    # Check validity of given arguments
-    check_loss_args(loss_ne, loss_os, loss_cc, loss_ov, loss_pn, loss_ne_ov, loss_cc_pn)
-    
-    # Track individual losses
+def track_losses(tracked_losses, loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_pn = None, loss_ne_ov = None, loss_cc_pn = None, loss_total = None): 
+    # Track losses
     if loss_ne is not None:
         tracked_losses["Nuclei Encapsulation Loss"].append(loss_ne.item())
     if loss_os is not None:
@@ -130,10 +122,14 @@ def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os 
         tracked_losses["Pos-Neg Marker Loss"].append(loss_pn.item())
     if loss_ne_ov is not None:
         tracked_losses["Combined Nuclei Encapsulation and Overlap Loss"].append(loss_ne_ov.item())
-        #print(f"loss_ne_ov = {loss_ne_ov.item()}")
     if loss_cc_pn is not None:
         tracked_losses["Combined Cell Calling and Marker Loss"].append(loss_cc_pn.item())
-        #print(f"loss_cc_pn = {loss_cc_pn.item()}")
+    if loss_total is not None:
+        tracked_losses["Total Loss"].append(loss_total.item())
+
+def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_pn = None, loss_ne_ov = None, loss_cc_pn = None, scale_mode = "min"): 
+    # Check validity of given arguments
+    check_loss_args(loss_ne, loss_os, loss_cc, loss_ov, loss_pn, loss_ne_ov, loss_cc_pn)
 
     # Get the gradients
     loss_vals = [loss_os]
@@ -179,8 +175,8 @@ def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os 
         total_loss = loss_cc_pn + loss_ne + loss_os + loss_ov
     else:
         total_loss = loss_ne + loss_os + loss_cc + loss_ov + loss_pn
-    
-    tracked_losses["Total Loss"].append(total_loss.item())  # Track total loss
+
+    track_losses(tracked_losses, loss_ne, loss_os, loss_cc, loss_ov, loss_pn, loss_ne_ov, loss_cc_pn, loss_total)
 
     return total_loss.item()
 
