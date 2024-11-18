@@ -568,7 +568,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
             # Apply the Procrustes method
             if "procrustes" in selected_solver:
                 scale_mode = "median" if "median" in selected_solver else "rmse" if "rmse" in selected_solver else "min"
-                total_loss = procrustes_method(model, optimizer, losses, loss_ne, loss_os, loss_cc, loss_ov, loss_pn, loss_ne_ov, loss_cc_ov, scale_mode=scale_mode)
+                total_loss = procrustes_method(model, optimizer, losses, loss_ne, loss_os, loss_cc, loss_ov, loss_pn, loss_ne_ov, loss_cc_pn, scale_mode=scale_mode)
             else: 
                 total_loss = default_solver(optimizer, tracked_losses, loss_ne, loss_os, loss_cc, loss_ov, loss_pn, loss_ne_ov, loss_cc_pn)
             
