@@ -517,13 +517,13 @@ def train(config: Config, learning_rate = None, selected_solver = None):
                             ne_ov_ratio = loss_ne.item() / loss_ov.item() if loss_ov.item() != 0 else 1
                             cc_pn_ratio = loss_cc.item() / loss_pn.item() if loss_pn.item() != 0 else 1
                         else: 
-                            max_ne_loss = criterion_ne.get_max(seg_pred, ne_weight)
-                            max_ov_loss = criterion_ov.get_max(seg_pred, batch_n, ov_weight)
-                            ne_ov_ratio = max_ne_loss / max_ov_loss if max_ov_loss != 0 else 1
+                            max_ne_loss = criterion_ne.get_max(seg_pred.shape, ne_weight)
+                            max_ov_loss = criterion_ov.get_max(seg_pred.shape, ov_weight)
+                            ne_ov_ratio = max_ne_loss / max_ov_loss if max_ne_loss != 0 and max_ov_loss != 0 else 1
                             
-                            max_cc_loss = criterion_cc.get_max(seg_pred, batch_sa, cc_weight)
-                            max_pn_loss = criterion_pn.get_max(seg_pred, batch_pos, batch_neg, pos_weight, neg_weight)
-                            cc_pn_ratio = max_cc_loss / max_pn_loss if max_pn_loss != 0 else 1
+                            max_cc_loss = criterion_cc.get_max(seg_pred.shape, cc_weight)
+                            max_pn_loss = criterion_pn.get_max(seg_pred.shape, pos_weight, neg_weight)
+                            cc_pn_ratio = max_cc_loss / max_pn_loss if max_cc_loss != 0 and max_pn_loss != 0 else 1
     
                         if ne_ov_ratio != 1: 
                             ov_weight = ov_weight * ne_ov_ratio
