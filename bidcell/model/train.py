@@ -648,10 +648,18 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     print(f"Graphing overlaid losses...")
     total_loss_vals = losses["Total Loss"]
     total_loss_ma = ma_losses["Total Loss"]
-    if combine_losses:
-        keys = ["Combined Nuclei Encapsulation and Overlap Loss", "Combined Cell Calling and Marker Loss", "Oversegmentation Loss"]
-    else: 
-        keys = ["Nuclei Encapsulation Loss", "Oversegmentation Loss", "Cell Calling Loss", "Overlap Loss", "Pos-Neg Marker Loss"]
+    
+    keys = ["Oversegmentation Loss"]
+    if combine_ne_ov:
+        keys.append("Combined Nuclei Encapsulation and Overlap Loss")
+    else:
+        keys.extend(["Nuclei Encapsulation Loss", "Overlap Loss"])
+    
+    if combine_cc_pn:
+        keys.append("Combined Cell Calling and Marker Loss")
+    else:
+        keys.extend(["Cell Calling Loss", "Pos-Neg Marker Loss"])
+    
     other_loss_vals = {key:losses[key] for key in keys}
     other_loss_ma = {key:ma_losses[key] for key in keys}
     plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_loss_ma, total_epochs, 
