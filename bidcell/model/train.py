@@ -519,21 +519,25 @@ def train(config: Config, learning_rate = None, selected_solver = None):
                         else: 
                             max_ne_loss = criterion_ne.get_max(seg_pred.shape, ne_weight)
                             max_ov_loss = criterion_ov.get_max(seg_pred.shape, ov_weight)
-                            ne_ov_ratio = max_ne_loss / max_ov_loss if max_ne_loss != 0 and max_ov_loss != 0 else 1
+                            ne_ov_ratio = max_ne_loss / max_ov_loss if max_ne_loss != 0 and max_ov_loss != 0 else None
                             
                             max_cc_loss = criterion_cc.get_max(seg_pred.shape, cc_weight)
                             max_pn_loss = criterion_pn.get_max(seg_pred.shape, pos_weight, neg_weight)
-                            cc_pn_ratio = max_cc_loss / max_pn_loss if max_cc_loss != 0 and max_pn_loss != 0 else 1
+                            cc_pn_ratio = max_cc_loss / max_pn_loss if max_cc_loss != 0 and max_pn_loss != 0 else None
     
-                        if ne_ov_ratio != 1: 
+                        if ne_ov_ratio is not None: 
                             ov_weight = ov_weight * ne_ov_ratio
                             logging.info(f"ne_ov_ratio={ne_ov_ratio}; ov_weight adjusted to new value of {ov_weight} to compensate.")
+                        else: 
+                            logging.info(f"ne_ov_ratio={ne_ov_ratio}; no adjustment made.")
                         
-                        if cc_pn_ratio != 1:
+                        if cc_pn_ratio is not None:
                             pos_weight = pos_weight * cc_pn_ratio
                             neg_weight = neg_weight * cc_pn_ratio
                             logging.info(f"cc_pn_ratio={cc_pn_ratio}; pos_weight adjusted to new value of {pos_weight} "
                                          f"and neg_weight adjusted to new value of {neg_weight} to compensate.")
+                        else:
+                            logging.info(f"cc_pn_ratio={cc_pn_ratio}; no adjustment made.")
 
                 first_step_done = True
             else:
