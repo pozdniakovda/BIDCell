@@ -446,7 +446,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     lrs = []
     scale_mode = ""
     
-    is_first_step = False
+    is_first_step = True
     for epoch in range(initial_epoch, config.training_params.total_epochs):
         cur_lr = optimizer.param_groups[0]["lr"]
         print("\nEpoch =", (epoch + 1), " lr =", cur_lr)
