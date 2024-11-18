@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from losses import NucleiEncapsulationLoss, OversegmentationLoss, CellCallingLoss, OverlapLoss, PosNegMarkerLoss
+from .losses import NucleiEncapsulationLoss, OversegmentationLoss, CellCallingLoss, OverlapLoss, PosNegMarkerLoss
 
 
 class NucEncapOverlapLoss(nn.Module):
