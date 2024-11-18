@@ -61,8 +61,8 @@ training_params:
   neg_weight: 1.0 # weight for negative marker loss; default: 1.0
   combine_ne_ov: True # combines ne_loss+ov_loss to reduce the number of losses during multi-objective training
   combine_ne_ov_mode: "top" # "top" rescales to top values at first step; "max" rescales to theoretical maxima; "static" relies only on initial loss weights
-  combine_ne_ov: True # combines ne_loss+ov_loss to reduce the number of losses during multi-objective training
-  combine_ne_ov_mode: "top" # "top" rescales to top values at first step; "max" rescales to theoretical maxima; "static" relies only on initial loss weights
+  combine_cc_pn: True # combines ne_loss+ov_loss to reduce the number of losses during multi-objective training
+  combine_cc_pn_mode: "top" # "top" rescales to top values at first step; "max" rescales to theoretical maxima; "static" relies only on initial loss weights
 
 testing_params:
   test_epoch: 5 # epoch to test; default: 1
