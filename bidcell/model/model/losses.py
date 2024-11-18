@@ -121,7 +121,7 @@ class NucleiEncapsulationLoss(nn.Module):
 
         # Apply the weight
         weight = self.weight if weight is None else weight
-        max_loss = weight * max_loss
+        max_loss = weight * total_max_loss
 
         return max_loss.item()
 
