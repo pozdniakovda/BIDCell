@@ -126,7 +126,7 @@ class NucleiEncapsulationLoss(nn.Module):
         return max_loss.item()
 
 
-class Oversegmentation(nn.Module):
+class OversegmentationLoss(nn.Module):
     """
     Minimise oversegmentation
     """
