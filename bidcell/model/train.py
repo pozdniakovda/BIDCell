@@ -21,7 +21,7 @@ from .model.losses import (
     CellCallingLoss,
     NucleiEncapsulationLoss,
     OverlapLoss,
-    Oversegmentation,
+    OversegmentationLoss,
     PosNegMarkerLoss
 )
 from .model.combined_losses import (
@@ -340,7 +340,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     
     # Loss functions
     criterion_ne = NucleiEncapsulationLoss(ne_weight, device)
-    criterion_os = Oversegmentation(os_weight, device)
+    criterion_os = OversegmentationLoss(os_weight, device)
     criterion_cc = CellCallingLoss(cc_weight, device)
     criterion_ov = OverlapLoss(ov_weight, device)
     criterion_pn = PosNegMarkerLoss(pos_weight, neg_weight, device)
