@@ -287,7 +287,7 @@ class OverlapLoss(nn.Module):
 
         return self.weight * loss
     
-    def get_max(self, weight=None):
+    def get_max(self, input_shape=None, weight=None):
         '''
         In the worst case, every pixel is classified as cytoplasm with maximum probability. 
         However, the normalized value simplifies to 1.0. 
