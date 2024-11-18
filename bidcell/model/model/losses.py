@@ -132,7 +132,7 @@ class OversegmentationLoss(nn.Module):
     """
 
     def __init__(self, weight, device) -> None:
-        super(Oversegmentation, self).__init__()
+        super(OversegmentationLoss, self).__init__()
         self.weight = weight
         self.init_weight = weight
         self.device = device
