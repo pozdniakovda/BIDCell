@@ -446,7 +446,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     lrs = []
     scale_mode = ""
     
-    first_step_done = False
+    is_first_step = False
     for epoch in range(initial_epoch, config.training_params.total_epochs):
         cur_lr = optimizer.param_groups[0]["lr"]
         print("\nEpoch =", (epoch + 1), " lr =", cur_lr)
@@ -502,27 +502,26 @@ def train(config: Config, learning_rate = None, selected_solver = None):
 
             # Compute losses
             loss_os = criterion_os(seg_pred, batch_n, os_weight)
-            compute_individual_losses = not first_step_done if combine_losses else True
+            compute_individual_losses = is_first_step if combine_losses else True
             if compute_individual_losses:
                 loss_ne = criterion_ne(seg_pred, batch_n, ne_weight)
                 loss_ov = criterion_ov(seg_pred, batch_n, ov_weight)
                 loss_cc = criterion_cc(seg_pred, batch_sa, cc_weight)
                 loss_pn = criterion_pn(seg_pred, batch_pos, batch_neg, pos_weight, neg_weight)
-                first_step_done = True
                 if combine_losses: 
                     logging.info(f"Computed individual losses for first step; all subsequent steps will use combined losses.")
             else:
                 loss_ne, loss_cc, loss_ov, loss_pn = None, None, None, None
 
             if combine_losses:
-                if weight_mode == "dynamic":
+                if weight_mode == "dynamic" and is_first_step:
                     # Adjust loss weights to compensate for different magnitudes of initial values
                     if combine_mode == "top":
                         logging.info(f"Dynamically adjusting weights based on loss values at first step.")
                         ne_ov_ratio = loss_ne.item() / loss_ov.item() if loss_ov.item() != 0 else 1
                         cc_pn_ratio = loss_cc.item() / loss_pn.item() if loss_pn.item() != 0 else 1
                     else: 
-                        logging.info(f"Dynamically adjusting weights based on maximum theoreticacl loss values.")
+                        logging.info(f"Dynamically adjusting weights based on maximum theoretical loss values.")
                         max_ne_loss = criterion_ne.get_max(seg_pred.shape, ne_weight)
                         max_ov_loss = criterion_ov.get_max(ov_weight)
                         ne_ov_ratio = max_ne_loss / max_ov_loss if max_ne_loss != 0 and max_ov_loss != 0 else None
@@ -544,6 +543,8 @@ def train(config: Config, learning_rate = None, selected_solver = None):
                                      f"and neg_weight adjusted to new value of {neg_weight} to compensate.")
                     else:
                         logging.info(f"cc_pn_ratio={cc_pn_ratio}; no adjustment made.")
+
+                    is_first_step = False
                         
             if combine_losses:
                 loss_ne_ov = criterion_ne_ov(seg_pred, batch_n, ne_weight, ov_weight)
