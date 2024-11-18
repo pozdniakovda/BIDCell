@@ -287,26 +287,23 @@ class OverlapLoss(nn.Module):
 
         return self.weight * loss
     
-    def get_max(self, input_shape, weight=None):
+    def get_max(self, weight=None):
         '''
-        In the worst-case scenario, every pixel is predicted as cytoplasm with high overlap,
-        resulting in the maximum possible overlap penalty.
-        '''
+        In the worst case, every pixel is classified as cytoplasm with maximum probability. 
+        However, the normalized value simplifies to 1.0. 
         
-        batch_size, num_classes, height, width = input_shape
-    
-        # In the worst case, every pixel is classified as cytoplasm with maximum probability.
-        max_count_cyto_overlap = batch_size * height * width  # All pixels contribute to overlap
-    
-        # Normalization factor based on the total number of pixels
+        max_count_cyto_overlap = batch_size * height * width
         scale = batch_size * height * width
+        max_count_cyto_overlap = scale # they are the same
         max_loss = max_count_cyto_overlap / scale
+        '''
+        max_loss = 1.0
     
         # Apply the weight
         weight = self.weight if weight is None else weight
         max_loss = weight * max_loss
     
-        return max_loss.item()
+        return max_loss
 
 
 class PosNegMarkerLoss(nn.Module):
