@@ -197,8 +197,10 @@ class TrainingParams(BaseModel):
     # weight mode
     weight_mode: Literal["static", "dynamic"] = "static"
     # loss combination
-    combine_losses: bool = True
-    combine_mode: Literal["max", "top"] = "top"
+    combine_ne_ov: bool = True
+    combine_ne_ov_mode: Literal["max", "top"] = "top"
+    combine_cc_pn: bool = True
+    combine_cc_pn_mode: Literal["max", "top"] = "top"
     # number of training steps per model save
     model_freq: int = 1000
     # number of training steps per sample save
