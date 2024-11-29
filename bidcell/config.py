@@ -197,6 +197,8 @@ class TrainingParams(BaseModel):
     # loss combination
     combine_ne_ov: bool = True
     combine_ne_ov_mode: Literal["max", "top", "static"] = "top"
+    combine_os_ov: bool = True
+    combine_os_ov_mode: Literal["max", "top", "static"] = "top"
     combine_cc_pn: bool = True
     combine_cc_pn_mode: Literal["max", "top", "static"] = "top"
     # number of training steps per model save
