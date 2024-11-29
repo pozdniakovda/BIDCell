@@ -14,30 +14,24 @@ class NucEncapOverlapLoss(nn.Module):
         self.nuclei_encapsulation_loss = NucleiEncapsulationLoss(weight_encap, device)
         self.overlap_loss = OverlapLoss(weight_overlap, device)
 
-    def forward(self, seg_pred, batch_n, weight_encap=None, weight_overlap=None):
+    def forward(self, seg_pred, batch_n, weight_encap=None, weight_overlap=None, distance_scaling=False, intensity_weighting=False):
         # Compute NucleiEncapsulationLoss
-        encap_loss = self.nuclei_encapsulation_loss(
-            seg_pred, batch_n, weight=weight_encap
-        )
+        encap_loss = self.nuclei_encapsulation_loss(seg_pred, batch_n, weight=weight_encap)
 
         # Compute OverlapLoss
-        overlap_loss = self.overlap_loss(
-            seg_pred, batch_n, weight=weight_overlap
-        )
+        overlap_loss = self.overlap_loss(seg_pred, batch_n, weight=weight_overlap, 
+                                         distance_scaling=distance_scaling, intensity_weighting=intensity_weighting)
 
         # Return the sum of both losses
         return encap_loss + overlap_loss
 
-    def get_max(self, input_shape, weight_encap=None, weight_overlap=None):
+    def get_max(self, input_shape, weight_encap=None, weight_overlap=None, distance_scaling=False, intensity_weighting=False):
         # Compute maximum possible NucleiEncapsulationLoss
-        max_encap_loss = self.nuclei_encapsulation_loss.get_max(
-            input_shape, weight=weight_encap
-        )
+        max_encap_loss = self.nuclei_encapsulation_loss.get_max(input_shape, weight=weight_encap)
 
         # Compute maximum possible OverlapLoss
-        max_overlap_loss = self.overlap_loss.get_max(
-            input_shape, weight=weight_overlap
-        )
+        max_overlap_loss = self.overlap_loss.get_max(input_shape, distance_scaling=distance_scaling, 
+                                                     intensity_weighting=intensity_weighting)
 
         # Return the sum of both maximum losses
         return max_encap_loss + max_overlap_loss
