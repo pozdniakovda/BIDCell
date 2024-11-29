@@ -1,85 +1,7 @@
 import torch
 import torch.nn as nn
-
-
-class NucEncapOverlapLoss(nn.Module):
-    """
-    Combines NucleiEncapsulationLoss and OverlapLoss.
-    This loss ensures that nuclei are encapsulated within predicted cells and penalizes overlaps between different cells.
-    """
-
-    def __init__(self, weight_encap, weight_overlap, device) -> None:
-        super(NucEncapOverlapLoss, self).__init__()
-        self.nuclei_encapsulation_loss = NucleiEncapsulationLoss(weight_encap, device)
-        self.overlap_loss = OverlapLoss(weight_overlap, device)
-
-    def forward(self, seg_pred, batch_n, weight_encap=None, weight_overlap=None):
-        # Compute NucleiEncapsulationLoss
-        encap_loss = self.nuclei_encapsulation_loss(
-            seg_pred, batch_n, weight=weight_encap
-        )
-
-        # Compute OverlapLoss
-        overlap_loss = self.overlap_loss(
-            seg_pred, batch_n, weight=weight_overlap
-        )
-
-        # Return the sum of both losses
-        return encap_loss + overlap_loss
-
-    def get_max(self, input_shape, weight_encap=None, weight_overlap=None):
-        # Compute maximum possible NucleiEncapsulationLoss
-        max_encap_loss = self.nuclei_encapsulation_loss.get_max(
-            input_shape, weight=weight_encap
-        )
-
-        # Compute maximum possible OverlapLoss
-        max_overlap_loss = self.overlap_loss.get_max(
-            input_shape, weight=weight_overlap
-        )
-
-        # Return the sum of both maximum losses
-        return max_encap_loss + max_overlap_loss
-
-
-class CellCallingMarkerLoss(nn.Module):
-    """
-    Combines CellCallingLoss and PosNegMarkerLoss.
-    This loss maximizes assignment of transcripts to cells and handles positive/negative markers of cell types.
-    """
-
-    def __init__(self, cc_weight, weight_pos, weight_neg, device) -> None:
-        super(CellCallingMarkerLoss, self).__init__()
-        self.cell_calling_loss = CellCallingLoss(cc_weight, device)
-        self.pos_neg_marker_loss = PosNegMarkerLoss(weight_pos, weight_neg, device)
-
-    def forward(self, seg_pred, batch_sa, batch_pos, batch_neg, cc_weight=None, weight_pos=None, weight_neg=None):
-        # Compute CellCallingLoss
-        calling_loss = self.cell_calling_loss(
-            seg_pred, batch_sa, weight=cc_weight
-        )
-
-        # Compute PosNegMarkerLoss
-        marker_loss = self.pos_neg_marker_loss(
-            seg_pred, batch_pos, batch_neg, weight_pos=weight_pos, weight_neg=weight_neg
-        )
-
-        # Return the sum of both losses
-        return calling_loss + marker_loss
-
-    def get_max(self, input_shape, cc_weight=None, weight_pos=None, weight_neg=None):
-        # Compute maximum possible CellCallingLoss
-        max_calling_loss = self.cell_calling_loss.get_max(
-            input_shape, weight=cc_weight
-        )
-
-        # Compute maximum possible PosNegMarkerLoss
-        max_marker_loss = self.pos_neg_marker_loss.get_max(
-            input_shape, weight_pos=weight_pos, weight_neg=weight_neg
-        )
-
-        # Return the sum of both maximum losses
-        return max_calling_loss + max_marker_loss
+import torch.nn.functional as F
+from scipy.ndimage import distance_transform_edt
 
 
 class NucleiEncapsulationLoss(nn.Module):
@@ -248,7 +170,7 @@ class CellCallingLoss(nn.Module):
 
 class OverlapLoss(nn.Module):
     """
-    Penalise overlaps between different cells
+    Penalize overlaps between different cells. Optionally uses distance-based scaling and intensity weighting.
     """
 
     def __init__(self, weight, device) -> None:
@@ -257,53 +179,106 @@ class OverlapLoss(nn.Module):
         self.init_weight = weight
         self.device = device
 
-    def forward(self, seg_pred, batch_n, weight=None):
+    def forward(self, seg_pred, batch_n, weight=None, distance_scaling=False, intensity_weighting=False):
         # Overwrite self.weight if new weight is given; original is preserved as self.init_weight
         if weight is not None:
             self.weight = weight
-        
-        batch_n = batch_n[:, 0, :, :]
-        seg_probs = torch.nn.functional.softmax(seg_pred, dim=1)
 
+        batch_n = batch_n[:, 0, :, :]  # Extract nuclei segmentation
+        seg_probs = F.softmax(seg_pred, dim=1)
+
+        # Combine all nuclei into a single binary mask
         all_nuclei = torch.sum(batch_n, 0)
         all_not_nuclei = torch.ones(batch_n.shape).to(self.device) - all_nuclei
 
+        # Cytoplasm probabilities where there are no nuclei
         probs_cyto = seg_probs[:, 1, :, :] * all_not_nuclei
 
-        ones = torch.ones(probs_cyto.shape).to(self.device)
-        zeros = torch.zeros(probs_cyto.shape).to(self.device)
-
-        # Penalise if number of cell prob > 0.5 is > 1
+        # Apply a threshold to identify overlapping cytoplasmic regions
         alpha = 1.0
-        preds_cyto = torch.sigmoid((probs_cyto - 0.5) * alpha) * (ones - zeros) + zeros
+        preds_cyto = torch.sigmoid((probs_cyto - 0.5) * alpha)
+
+        # Calculate the overlap (regions where multiple cell probabilities exceed 0.5)
         count_cyto_overlap = torch.sum(preds_cyto, 0) - all_not_nuclei
-        m = torch.nn.ReLU()
-        count_cyto_overlap = m(count_cyto_overlap)
+        count_cyto_overlap = torch.nn.ReLU()(count_cyto_overlap)
 
+        # Optionally apply intensity weighting
+        if intensity_weighting:
+            count_cyto_overlap = count_cyto_overlap ** 2
+
+        if distance_scaling:
+            # Compute boundary mask
+            boundary_mask = self._compute_boundaries(all_nuclei)
+
+            # Compute distance transform (distance to nearest boundary)
+            distances = distance_transform_edt(1 - boundary_mask.cpu().numpy())  # Distance to nearest boundary
+            distances = torch.tensor(distances).to(self.device)
+
+            # Scale overlap penalty by distance (reduce penalty for overlaps near boundaries)
+            count_cyto_overlap = count_cyto_overlap / (1 + distances)
+
+        # Compute final loss
         loss = torch.sum(count_cyto_overlap)
-
         scale = seg_pred.shape[0] * seg_pred.shape[2] * seg_pred.shape[3]
         loss = loss / scale
 
         return self.weight * loss
-    
-    def get_max(self, input_shape=None, weight=None):
-        '''
-        In the worst case, every pixel is classified as cytoplasm with maximum probability. 
-        However, the normalized value simplifies to 1.0. 
-        
-        max_count_cyto_overlap = batch_size * height * width
-        scale = batch_size * height * width
-        max_count_cyto_overlap = scale # they are the same
-        max_loss = max_count_cyto_overlap / scale
-        '''
-        max_loss = 1.0
-    
-        # Apply the weight
-        weight = self.weight if weight is None else weight
-        max_loss = weight * max_loss
-    
-        return max_loss
+
+    def _compute_boundaries(self, all_nuclei):
+        """
+        Compute boundaries of nuclei regions using simple convolutional gradient method.
+        """
+        # Define a kernel to compute gradients
+        kernel = torch.tensor([[[[1, 0, -1],
+                                 [0, 0, 0],
+                                 [-1, 0, 1]]]], dtype=torch.float32).to(self.device)
+
+        # Apply convolution to detect boundaries
+        gradients_x = torch.nn.functional.conv2d(all_nuclei.unsqueeze(0).unsqueeze(0), kernel, padding=1)
+        gradients_y = torch.nn.functional.conv2d(all_nuclei.unsqueeze(0).unsqueeze(0), kernel.transpose(-1, -2), padding=1)
+        boundaries = torch.sqrt(gradients_x**2 + gradients_y**2)
+        return (boundaries > 0).float().squeeze(0).squeeze(0)
+
+    def get_max(self, seg_pred_shape, distance_scaling=False, intensity_weighting=False):
+        """
+        Computes the maximum possible value of the OverlapLoss.
+
+        Args:
+            seg_pred_shape (tuple): Shape of the segmentation predictions (batch_size, num_classes, height, width).
+            distance_scaling (bool): Whether distance-based scaling is applied.
+            intensity_weighting (bool): Whether intensity weighting is applied.
+
+        Returns:
+            float: Maximum possible loss value.
+        """
+        _, _, height, width = seg_pred_shape
+
+        if distance_scaling:
+            # Create a synthetic boundary mask
+            boundary_mask = torch.zeros((height, width), dtype=torch.float32).to(self.device)
+            boundary_mask[::10, :] = 1  # Example: Horizontal boundaries every 10 pixels
+            boundary_mask[:, ::10] = 1  # Example: Vertical boundaries every 10 pixels
+
+            # Compute distance transform
+            distances = distance_transform_edt(1 - boundary_mask.cpu().numpy())
+            distances = torch.tensor(distances).to(self.device)
+
+            # Max overlap scaled by distance
+            max_overlap = 1 / (1 + distances)
+            if intensity_weighting:
+                max_overlap = max_overlap ** 2
+            total_max_overlap = torch.sum(max_overlap).item()
+        else:
+            # Without distance scaling, all pixels contribute fully
+            total_max_overlap = height * width
+            if intensity_weighting:
+                total_max_overlap = total_max_overlap ** 2
+
+        # Normalize by the total number of pixels
+        scale = height * width
+        max_loss = total_max_overlap / scale
+
+        return self.weight * max_loss
 
 
 class PosNegMarkerLoss(nn.Module):
