@@ -37,6 +37,15 @@ from .utils.utils import (
 )
 from ..config import load_config, Config
 
+def to_scalar(value):
+    # Helper function that converts one-item Torch tensors into Python scalars (e.g. float)
+    if isinstance(value, torch.Tensor):
+        if value.numel() == 1:
+            value = value.item()
+        else:
+            print("Cannot apply .item() to a tensor with more than one element.")
+    return value
+
 def check_loss_args(loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_pn = None, 
                     loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None):
     # Check validity of given arguments
@@ -222,8 +231,8 @@ def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os 
                             loss_ne_ov, loss_os_ov, loss_cc_pn)
 
     # Track the loss values for graphing purposes
-    track_losses(tracked_losses, loss_ne.item(), loss_os.item(), loss_cc.item(), loss_ov.item(), loss_pn.item(), 
-                 loss_ne_ov.item(), loss_cc_pn.item(), total_loss.item())
+    track_losses(tracked_losses, to_scalar(loss_ne), to_scalar(loss_os), to_scalar(loss_ov), to_scalar(loss_cc), to_scalar(loss_pn), 
+                 to_scalar(loss_ne_ov), to_scalar(loss_os_ov), to_scalar(loss_cc_pn), to_scalar(total_loss))
 
     return total_loss.item()
 
