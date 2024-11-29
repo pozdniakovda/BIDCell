@@ -99,6 +99,7 @@ def default_solver(optimizer, tracked_losses, loss_ne = None, loss_os = None, lo
     loss_cc = loss_cc.squeeze() if loss_cc is not None else None
     loss_ov = loss_ov.squeeze() if loss_ov is not None else None
     loss_pn = loss_pn.squeeze() if loss_pn is not None else None
+    
     loss_ne_ov = loss_ne_ov.squeeze() if loss_ne_ov is not None else None
     loss_os_ov = loss_os_ov.squeeze() if loss_os_ov is not None else None
     loss_cc_pn = loss_cc_pn.squeeze() if loss_cc_pn is not None else None
@@ -116,13 +117,23 @@ def default_solver(optimizer, tracked_losses, loss_ne = None, loss_os = None, lo
     step_cc_loss = loss_cc.detach().cpu().numpy() if loss_cc is not None else 0 # noqa
     step_ov_loss = loss_ov.detach().cpu().numpy() if loss_ov is not None else 0 # noqa
     step_pn_loss = loss_pn.detach().cpu().numpy() if loss_pn is not None else 0 # noqa
+    
     step_ne_ov_loss = loss_ne_ov.detach().cpu().numpy() if loss_ne_ov is not None else 0 # noqa
     step_os_ov_loss = loss_os_ov.detach().cpu().numpy() if loss_os_ov is not None else 0 # noqa
     step_cc_pn_loss = loss_cc_pn.detach().cpu().numpy() if loss_cc_pn is not None else 0 # noqa
+    
     step_train_loss = loss.detach().cpu().numpy()
 
-    track_losses(tracked_losses, step_ne_loss, step_os_loss, step_cc_loss, step_ov_loss, step_pn_loss, 
-                 step_ne_ov_loss, step_os_ov_loss, step_cc_pn_loss, step_train_loss)
+    track_losses(tracked_losses = tracked_losses, 
+                 loss_ne = step_ne_loss, 
+                 loss_os = step_os_loss, 
+                 loss_cc = step_cc_loss, 
+                 loss_ov = step_ov_loss, 
+                 loss_pn = step_pn_loss, 
+                 loss_ne_ov = step_ne_ov_loss, 
+                 loss_os_ov = step_os_ov_loss, 
+                 loss_cc_pn = step_cc_pn_loss, 
+                 loss_total = step_train_loss)
 
     return step_train_loss
 
@@ -170,12 +181,26 @@ def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os 
     optimizer.step()
 
     # Calculate total loss with Procrustes-processed losses
-    total_loss = sum_losses(loss_ne, loss_os, loss_cc, loss_ov, loss_pn, 
-                            loss_ne_ov, loss_os_ov, loss_cc_pn)
+    total_loss = sum_losses(loss_ne = loss_ne, 
+                            loss_os = loss_os, 
+                            loss_cc = loss_cc, 
+                            loss_ov = loss_ov, 
+                            loss_pn = loss_pn, 
+                            loss_ne_ov = loss_ne_ov, 
+                            loss_os_ov = loss_os_ov, 
+                            loss_cc_pn = loss_cc_pn)
 
     # Track the loss values for graphing purposes
-    track_losses(tracked_losses, to_scalar(loss_ne), to_scalar(loss_os), to_scalar(loss_ov), to_scalar(loss_cc), to_scalar(loss_pn), 
-                 to_scalar(loss_ne_ov), to_scalar(loss_os_ov), to_scalar(loss_cc_pn), to_scalar(total_loss))
+    track_losses(tracked_losses = tracked_losses, 
+                 loss_ne = to_scalar(loss_ne), 
+                 loss_os = to_scalar(loss_os), 
+                 loss_cc = to_scalar(loss_cc), 
+                 loss_ov = to_scalar(loss_ov), 
+                 loss_pn = to_scalar(loss_pn), 
+                 loss_ne_ov = to_scalar(loss_ne_ov), 
+                 loss_os_ov = to_scalar(loss_os_ov), 
+                 loss_cc_pn = to_scalar(loss_cc_pn), 
+                 loss_total = to_scalar(total_loss))
 
     return total_loss.item()
 
@@ -508,16 +533,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
         sys.exit("Select optimiser from rmsprop or adam")
 
     global_step = 0
-    losses = {
-        "Nuclei Encapsulation Loss": [],
-        "Oversegmentation Loss": [],
-        "Cell Calling Loss": [],
-        "Overlap Loss": [],
-        "Pos-Neg Marker Loss": [],
-        "Combined Nuclei Encapsulation and Overlap Loss": [], 
-        "Combined Cell Calling and Marker Loss": [],
-        "Total Loss": [],
-    }
+    losses = {}
 
     # Scheduler https://arxiv.org/pdf/1812.01187.pdf
     lf = (
@@ -617,11 +633,17 @@ def train(config: Config, learning_rate = None, selected_solver = None):
             seg_pred = model(batch_x313)
 
             # Compute individual losses as appropriate
-            loss_ne = criterion_ne(seg_pred, batch_n, ne_weight) if is_first_step or not combine_ne_ov else None
-            loss_os = criterion_os(seg_pred, batch_n, os_weight) if is_first_step or not combine_os_ov else None
-            loss_ov = criterion_ov(seg_pred, batch_n, ov_weight) if is_first_step or (not combine_ne_ov and not combine_os_ov) else None
-            loss_cc = criterion_cc(seg_pred, batch_sa, cc_weight) if is_first_step or not combine_cc_pn else None
-            loss_pn = criterion_pn(seg_pred, batch_pos, batch_neg, pos_weight, neg_weight) if is_first_step or not combine_cc_pn else None
+            loss_ne, loss_os, loss_cc, loss_ov, loss_pn = None, None, None, None, None
+            ov_combined = combine_ne_ov or combine_os_ov
+            if is_first_step or not combine_ne_ov:
+                loss_ne = criterion_ne(seg_pred, batch_n, ne_weight)
+            if is_first_step or not combine_os_ov:
+                loss_os = criterion_os(seg_pred, batch_n, os_weight)
+            if is_first_step or not ov_combined:
+                loss_ov = criterion_ov(seg_pred, batch_n, ov_weight)
+            if is_first_step or not combine_cc_pn:
+                loss_cc = criterion_cc(seg_pred, batch_sa, cc_weight)
+                loss_pn = criterion_pn(seg_pred, batch_pos, batch_neg, pos_weight, neg_weight)
             
             if is_first_step:
                 if combine_ne_ov or combine_os_ov or combine_cc_pn:
@@ -658,11 +680,29 @@ def train(config: Config, learning_rate = None, selected_solver = None):
             # Apply the Procrustes method
             if "procrustes" in selected_solver:
                 scale_mode = "median" if "median" in selected_solver else "rmse" if "rmse" in selected_solver else "min"
-                total_loss = procrustes_method(model, optimizer, losses, loss_ne, loss_os, loss_cc, loss_ov, loss_pn, 
-                                               loss_ne_ov, loss_os_ov, loss_cc_pn, scale_mode=scale_mode)
+                total_loss = procrustes_method(model = model, 
+                                               optimizer = optimizer, 
+                                               tracked_losses = losses, 
+                                               loss_ne = loss_ne, 
+                                               loss_os = loss_os, 
+                                               loss_cc = loss_cc, 
+                                               loss_ov = loss_ov, 
+                                               loss_pn = loss_pn, 
+                                               loss_ne_ov = loss_ne_ov, 
+                                               loss_os_ov = loss_os_ov, 
+                                               loss_cc_pn = loss_cc_pn, 
+                                               scale_mode = "min")
             else: 
-                total_loss = default_solver(optimizer, losses, loss_ne, loss_os, loss_cc, loss_ov, loss_pn, 
-                                            loss_ne_ov, loss_os_ov, loss_cc_pn)
+                total_loss = default_solver(optimizer = optimizer, 
+                                            tracked_losses = losses, 
+                                            loss_ne = loss_ne, 
+                                            loss_os = loss_os, 
+                                            loss_cc = loss_cc, 
+                                            loss_ov = loss_ov, 
+                                            loss_pn = loss_pn, 
+                                            loss_ne_ov = loss_ne_ov, 
+                                            loss_os_ov = loss_os_ov, 
+                                            loss_cc_pn = loss_cc_pn)
             
             if (global_step % config.training_params.sample_freq) == 0:
                 coords_h1 = coords_h1.detach().cpu().squeeze().numpy()
