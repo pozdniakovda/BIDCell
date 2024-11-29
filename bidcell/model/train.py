@@ -239,41 +239,43 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
 def plot_loss(loss_vals, ma_loss_vals, label, total_epochs, use_procrustes_title, experiment_path, train_loader_len,
               scale_mode=None, log_scale=True, rescaling=True, show_moving_averages=True):
     # Plots a single objective's values over the course of the training cycle
-    ma_loss_vals, ma_window_width = ma_loss_vals
-    if rescaling:
-        divisor = max(loss_vals) / 1000 if max(loss_vals) != 0 else 1
-        loss_vals = np.divide(loss_vals, divisor)
-        if show_moving_averages:
-            ma_loss_vals = np.divide(ma_loss_vals, divisor)
-    
-    plt.figure(figsize=(18, 8))
-    plt.plot(loss_vals, label=label, linewidth=0.5)
-    if show_moving_averages:
-        plt.plot(ma_loss_vals, label=f"{label} (moving average, {ma_window_width})", linewidth=2)
-    
-    for epoch in range(total_epochs):
-        plt.axvline(x=epoch * train_loader_len, color="r", linestyle="--")
-    
-    if log_scale:
-        plt.yscale("log")
-    
-    plt.xlabel("Training Step")
-    plt.ylabel("Loss")
-    
-    if use_procrustes_title:
-        title = f"{label} During Training with Procrustes Method (scaling mode: {scale_mode})"
-    else: 
-        title = f"{label} During Training with Default Method"
-
-    if rescaling:
-        title = title + " (rescaled to max=1000)"
-    plt.title(title)
-    plt.tight_layout()
-    
-    underscored_label = "_".join(label.lower().split(" "))
-    filename = f"training_{underscored_label}.pdf" if not rescaling else f"training_{underscored_label}_rescaled.pdf"
-    plt.savefig(os.path.join(experiment_path, filename))
-    #plt.show()
+    if loss_vals is not None:
+        if len(loss_vals) > 0:
+            ma_loss_vals, ma_window_width = ma_loss_vals
+            if rescaling:
+                divisor = max(loss_vals) / 1000 if max(loss_vals) != 0 else 1
+                loss_vals = np.divide(loss_vals, divisor)
+                if show_moving_averages:
+                    ma_loss_vals = np.divide(ma_loss_vals, divisor)
+            
+            plt.figure(figsize=(18, 8))
+            plt.plot(loss_vals, label=label, linewidth=0.5)
+            if show_moving_averages:
+                plt.plot(ma_loss_vals, label=f"{label} (moving average, {ma_window_width})", linewidth=2)
+            
+            for epoch in range(total_epochs):
+                plt.axvline(x=epoch * train_loader_len, color="r", linestyle="--")
+            
+            if log_scale:
+                plt.yscale("log")
+            
+            plt.xlabel("Training Step")
+            plt.ylabel("Loss")
+            
+            if use_procrustes_title:
+                title = f"{label} During Training with Procrustes Method (scaling mode: {scale_mode})"
+            else: 
+                title = f"{label} During Training with Default Method"
+        
+            if rescaling:
+                title = title + " (rescaled to max=1000)"
+            plt.title(title)
+            plt.tight_layout()
+            
+            underscored_label = "_".join(label.lower().split(" "))
+            filename = f"training_{underscored_label}.pdf" if not rescaling else f"training_{underscored_label}_rescaled.pdf"
+            plt.savefig(os.path.join(experiment_path, filename))
+            #plt.show()
 
 def get_ma_losses(losses, window_width=None):
     # Calculate loss moving averages as 2.5% increments (e.g. 10 epochs x 1000 steps/epoch = 10,000 steps, i.e. 250 steps per point. 
