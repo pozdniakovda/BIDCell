@@ -194,6 +194,9 @@ class TrainingParams(BaseModel):
     ov_weight: float = 1.0
     pos_weight: float = 1.0
     neg_weight: float = 1.0
+    # overlap loss preferences
+    ov_distance_scaling: bool = False
+    ov_intensity_weighting: bool = False
     # loss combination
     combine_ne_ov: bool = True
     combine_ne_ov_mode: Literal["max", "top", "static"] = "top"
