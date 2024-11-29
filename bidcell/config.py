@@ -192,6 +192,7 @@ class TrainingParams(BaseModel):
     os_weight: float = 1.0
     cc_weight: float = 1.0
     ov_weight: float = 1.0
+    mu_weight: float = 1.0
     pos_weight: float = 1.0
     neg_weight: float = 1.0
     # overlap loss preferences
