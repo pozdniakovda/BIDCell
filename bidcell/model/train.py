@@ -391,6 +391,7 @@ def get_weighting_ratio(loss1, loss2, criterion_loss1, criterion_loss2, weights1
                         weights1_names, weights2_names, input_shape, combine_mode, logging):
     loss1 = to_scalar(loss1)
     loss2 = to_scalar(loss2)
+    ratio = None
     
     if combine_mode == "top":
         logging.info(f"Dynamically adjusting weights based on loss values at first step.")
