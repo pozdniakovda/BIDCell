@@ -583,41 +583,38 @@ def train(config: Config, learning_rate = None, selected_solver = None):
             seg_pred = model(batch_x313)
 
             # Compute individual losses as appropriate
-            loss_os = criterion_os(seg_pred, batch_n, os_weight)
-            if is_first_step or not combine_ne_ov:
-                if combine_ne_ov:
-                    logging.info(f"Computing nuclei encapsulation and overlap losses for first step; all subsequent steps will use combined ne_ov_loss.")
-                loss_ne = criterion_ne(seg_pred, batch_n, ne_weight)
-                loss_ov = criterion_ov(seg_pred, batch_n, ov_weight)
-            else: 
-                loss_ne, loss_ov = None, None
+            loss_ne = criterion_ne(seg_pred, batch_n, ne_weight) if is_first_step or not combine_ne_ov else None
+            loss_os = criterion_os(seg_pred, batch_n, os_weight) if is_first_step or not combine_os_ov else None
+            loss_ov = criterion_ov(seg_pred, batch_n, ov_weight) if is_first_step or (not combine_ne_ov and not combine_os_ov) else None
+            loss_cc = criterion_cc(seg_pred, batch_sa, cc_weight) if is_first_step or not combine_cc_pn else None
+            loss_pn = criterion_pn(seg_pred, batch_pos, batch_neg, pos_weight, neg_weight) if is_first_step or not combine_cc_pn else None
             
-            if is_first_step or not combine_cc_pn:
-                if combine_cc_pn:
-                    logging.info(f"Computing cell calling and marker losses for first step; all subsequent steps will use combined cc_pn_loss.")
-                loss_cc = criterion_cc(seg_pred, batch_sa, cc_weight)
-                loss_pn = criterion_pn(seg_pred, batch_pos, batch_neg, pos_weight, neg_weight)
-            else:
-                loss_cc, loss_pn = None, None
+            if is_first_step:
+                if combine_ne_ov or combine_os_ov or combine_cc_pn:
+                    logging.info(f"Computing all constituent losses for first step; subsequent steps will use combined losses.")
 
-            # Dynamic or static weighting of combined losses if required
+            # If selected, adjust loss weights to compensate for different magnitudes of initial values
             if combine_ne_ov:
                 if combine_ne_ov_mode != "static" and is_first_step:
-                    # Adjust loss weights to compensate for different magnitudes of initial values
                     ratio, weights1, weights2 = get_weighting_ratio(loss_ne, loss_ov, criterion_ne, criterion_ov, [ne_weight], [ov_weight], 
                                                                     ["ne_weight"], ["ov_weight"], seg_pred.shape, combine_ne_ov_mode, logging)
                     ne_weight, ov_weight = weights1[0], weights2[0]
                     loss_ne, loss_ov = None, None # reset to make sure they are not used in grads
+            if combine_os_ov:
+                if combine_os_ov_mode != "static" and is_first_step:
+                    ratio, weights1, weights2 = get_weighting_ratio(loss_os, loss_ov, criterion_os, criterion_ov, [os_weight], [ov_weight], 
+                                                                    ["os_weight"], ["ov_weight"], seg_pred.shape, combine_os_ov_mode, logging)
+                    os_weight, ov_weight = weights1[0], weights2[0]
+                    loss_os, loss_ov = None, None # reset to make sure they are not used in grads
             if combine_cc_pn:
                 if combine_cc_pn_mode != "static" and is_first_step:
-                    # Adjust loss weights to compensate for different magnitudes of initial values
                     ratio, weights1, weights2 = get_weighting_ratio(loss_cc, loss_pn, criterion_cc, criterion_pn, [cc_weight], [pos_weight, neg_weight], 
                                                                     ["cc_weight"], ["pos_weight", "neg_weight"], seg_pred.shape, combine_cc_pn_mode, logging)
                     cc_weight = weights1[0]
                     pos_weight, neg_weight = weights2
                     loss_cc, loss_pn = None, None # reset to make sure they are not used in grads
             
-            is_first_step = False
+            is_first_step = False # first step special case handling is concluded
             
             # Calculate combined losses if required
             loss_ne_ov = criterion_ne_ov(seg_pred, batch_n, ne_weight, ov_weight) if combine_ne_ov else None
@@ -627,9 +624,11 @@ def train(config: Config, learning_rate = None, selected_solver = None):
             # Apply the Procrustes method
             if "procrustes" in selected_solver:
                 scale_mode = "median" if "median" in selected_solver else "rmse" if "rmse" in selected_solver else "min"
-                total_loss = procrustes_method(model, optimizer, losses, loss_ne, loss_os, loss_cc, loss_ov, loss_pn, loss_ne_ov, loss_cc_pn, scale_mode=scale_mode)
+                total_loss = procrustes_method(model, optimizer, losses, loss_ne, loss_os, loss_cc, loss_ov, loss_pn, 
+                                               loss_ne_ov, loss_os_ov, loss_cc_pn, scale_mode=scale_mode)
             else: 
-                total_loss = default_solver(optimizer, tracked_losses, loss_ne, loss_os, loss_cc, loss_ov, loss_pn, loss_ne_ov, loss_cc_pn)
+                total_loss = default_solver(optimizer, tracked_losses, loss_ne, loss_os, loss_cc, loss_ov, loss_pn, 
+                                            loss_ne_ov, loss_os_ov, loss_cc_pn)
             
             if (global_step % config.training_params.sample_freq) == 0:
                 coords_h1 = coords_h1.detach().cpu().squeeze().numpy()
