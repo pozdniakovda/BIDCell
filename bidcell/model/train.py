@@ -210,10 +210,12 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
 
         for label, loss_ma_tuple in other_loss_ma.items():
             loss_ma, ma_window_width = loss_ma_tuple
-            if rescaling:
-                divisor = divisors[label]
-                loss_ma = np.divide(loss_ma, divisor)
-            plt.plot(loss_ma, label=f"{label} (moving average, {ma_window_width})", linewidth=1, alpha=0.5)
+            if loss_ma is not None:
+                if len(loss_ma) > 0:
+                    if rescaling:
+                        divisor = divisors[label]
+                        loss_ma = np.divide(loss_ma, divisor)
+                    plt.plot(loss_ma, label=f"{label} (moving average, {ma_window_width})", linewidth=1, alpha=0.5)
 
     for epoch in range(total_epochs):
         plt.axvline(x=epoch * train_loader_len, color="r", linestyle="--", alpha=0.5)
