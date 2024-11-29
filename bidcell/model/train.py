@@ -347,29 +347,33 @@ def plot_losses(losses, ma_losses, combine_ne_ov, combine_os_ov, combine_cc_pn, 
 
 def get_weighting_ratio(loss1, loss2, criterion_loss1, criterion_loss2, weights1, weights2, 
                         weights1_names, weights2_names, input_shape, combine_mode, logging):
+    loss1 = to_scalar(loss1)
+    loss2 = to_scalar(loss2)
+    
     if combine_mode == "top":
         logging.info(f"Dynamically adjusting weights based on loss values at first step.")
-        ratio = loss1.item() / loss2.item() if loss1.item() != 0 and loss2.item() != 0 else None
+        if loss1 != 0 and loss2 != 0:
+            ratio = loss1 / loss2
+            weights2 = [weight2 * ratio for weight2 in weights2]
+            message = f"loss1={loss1}, loss2={loss2}, ratio={ratio}"
+            for weight_name, weight_val in zip(weights2_names, weights2):
+                message = f"{message}; {weight_name} adjusted to new value of {weight_val}"
+            logging.info(message)
+        
     elif combine_mode == "max": 
         logging.info(f"Dynamically adjusting weights based on maximum theoretical loss values.")
         max_loss1 = criterion_loss1.get_max(input_shape, *weights1)
         max_loss2 = criterion_loss2.get_max(input_shape, *weights2)
-        ratio = max_loss1 / max_loss2 if max_loss1 != 0 and max_loss2 != 0 else None
+        if max_loss1 != 0 and max_loss2 != 0:
+            ratio = max_loss1 / max_loss2
+            weights2 = [weight2 * ratio for weight2 in weights2]
+            message = f"max_loss1={max_loss1}, max_loss2={max_loss2}, ratio={ratio}"
+            for weight_name, weight_val in zip(weights2_names, weights2):
+                message = f"{message}; {weight_name} adjusted to new value of {weight_val}"
+            logging.info(message)
+        
     else:
         raise ValueError(f"combine_mode must be top, max, or static, but was given as {combine_mode}")
-
-    if ratio is not None: 
-        for i, weight2 in enumerate(weights2):
-            weight2 = weight2 * ratio
-            weights2[i] = weight2
-        
-        message = f"loss1={loss1}, loss2={loss2}, ratio={ratio}"
-        for weight_name, weight_val in zip(weights2_names, weights2):
-            message = f"{message}; {weight_name} adjusted to new value of {weight_val}"
-        logging.info(message)
-    
-    else: 
-        logging.info(f"ratio={ratio}; no adjustment made.")
 
     return ratio, weights1, weights2
 
