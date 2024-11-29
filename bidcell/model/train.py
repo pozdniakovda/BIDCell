@@ -361,7 +361,7 @@ def get_weighting_ratio(loss1, loss2, criterion_loss1, criterion_loss2, weights1
             weight2 = weight2 * ratio
             weights2[i] = weight2
         
-        message = f"ratio={ratio}"
+        message = f"loss1={loss1}, loss2={loss2}, ratio={ratio}"
         for weight_name, weight_val in zip(weights2_names, weights2):
             message = f"{message}; {weight_name} adjusted to new value of {weight_val}"
         logging.info(message)
