@@ -183,22 +183,21 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
                          train_loader_len, use_procrustes_title, experiment_path, scale_mode=None, 
                          log_scale=True, rescaling=True, show_moving_averages=True):
     # Plots all the losses on one graph
-    
+
     plt.figure(figsize=(18, 8))
 
-    divisors = {}
     if rescaling:
         divisor = max(total_loss_vals) / 1000 if max(total_loss_vals) != 0 else 1
         total_loss_vals = np.divide(total_loss_vals, divisor)
-        
-        for label, loss_vals in other_loss_vals.items():
-            divisor = max(loss_vals) / 1000 if max(loss_vals) != 0 else 1
-            if rescaling:
-                divisors[label] = divisor
-                loss_vals = np.divide(loss_vals, divisor)
-            plt.plot(loss_vals, label=label, linewidth=0.5, alpha=0.5)
-
     plt.plot(total_loss_vals, label="Total Loss", linewidth=1)
+
+    divisors = {}
+    for label, loss_vals in other_loss_vals.items():
+        divisor = max(loss_vals) / 1000 if max(loss_vals) != 0 else 1
+        if rescaling:
+            divisors[label] = divisor
+            loss_vals = np.divide(loss_vals, divisor)
+        plt.plot(loss_vals, label=label, linewidth=0.5, alpha=0.5)
 
     if show_moving_averages:
         ma_loss_vals, ma_window_width = total_loss_ma
@@ -206,7 +205,7 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
             divisor = max(ma_loss_vals) / 1000 if max(ma_loss_vals) != 0 else 1
             ma_loss_vals = np.divide(ma_loss_vals, divisor)
         plt.plot(ma_loss_vals, label=f"Total Loss (moving average, {ma_window_width})", linewidth=2)
-    
+
         for label, loss_ma_tuple in other_loss_ma.items():
             loss_ma, ma_window_width = loss_ma_tuple
             if rescaling:
@@ -219,7 +218,7 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
 
     if log_scale:
         plt.yscale("log")
-                             
+
     plt.xlabel("Training Step")
     plt.ylabel("Loss")
     title = f"Training Loss with Procrustes Method (scaling mode: {scale_mode})" if use_procrustes_title else "Training Loss with Default Method"
