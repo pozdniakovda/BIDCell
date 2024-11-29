@@ -186,18 +186,19 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
     
     plt.figure(figsize=(18, 8))
 
+    divisors = {}
     if rescaling:
         divisor = max(total_loss_vals) / 1000 if max(total_loss_vals) != 0 else 1
         total_loss_vals = np.divide(total_loss_vals, divisor)
-    plt.plot(total_loss_vals, label="Total Loss", linewidth=1)
+        
+        for label, loss_vals in other_loss_vals.items():
+            divisor = max(loss_vals) / 1000 if max(loss_vals) != 0 else 1
+            if rescaling:
+                divisors[label] = divisor
+                loss_vals = np.divide(loss_vals, divisor)
+            plt.plot(loss_vals, label=label, linewidth=0.5, alpha=0.5)
 
-    divisors = {}
-    for label, loss_vals in other_loss_vals.items():
-        divisor = max(loss_vals) / 1000 if max(loss_vals) != 0 else 1
-        if rescaling:
-            divisors[label] = divisor
-            loss_vals = np.divide(loss_vals, divisor)
-        plt.plot(loss_vals, label=label, linewidth=0.5, alpha=0.5)
+    plt.plot(total_loss_vals, label="Total Loss", linewidth=1)
 
     if show_moving_averages:
         ma_loss_vals, ma_window_width = total_loss_ma
