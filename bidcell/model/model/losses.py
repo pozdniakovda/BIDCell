@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-
+import torch.nn.functional as F
 
 class NucleiEncapsulationLoss(nn.Module):
     """
@@ -116,6 +116,76 @@ class OverlapLoss(nn.Module):
         loss = loss / scale
 
         return self.weight * loss
+
+
+class MultipleAssignmentLoss(nn.Module):
+    """
+    Penalize double (or more) assignments of transcripts due to overlapping segmentations.
+    """
+
+    def __init__(self, weight, device):
+        super(MultipleAssignmentLoss, self).__init__()
+        self.weight = weight
+        self.init_weight = weight
+        self.device = device
+
+    def forward(self, seg_pred, transcript_map, weight=None):
+        """
+        Args:
+            seg_pred: Segmentation predictions (batch_size, num_classes, height, width).
+            transcript_map: Binary map of transcript locations (batch_size, 1, height, width),
+                            where 1 indicates a transcript's presence at that pixel.
+            weight: Optional weight to override the initialized weight.
+        """
+        if weight is not None:
+            self.weight = weight
+
+        # Apply softmax to get probabilities for each pixel
+        seg_probs = F.softmax(seg_pred, dim=1)
+
+        # Extract the "cell" probabilities (assuming class 1 corresponds to cells)
+        cell_probs = seg_probs[:, 1, :, :]  # (batch_size, height, width)
+
+        # Mask cell probabilities by transcript locations
+        assigned_probs = cell_probs * transcript_map[:, 0, :, :]  # (batch_size, height, width)
+
+        # Sum probabilities for each transcript location (overlapping predictions add up)
+        summed_probs = torch.sum(assigned_probs, dim=(1, 2))  # (batch_size)
+
+        # Penalize probabilities > 1 (indicating multiple assignments)
+        multiple_assignment_penalty = F.relu(summed_probs - 1)
+
+        # Compute the total penalty normalized by the batch size
+        loss = torch.mean(multiple_assignment_penalty) * self.weight
+
+        return loss
+
+    def get_max(self, input_shape, num_transcripts, weight=None):
+        """
+        Compute the maximum possible loss assuming the worst-case scenario.
+        
+        Args:
+            input_shape: Shape of seg_pred (batch_size, num_classes, height, width).
+            num_transcripts: Number of transcripts in each image (tensor of shape [batch_size]).
+            weight: Optional weight to override the initialized weight.
+
+        Returns:
+            float: Maximum possible loss value.
+        """
+        batch_size, _, height, width = input_shape
+        max_loss = 0.0
+
+        for b in range(batch_size):
+            if num_transcripts[b] > 0:
+                # Worst case: Each transcript is assigned fully to multiple cells
+                penalty = num_transcripts[b].item()  # Each transcript contributes a maximum penalty of 1
+            else:
+                penalty = 0.0  # No transcripts, no penalty
+
+            max_loss += penalty
+
+        max_loss = (max_loss / batch_size) * (self.weight if weight is None else weight)
+        return max_loss
 
 
 class PosNegMarkerLoss(nn.Module):
