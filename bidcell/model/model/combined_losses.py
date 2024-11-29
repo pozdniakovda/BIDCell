@@ -37,6 +37,42 @@ class NucEncapOverlapLoss(nn.Module):
         return max_encap_loss + max_overlap_loss
 
 
+class OversegOverlapLoss(nn.Module):
+    """
+    Combines OversegmentationLoss and OverlapLoss.
+    This loss minimizes oversegmentation and penalizes overlaps between different cells.
+    """
+
+    def __init__(self, weight_oversegmentation, weight_overlap, device) -> None:
+        super(OversegOverlapLoss, self).__init__()
+        self.oversegmentation_loss = OversegmentationLoss(weight_oversegmentation, device)
+        self.overlap_loss = OverlapLoss(weight_overlap, device)
+
+    def forward(self, seg_pred, batch_n, weight_oversegmentation=None, weight_overlap=None, 
+                distance_scaling=False, intensity_weighting=False):
+        # Compute OversegmentationLoss
+        oversegmentation_loss = self.oversegmentation_loss(seg_pred, batch_n, weight=weight_oversegmentation)
+
+        # Compute OverlapLoss
+        overlap_loss = self.overlap_loss(seg_pred, batch_n, weight=weight_overlap, distance_scaling=distance_scaling, 
+                                         intensity_weighting=intensity_weighting)
+
+        # Return the sum of both losses
+        return oversegmentation_loss + overlap_loss
+
+    def get_max(self, input_shape, weight_oversegmentation=None, weight_overlap=None, 
+                distance_scaling=False, intensity_weighting=False):
+        # Compute maximum possible OversegmentationLoss
+        max_oversegmentation_loss = self.oversegmentation_loss.get_max(input_shape, weight=weight_oversegmentation)
+
+        # Compute maximum possible OverlapLoss
+        max_overlap_loss = self.overlap_loss.get_max(input_shape, distance_scaling=distance_scaling, 
+                                                     intensity_weighting=intensity_weighting)
+
+        # Return the sum of both maximum losses
+        return max_oversegmentation_loss + max_overlap_loss
+
+
 class CellCallingMarkerLoss(nn.Module):
     """
     Combines CellCallingLoss and PosNegMarkerLoss.
