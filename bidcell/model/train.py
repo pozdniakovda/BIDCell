@@ -319,6 +319,81 @@ def plot_loss(loss_vals, ma_loss_vals, label, total_epochs, use_procrustes_title
     plt.savefig(os.path.join(experiment_path, filename))
     #plt.show()
 
+def get_ma_losses(losses, window_width=None):
+    # Calculate loss moving averages as 2.5% increments (e.g. 10 epochs x 1000 steps/epoch = 10,000 steps, i.e. 250 steps per point. 
+    ma_losses = {}
+    
+    for loss_name, loss_vals in losses.items():
+        if len(loss_vals) == 0: 
+            ma_losses[loss_name] = ([], 0)
+            continue
+
+        if window_width is None:
+            window_width = max(1, int(len(loss_vals) / 40))  # Ensure window width is at least 1
+        loss_vals = np.array(loss_vals)
+    
+        moving_averages = np.convolve(loss_vals, np.ones(window_width) / window_width, mode="valid") # main convolution
+        moving_averages = np.concatenate([np.full(window_width - 1, moving_averages[0]), moving_averages]) # padding
+    
+        ma_losses[loss_name] = (moving_averages, window_width)
+
+    return ma_losses
+
+def plot_losses(losses, combine_ne_ov, combine_os_ov, combine_cc_pn, selected_solver, total_epochs, 
+                train_loader_len, experiment_path, scale_mode, log_scale=True):
+    # Plot losses
+    print(f"Graphing overlaid losses...")
+
+    # Get moving averages
+    ma_losses = get_ma_losses(losses)
+
+    # Plot all losses on one graph
+    total_loss_vals = losses["Total Loss"]
+    total_loss_ma = ma_losses["Total Loss"]
+    
+    keys = []
+    if combine_ne_ov:
+        keys.extend(["Combined Nuclei Encapsulation and Overlap Loss", "Oversegmentation Loss"])
+    elif combine_os_ov:
+        keys.extend(["Combined Oversegmentation and Overlap Loss", "Nuclei Encapsulation Loss"])
+    else:
+        keys.extend(["Nuclei Encapsulation Loss", "Oversegmentation Loss", "Overlap Loss"])
+    
+    if combine_cc_pn:
+        keys.append("Combined Cell Calling and Marker Loss")
+    else:
+        keys.extend(["Cell Calling Loss", "Pos-Neg Marker Loss"])
+    
+    other_loss_vals = {key:losses[key] for key in keys}
+    other_loss_ma = {key:ma_losses[key] for key in keys}
+
+    use_procrustes_title = "procrustes" in selected_solver.lower()
+    plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_loss_ma, total_epochs, 
+                         train_loader_len, use_procrustes_title, experiment_path, scale_mode, 
+                         log_scale, rescaling=False)
+
+    # Plot individual losses
+    print(f"Graphing total loss...")
+    plot_loss(losses["Total Loss"], ma_losses["Total Loss"], "Total Loss", total_epochs, use_procrustes_title, experiment_path, 
+              train_loader_len, scale_mode, log_scale, rescaling=False)
+    print(f"Graphing individual losses...")
+    for key in keys:
+        plot_loss(losses[key], ma_losses[key], key, total_epochs, use_procrustes_title, experiment_path, 
+                  train_loader_len, scale_mode, log_scale, rescaling=False)
+
+    # Repeat for rescaled versions
+    print(f"Graphing overlaid rescaled losses...")
+    plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_loss_ma, total_epochs, 
+                         train_loader_len, use_procrustes_title, experiment_path, scale_mode, 
+                         log_scale, rescaling=True)
+    print(f"Graphing rescaled total loss...")
+    plot_loss(losses["Total Loss"], ma_losses["Total Loss"], "Total Loss", total_epochs, use_procrustes_title, experiment_path, 
+              train_loader_len, scale_mode, log_scale, rescaling=True)
+    print(f"Graphing rescaled individual losses...")
+    for key in keys:
+        plot_loss(losses[key], ma_losses[key], key, total_epochs, use_procrustes_title, experiment_path, 
+                  train_loader_len, scale_mode, log_scale, rescaling=True)
+
 def get_weighting_ratio(loss1, loss2, criterion_loss1, criterion_loss2, weights1, weights2, 
                         weights1_names, weights2_names, input_shape, combine_mode, logging):
     if combine_mode == "top":
@@ -680,71 +755,11 @@ def train(config: Config, learning_rate = None, selected_solver = None):
         scheduler.step()
         lrs.append(cur_lr)
 
-    # Calculate loss moving averages as 2.5% increments (e.g. 10 epochs x 1000 steps/epoch = 10,000 steps, i.e. 250 steps per point. 
-    ma_losses = {}
-    
-    for loss_name, loss_vals in losses.items():
-        if len(loss_vals) == 0: 
-            ma_losses[loss_name] = ([], 0)
-            continue
-        
-        window_width = max(1, int(len(loss_vals) / 40))  # Ensure window width is at least 1
-        loss_vals = np.array(loss_vals)
-    
-        moving_averages = np.convolve(loss_vals, np.ones(window_width) / window_width, mode="valid") # main convolution
-        moving_averages = np.concatenate([np.full(window_width - 1, moving_averages[0]), moving_averages]) # padding
-    
-        ma_losses[loss_name] = (moving_averages, window_width)
-
-    # Plot losses
-    use_procrustes_title = "procrustes" in selected_solver
-
+    # Graph the losses
     total_epochs = config.training_params.total_epochs
     train_loader_len = len(train_loader)
-
-    # Plot all losses on one graph
-    print(f"Graphing overlaid losses...")
-    total_loss_vals = losses["Total Loss"]
-    total_loss_ma = ma_losses["Total Loss"]
-    
-    keys = ["Oversegmentation Loss"]
-    if combine_ne_ov:
-        keys.append("Combined Nuclei Encapsulation and Overlap Loss")
-    else:
-        keys.extend(["Nuclei Encapsulation Loss", "Overlap Loss"])
-    
-    if combine_cc_pn:
-        keys.append("Combined Cell Calling and Marker Loss")
-    else:
-        keys.extend(["Cell Calling Loss", "Pos-Neg Marker Loss"])
-    
-    other_loss_vals = {key:losses[key] for key in keys}
-    other_loss_ma = {key:ma_losses[key] for key in keys}
-    plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_loss_ma, total_epochs, 
-                         train_loader_len, use_procrustes_title, experiment_path, scale_mode, 
-                         log_scale=True, rescaling=False)
-
-    # Plot individual losses
-    print(f"Graphing total loss...")
-    plot_loss(losses["Total Loss"], ma_losses["Total Loss"], "Total Loss", total_epochs, use_procrustes_title, experiment_path, 
-              train_loader_len, scale_mode, log_scale=True, rescaling=False)
-    print(f"Graphing individual losses...")
-    for key in keys:
-        plot_loss(losses[key], ma_losses[key], key, total_epochs, use_procrustes_title, experiment_path, 
-                  train_loader_len, scale_mode, log_scale=True, rescaling=False)
-
-    # Repeat for rescaled versions
-    print(f"Graphing overlaid rescaled losses...")
-    plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_loss_ma, total_epochs, 
-                         train_loader_len, use_procrustes_title, experiment_path, scale_mode, 
-                         log_scale=True, rescaling=True)
-    print(f"Graphing rescaled total loss...")
-    plot_loss(losses["Total Loss"], ma_losses["Total Loss"], "Total Loss", total_epochs, use_procrustes_title, experiment_path, 
-              train_loader_len, scale_mode, log_scale=True, rescaling=True)
-    print(f"Graphing rescaled individual losses...")
-    for key in keys:
-        plot_loss(losses[key], ma_losses[key], key, total_epochs, use_procrustes_title, experiment_path, 
-                  train_loader_len, scale_mode, log_scale=True, rescaling=True)
+    plot_losses(losses, combine_ne_ov, combine_os_ov, combine_cc_pn, selected_solver, total_epochs, 
+                train_loader_len, experiment_path, scale_mode)
 
     logging.info("Training finished")
 
