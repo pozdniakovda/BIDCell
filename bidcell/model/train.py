@@ -348,13 +348,10 @@ def get_ma_losses(losses, window_width=None):
 
     return ma_losses
 
-def plot_losses(losses, combine_ne_ov, combine_os_ov, combine_cc_pn, selected_solver, total_epochs, 
+def plot_losses(losses, ma_losses, combine_ne_ov, combine_os_ov, combine_cc_pn, selected_solver, total_epochs, 
                 train_loader_len, experiment_path, scale_mode, log_scale=True):
     # Plot losses
     print(f"Graphing overlaid losses...")
-
-    # Get moving averages
-    ma_losses = get_ma_losses(losses)
 
     # Plot all losses on one graph
     total_loss_vals = losses["Total Loss"]
@@ -768,7 +765,8 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     total_epochs = config.training_params.total_epochs
     train_loader_len = len(train_loader)
     log_scale = config.training_params.log_scale
-    plot_losses(losses, combine_ne_ov, combine_os_ov, combine_cc_pn, selected_solver, total_epochs, 
+    ma_losses = get_ma_losses(losses)
+    plot_losses(losses, ma_losses, combine_ne_ov, combine_os_ov, combine_cc_pn, selected_solver, total_epochs, 
                 train_loader_len, experiment_path, scale_mode, log_scale)
 
     logging.info("Training finished")
