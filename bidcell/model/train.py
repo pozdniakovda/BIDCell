@@ -661,7 +661,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
                 total_loss = procrustes_method(model, optimizer, losses, loss_ne, loss_os, loss_cc, loss_ov, loss_pn, 
                                                loss_ne_ov, loss_os_ov, loss_cc_pn, scale_mode=scale_mode)
             else: 
-                total_loss = default_solver(optimizer, tracked_losses, loss_ne, loss_os, loss_cc, loss_ov, loss_pn, 
+                total_loss = default_solver(optimizer, losses, loss_ne, loss_os, loss_cc, loss_ov, loss_pn, 
                                             loss_ne_ov, loss_os_ov, loss_cc_pn)
             
             if (global_step % config.training_params.sample_freq) == 0:
