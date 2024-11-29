@@ -37,8 +37,12 @@ from .utils.utils import (
 )
 from ..config import load_config, Config
 
-def check_loss_args(loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_pn = None, loss_ne_ov = None, loss_cc_pn = None):
+def check_loss_args(loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_pn = None, 
+                    loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None):
     # Check validity of given arguments
+    if loss_ne_ov is not None and loss_os_ov is not None:
+        raise Exception(f"loss_ne_ov and loss_os_ov were both given, but are mutually exclusive because they both use OverlapLoss")
+    
     if loss_ne_ov is None:
         if loss_ne is None and loss_ov is None:
             raise Exception(f"Missing loss_ne and loss_ov")
@@ -52,6 +56,20 @@ def check_loss_args(loss_ne = None, loss_os = None, loss_cc = None, loss_ov = No
         warnings.warn(f"loss_ne was given, but it was ignored, as loss_ne_ov was also given.")
     elif loss_ov is not None:
         warnings.warn(f"loss_ov was given, but it was ignored, as loss_ne_ov was also given.")
+
+    if loss_os_ov is None:
+        if loss_os is None and loss_ov is None:
+            raise Exception(f"Missing loss_os and loss_ov")
+        elif loss_os is None:
+            raise Exception(f"Missing loss_os.")
+        elif loss_ov is None:
+            raise Exception(f"Missing loss_ov.")
+    elif loss_os is not None and loss_ov is not None:
+        warnings.warn(f"loss_os and loss_ov were given, but they were ignored, as loss_os_ov was also given.")
+    elif loss_os is not None:
+        warnings.warn(f"loss_os was given, but it was ignored, as loss_os_ov was also given.")
+    elif loss_ov is not None:
+        warnings.warn(f"loss_ov was given, but it was ignored, as loss_os_ov was also given.")
 
     if loss_cc_pn is None:
         if loss_cc is None and loss_pn is None:
@@ -70,28 +88,56 @@ def check_loss_args(loss_ne = None, loss_os = None, loss_cc = None, loss_ov = No
     # Return True if no errors were encountered
     return True
 
-def track_losses(tracked_losses, loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_pn = None, loss_ne_ov = None, loss_cc_pn = None, loss_total = None): 
+def track_loss(tracked_losses, key, loss_val):
+    if key not in tracked_losses.keys():
+        tracked_losses[key] = []
+    tracked_losses[key].append(loss_val)
+
+def track_losses(tracked_losses, loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_pn = None, 
+                 loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None, loss_total = None): 
     # Track losses
     if loss_ne is not None:
-        tracked_losses["Nuclei Encapsulation Loss"].append(loss_ne.item())
+        track_loss(tracked_losses, "Nuclei Encapsulation Loss", loss_ne)
     if loss_os is not None:
-        tracked_losses["Oversegmentation Loss"].append(loss_os.item())
+        track_loss(tracked_losses, "Oversegmentation Loss", loss_os)
     if loss_cc is not None:
-        tracked_losses["Cell Calling Loss"].append(loss_cc.item())
+        track_loss(tracked_losses, "Cell Calling Loss", loss_cc)
     if loss_ov is not None:
-        tracked_losses["Overlap Loss"].append(loss_ov.item())
+        track_loss(tracked_losses, "Overlap Loss", loss_ov)
     if loss_pn is not None:
-        tracked_losses["Pos-Neg Marker Loss"].append(loss_pn.item())
+        track_loss(tracked_losses, "Pos-Neg Marker Loss", loss_pn)
     if loss_ne_ov is not None:
-        tracked_losses["Combined Nuclei Encapsulation and Overlap Loss"].append(loss_ne_ov.item())
+        track_loss(tracked_losses, "Combined Nuclei Encapsulation and Overlap Loss", loss_ne_ov)
+    if loss_os_ov is not None:
+        track_loss(tracked_losses, "Combined Oversegmentation and Overlap Loss", loss_os_ov)
     if loss_cc_pn is not None:
-        tracked_losses["Combined Cell Calling and Marker Loss"].append(loss_cc_pn.item())
+        track_loss(tracked_losses, "Combined Cell Calling and Marker Loss", loss_cc_pn)
     if loss_total is not None:
-        tracked_losses["Total Loss"].append(loss_total.item())
+        track_loss(tracked_losses, "Total Loss", loss_total)
 
-def default_solver(optimizer, tracked_losses, loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_pn = None, loss_ne_ov = None, loss_cc_pn = None):
+def sum_losses(loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_pn = None, 
+               loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None): 
+    if loss_ne_ov is not None:
+        if loss_cc_pn is not None:
+            loss = loss_ne_ov + loss_os + loss_cc_pn
+        else: 
+            loss = loss_ne_ov + loss_os + loss_cc + loss_pn
+    elif loss_os_ov is not None: 
+        if loss_cc_pn is not None:
+            loss = loss_ne + loss_os_ov + loss_cc_pn
+        else: 
+            loss = loss_ne + loss_os_ov + loss_cc + loss_pn
+    elif loss_cc_pn is not None:
+        loss = loss_ne + loss_os + loss_ov + loss_cc_pn
+    else: 
+        loss = loss_ne + loss_os + loss_ov + loss_cc + loss_pn
+
+    return loss
+
+def default_solver(optimizer, tracked_losses, loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_pn = None, 
+                   loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None):
     # Check validity of given arguments
-    check_loss_args(loss_ne, loss_os, loss_cc, loss_ov, loss_pn, loss_ne_ov, loss_cc_pn)
+    check_loss_args(loss_ne, loss_os, loss_cc, loss_ov, loss_pn, loss_ne_ov, loss_os_ov, loss_cc_pn)
     
     loss_ne = loss_ne.squeeze() if loss_ne is not None else None
     loss_os = loss_os.squeeze() if loss_os is not None else None
@@ -99,16 +145,11 @@ def default_solver(optimizer, tracked_losses, loss_ne = None, loss_os = None, lo
     loss_ov = loss_ov.squeeze() if loss_ov is not None else None
     loss_pn = loss_pn.squeeze() if loss_pn is not None else None
     loss_ne_ov = loss_ne_ov.squeeze() if loss_ne_ov is not None else None
+    loss_os_ov = loss_os_ov.squeeze() if loss_os_ov is not None else None
     loss_cc_pn = loss_cc_pn.squeeze() if loss_cc_pn is not None else None
 
-    if loss_ne_ov is not None and loss_cc_pn is not None:
-        loss = loss_ne_ov + loss_cc_pn + loss_os
-    elif loss_ne_ov is not None:
-        loss = loss_ne_ov + loss_os + loss_cc + loss_pn
-    elif loss_cc_pn is not None: 
-        loss = loss_cc_pn + loss_ne + loss_os + loss_ov
-    else:
-        loss = loss_ne + loss_os + loss_cc + loss_ov + loss_pn
+    loss = sum_losses(loss_ne, loss_os, loss_cc, loss_ov, loss_pn, 
+                      loss_ne_ov, loss_os_ov, loss_cc_pn)
 
     # Optimisation
     loss.backward()
@@ -121,28 +162,36 @@ def default_solver(optimizer, tracked_losses, loss_ne = None, loss_os = None, lo
     step_ov_loss = loss_ov.detach().cpu().numpy() if loss_ov is not None else 0 # noqa
     step_pn_loss = loss_pn.detach().cpu().numpy() if loss_pn is not None else 0 # noqa
     step_ne_ov_loss = loss_ne_ov.detach().cpu().numpy() if loss_ne_ov is not None else 0 # noqa
+    step_os_ov_loss = loss_os_ov.detach().cpu().numpy() if loss_os_ov is not None else 0 # noqa
     step_cc_pn_loss = loss_cc_pn.detach().cpu().numpy() if loss_cc_pn is not None else 0 # noqa
     step_train_loss = loss.detach().cpu().numpy()
 
-    track_losses(tracked_losses, step_ne_loss, step_os_loss, step_cc_loss, step_ov_loss, step_pn_loss, step_ne_ov_loss, step_cc_pn_loss, step_train_loss)
+    track_losses(tracked_losses, step_ne_loss, step_os_loss, step_cc_loss, step_ov_loss, step_pn_loss, 
+                 step_ne_ov_loss, step_os_ov_loss, step_cc_pn_loss, step_train_loss)
 
     return step_train_loss
 
-def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_pn = None, loss_ne_ov = None, loss_cc_pn = None, scale_mode = "min"): 
+def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_pn = None, 
+                      loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None, scale_mode = "min"): 
     # Check validity of given arguments
-    check_loss_args(loss_ne, loss_os, loss_cc, loss_ov, loss_pn, loss_ne_ov, loss_cc_pn)
+    check_loss_args(loss_ne, loss_os, loss_cc, loss_ov, loss_pn, loss_ne_ov, loss_os_ov, loss_cc_pn)
 
     # Get the gradients
-    loss_vals = [loss_os]
+    loss_vals = []
+
     if loss_ne_ov is not None:
-        loss_vals.append(loss_ne_ov)
+        loss_vals.extend([loss_ne_ov, loss_os])
+    elif loss_os_ov is not None:
+        loss_vals.extend([loss_os_ov, loss_ne])
     else:
-        loss_vals.extend([loss_ne, loss_ov])
+        loss_vals.extend([loss_ne, loss_os, loss_ov])
+    
     if loss_cc_pn is not None:
         loss_vals.append(loss_cc_pn)
     else:
         loss_vals.extend([loss_cc, loss_pn])
-        
+
+    # Backward pass
     grads = []
     for loss in loss_vals:
         optimizer.zero_grad()  # Clear previous gradients
@@ -168,16 +217,13 @@ def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os 
     # Perform optimization step
     optimizer.step()
 
-    if loss_ne_ov is not None and loss_cc_pn is not None:
-        total_loss = loss_ne_ov + loss_cc_pn + loss_os
-    elif loss_ne_ov is not None:
-        total_loss = loss_ne_ov + loss_os + loss_cc + loss_pn
-    elif loss_cc_pn is not None: 
-        total_loss = loss_cc_pn + loss_ne + loss_os + loss_ov
-    else:
-        total_loss = loss_ne + loss_os + loss_cc + loss_ov + loss_pn
+    # Calculate total loss with Procrustes-processed losses
+    total_loss = sum_losses(loss_ne, loss_os, loss_cc, loss_ov, loss_pn, 
+                            loss_ne_ov, loss_os_ov, loss_cc_pn)
 
-    track_losses(tracked_losses, loss_ne, loss_os, loss_cc, loss_ov, loss_pn, loss_ne_ov, loss_cc_pn, total_loss)
+    # Track the loss values for graphing purposes
+    track_losses(tracked_losses, loss_ne.item(), loss_os.item(), loss_cc.item(), loss_ov.item(), loss_pn.item(), 
+                 loss_ne_ov.item(), loss_cc_pn.item(), total_loss.item())
 
     return total_loss.item()
 
@@ -365,6 +411,10 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     ov_weight = config.training_params.ov_weight
     pos_weight = config.training_params.pos_weight
     neg_weight = config.training_params.neg_weight
+
+    # Overlap loss preferences
+    ov_distance_scaling = config.training_params.ov_distance_scaling
+    ov_intensity_weighting = config.training_params.ov_intensity_weighting
     
     # Loss functions
     criterion_ne = NucleiEncapsulationLoss(ne_weight, device)
