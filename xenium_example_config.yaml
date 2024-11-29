@@ -56,7 +56,8 @@ training_params:
   ne_weight: 1.0 # weight for nuclei encapsulation loss; default: 1.0
   os_weight: 1.0 # weight for oversegmentation loss; default: 1.0
   cc_weight: 1.0 # weight for cell-calling loss; default: 1.0
-  ov_weight: 1.0 # weight for oversegmentation loss; default: 1.0
+  ov_weight: 1.0 # weight for overlap loss; default: 1.0
+  mu_weight: 1.0 # weight for multiple assignment loss; default: 1.0
   pos_weight: 1.0 # weight for positive marker loss; default: 1.0
   neg_weight: 1.0 # weight for negative marker loss; default: 1.0
   ov_distance_scaling: False # whether to use distance scaling to penalize overlaps that invade further into another cell
