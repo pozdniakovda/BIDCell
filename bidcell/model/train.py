@@ -767,8 +767,9 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     # Graph the losses
     total_epochs = config.training_params.total_epochs
     train_loader_len = len(train_loader)
+    log_scale = config.training_params.log_scale
     plot_losses(losses, combine_ne_ov, combine_os_ov, combine_cc_pn, selected_solver, total_epochs, 
-                train_loader_len, experiment_path, scale_mode)
+                train_loader_len, experiment_path, scale_mode, log_scale)
 
     logging.info("Training finished")
 
