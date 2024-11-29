@@ -113,7 +113,7 @@ class OversegmentationLoss(nn.Module):
         weight = self.weight if weight is None else weight
         max_loss = weight * max_loss
         
-        return max_loss.item()
+        return max_loss
 
 
 class CellCallingLoss(nn.Module):
