@@ -26,6 +26,7 @@ from .model.losses import (
 )
 from .model.combined_losses import (
     NucEncapOverlapLoss,
+    OversegOverlapLoss,
     CellCallingMarkerLoss
 )
 from .model.model import SegmentationModel as Network
@@ -374,11 +375,18 @@ def train(config: Config, learning_rate = None, selected_solver = None):
 
     # Combined loss functions if desired
     combine_ne_ov = config.training_params.combine_ne_ov
-    combine_ne_ov_mode = config.training_params.combine_ne_ov_mode
-    criterion_ne_ov = NucEncapOverlapLoss(ne_weight, ov_weight, device) if combine_ne_ov else None
-    
+    combine_os_ov = config.training_params.combine_os_ov
     combine_cc_pn = config.training_params.combine_cc_pn
+    if combine_ne_ov and combine_os_ov: 
+        raise Exception(f"combine_ne_ov and combine_os_ov were both set to True, but they are "
+                        "mutually exclusive because they both use OverlapLoss.")
+
+    combine_ne_ov_mode = config.training_params.combine_ne_ov_mode
+    combine_os_ov_mode = config.training_params.combine_os_ov_mode
     combine_cc_pn_mode = config.training_params.combine_cc_pn_mode
+
+    criterion_ne_ov = NucEncapOverlapLoss(ne_weight, ov_weight, device) if combine_ne_ov else None
+    criterion_os_ov = OversegOverlapLoss(os_weight, ov_weight, device) if combine_os_ov else None
     criterion_cc_pn = CellCallingMarkerLoss(cc_weight, pos_weight, neg_weight, device) if combine_cc_pn else None
 
     # Solver and learning rate
@@ -563,6 +571,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
             
             # Calculate combined losses if required
             loss_ne_ov = criterion_ne_ov(seg_pred, batch_n, ne_weight, ov_weight) if combine_ne_ov else None
+            loss_os_ov = criterion_os_ov(seg_pred, batch_n, os_weight, ov_weight) if combine_os_ov else None
             loss_cc_pn = criterion_cc_pn(seg_pred, batch_sa, batch_pos, batch_neg, cc_weight, pos_weight, neg_weight) if combine_cc_pn else None
 
             # Apply the Procrustes method
