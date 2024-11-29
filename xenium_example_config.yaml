@@ -59,6 +59,8 @@ training_params:
   ov_weight: 1.0 # weight for oversegmentation loss; default: 1.0
   pos_weight: 1.0 # weight for positive marker loss; default: 1.0
   neg_weight: 1.0 # weight for negative marker loss; default: 1.0
+  ov_distance_scaling: False # whether to use distance scaling to penalize overlaps that invade further into another cell
+  ov_intensity_weighting: False # whether to use overlap intensity weighting to penalize more confident overlaps more heavily, nonlinearly
   combine_ne_ov: False # combines ne_loss+ov_loss to reduce the number of losses during multi-objective training
   combine_ne_ov_mode: "top" # "top" rescales to top values at first step; "max" rescales to theoretical maxima; "static" relies only on initial loss weights
   combine_os_ov: True # combines os_loss+ov_loss to reduce the number of losses during multi-objective training
