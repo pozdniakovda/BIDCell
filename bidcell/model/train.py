@@ -21,6 +21,7 @@ from .model.losses import (
     CellCallingLoss,
     NucleiEncapsulationLoss,
     OverlapLoss,
+    MultipleAssignmentLoss,
     OversegmentationLoss,
     PosNegMarkerLoss
 )
@@ -51,8 +52,8 @@ def track_loss(tracked_losses, key, loss_val):
         tracked_losses[key] = []
     tracked_losses[key].append(loss_val)
 
-def track_losses(tracked_losses, loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_pn = None, 
-                 loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None, loss_total = None): 
+def track_losses(tracked_losses, loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_mu = None, 
+                 loss_pn = None, loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None, loss_total = None): 
     # Track losses
     if loss_ne is not None:
         track_loss(tracked_losses, "Nuclei Encapsulation Loss", loss_ne)
@@ -62,6 +63,8 @@ def track_losses(tracked_losses, loss_ne = None, loss_os = None, loss_cc = None,
         track_loss(tracked_losses, "Cell Calling Loss", loss_cc)
     if loss_ov is not None:
         track_loss(tracked_losses, "Overlap Loss", loss_ov)
+    if loss_mu is not None:
+        track_loss(tracked_losses, "Multiple Assignment Loss", loss_mu)
     if loss_pn is not None:
         track_loss(tracked_losses, "Pos-Neg Marker Loss", loss_pn)
     if loss_ne_ov is not None:
@@ -73,38 +76,39 @@ def track_losses(tracked_losses, loss_ne = None, loss_os = None, loss_cc = None,
     if loss_total is not None:
         track_loss(tracked_losses, "Total Loss", loss_total)
 
-def sum_losses(loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_pn = None, 
+def sum_losses(loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_mu = None, loss_pn = None, 
                loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None): 
     if loss_ne_ov is not None:
         if loss_cc_pn is not None:
-            loss = loss_ne_ov + loss_os + loss_cc_pn
+            loss = loss_ne_ov + loss_os + loss_cc_pn + loss_mu
         else: 
-            loss = loss_ne_ov + loss_os + loss_cc + loss_pn
+            loss = loss_ne_ov + loss_os + loss_cc + loss_pn + loss_mu
     elif loss_os_ov is not None: 
         if loss_cc_pn is not None:
-            loss = loss_ne + loss_os_ov + loss_cc_pn
+            loss = loss_ne + loss_os_ov + loss_cc_pn + loss_mu
         else: 
-            loss = loss_ne + loss_os_ov + loss_cc + loss_pn
+            loss = loss_ne + loss_os_ov + loss_cc + loss_pn + loss_mu
     elif loss_cc_pn is not None:
-        loss = loss_ne + loss_os + loss_ov + loss_cc_pn
+        loss = loss_ne + loss_os + loss_ov + loss_cc_pn + loss_mu
     else: 
-        loss = loss_ne + loss_os + loss_ov + loss_cc + loss_pn
+        loss = loss_ne + loss_os + loss_ov + loss_cc + loss_pn + loss_mu
 
     return loss
 
-def default_solver(optimizer, tracked_losses, loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_pn = None, 
-                   loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None):
+def default_solver(optimizer, tracked_losses, loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_mu = None, 
+                   loss_pn = None, loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None):
     loss_ne = loss_ne.squeeze() if loss_ne is not None else None
     loss_os = loss_os.squeeze() if loss_os is not None else None
     loss_cc = loss_cc.squeeze() if loss_cc is not None else None
     loss_ov = loss_ov.squeeze() if loss_ov is not None else None
+    loss_mu = loss_mu.squeeze() if loss_mu is not None else None
     loss_pn = loss_pn.squeeze() if loss_pn is not None else None
     
     loss_ne_ov = loss_ne_ov.squeeze() if loss_ne_ov is not None else None
     loss_os_ov = loss_os_ov.squeeze() if loss_os_ov is not None else None
     loss_cc_pn = loss_cc_pn.squeeze() if loss_cc_pn is not None else None
 
-    loss = sum_losses(loss_ne, loss_os, loss_cc, loss_ov, loss_pn, 
+    loss = sum_losses(loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, 
                       loss_ne_ov, loss_os_ov, loss_cc_pn)
 
     # Optimisation
@@ -116,6 +120,7 @@ def default_solver(optimizer, tracked_losses, loss_ne = None, loss_os = None, lo
     step_os_loss = loss_os.detach().cpu().numpy() if loss_os is not None else 0 # noqa
     step_cc_loss = loss_cc.detach().cpu().numpy() if loss_cc is not None else 0 # noqa
     step_ov_loss = loss_ov.detach().cpu().numpy() if loss_ov is not None else 0 # noqa
+    step_mu_loss = loss_mu.detach().cpu().numpy() if loss_mu is not None else 0 # noqa
     step_pn_loss = loss_pn.detach().cpu().numpy() if loss_pn is not None else 0 # noqa
     
     step_ne_ov_loss = loss_ne_ov.detach().cpu().numpy() if loss_ne_ov is not None else 0 # noqa
@@ -129,6 +134,7 @@ def default_solver(optimizer, tracked_losses, loss_ne = None, loss_os = None, lo
                  loss_os = step_os_loss, 
                  loss_cc = step_cc_loss, 
                  loss_ov = step_ov_loss, 
+                 loss_mu = step_mu_loss, 
                  loss_pn = step_pn_loss, 
                  loss_ne_ov = step_ne_ov_loss, 
                  loss_os_ov = step_os_ov_loss, 
@@ -137,8 +143,8 @@ def default_solver(optimizer, tracked_losses, loss_ne = None, loss_os = None, lo
 
     return step_train_loss
 
-def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_pn = None, 
-                      loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None, scale_mode = "min"): 
+def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_mu = None, 
+                      loss_pn = None, loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None, scale_mode = "min"): 
     # Get the gradients
     loss_vals = []
 
@@ -153,6 +159,9 @@ def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os 
         loss_vals.append(loss_cc_pn)
     else:
         loss_vals.extend([loss_cc, loss_pn])
+
+    if loss_mu is not None:
+        loss_vals.append(loss_mu)
 
     # Backward pass
     grads = []
@@ -185,6 +194,7 @@ def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os 
                             loss_os = loss_os, 
                             loss_cc = loss_cc, 
                             loss_ov = loss_ov, 
+                            loss_mu = loss_mu,
                             loss_pn = loss_pn, 
                             loss_ne_ov = loss_ne_ov, 
                             loss_os_ov = loss_os_ov, 
@@ -196,13 +206,16 @@ def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os 
                  loss_os = to_scalar(loss_os), 
                  loss_cc = to_scalar(loss_cc), 
                  loss_ov = to_scalar(loss_ov), 
+                 loss_mu = to_scalar(loss_mu), 
                  loss_pn = to_scalar(loss_pn), 
                  loss_ne_ov = to_scalar(loss_ne_ov), 
                  loss_os_ov = to_scalar(loss_os_ov), 
                  loss_cc_pn = to_scalar(loss_cc_pn), 
                  loss_total = to_scalar(total_loss))
 
-    return total_loss.item()
+    total_loss = to_scalar(total_loss)
+
+    return total_loss
 
 def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_loss_ma, total_epochs, 
                          train_loader_len, use_procrustes_title, experiment_path, scale_mode=None, 
@@ -331,7 +344,7 @@ def plot_losses(losses, ma_losses, combine_ne_ov, combine_os_ov, combine_cc_pn, 
     total_loss_vals = losses["Total Loss"]
     total_loss_ma = ma_losses["Total Loss"]
     
-    keys = []
+    keys = ["Multiple Assignment Loss"]
     if combine_ne_ov:
         keys.extend(["Combined Nuclei Encapsulation and Overlap Loss", "Oversegmentation Loss"])
     elif combine_os_ov:
@@ -468,6 +481,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     os_weight = config.training_params.os_weight
     cc_weight = config.training_params.cc_weight
     ov_weight = config.training_params.ov_weight
+    mu_weight = config.training_params.mu_weight
     pos_weight = config.training_params.pos_weight
     neg_weight = config.training_params.neg_weight
 
@@ -480,6 +494,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     criterion_os = OversegmentationLoss(os_weight, device)
     criterion_cc = CellCallingLoss(cc_weight, device)
     criterion_ov = OverlapLoss(ov_weight, device)
+    criterion_mu = MultipleAssignmentLoss(mu_weight, device)
     criterion_pn = PosNegMarkerLoss(pos_weight, neg_weight, device)
 
     # Combined loss functions if desired
@@ -633,7 +648,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
             seg_pred = model(batch_x313)
 
             # Compute individual losses as appropriate
-            loss_ne, loss_os, loss_cc, loss_ov, loss_pn = None, None, None, None, None
+            loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn = None, None, None, None, None, None
             ov_combined = combine_ne_ov or combine_os_ov
             if is_first_step or not combine_ne_ov:
                 loss_ne = criterion_ne(seg_pred, batch_n, ne_weight)
@@ -644,6 +659,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
             if is_first_step or not combine_cc_pn:
                 loss_cc = criterion_cc(seg_pred, batch_sa, cc_weight)
                 loss_pn = criterion_pn(seg_pred, batch_pos, batch_neg, pos_weight, neg_weight)
+            loss_mu = criterion_mu(seg_pred, batch_sa, mu_weight)
             
             if is_first_step:
                 if combine_ne_ov or combine_os_ov or combine_cc_pn:
@@ -687,6 +703,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
                                                loss_os = loss_os, 
                                                loss_cc = loss_cc, 
                                                loss_ov = loss_ov, 
+                                               loss_mu = loss_mu, 
                                                loss_pn = loss_pn, 
                                                loss_ne_ov = loss_ne_ov, 
                                                loss_os_ov = loss_os_ov, 
@@ -699,6 +716,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
                                             loss_os = loss_os, 
                                             loss_cc = loss_cc, 
                                             loss_ov = loss_ov, 
+                                            loss_mu = loss_mu,
                                             loss_pn = loss_pn, 
                                             loss_ne_ov = loss_ne_ov, 
                                             loss_os_ov = loss_os_ov, 
