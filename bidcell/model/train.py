@@ -77,36 +77,25 @@ def track_losses(tracked_losses, loss_ne = None, loss_os = None, loss_cc = None,
         track_loss(tracked_losses, "Total Loss", loss_total)
 
 def filter_non_contributing(loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_mu = None, loss_pn = None, 
-                            loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None, non_contributing_losses = ()): 
+                            loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None, non_contributing_losses = (), assign_none=False): 
     # Remove non-contributing losses
-    if len(non_contributing_losses) > 0: 
-        if "ne" in non_contributing_losses and loss_ne is not None:
-            loss_ne *= 0.0
-        if "os" in non_contributing_losses and loss_os is not None:
-            loss_os *= 0.0
-        if "cc" in non_contributing_losses and loss_cc is not None:
-            loss_cc *= 0.0
-        if "ov" in non_contributing_losses and loss_ov is not None:
-            loss_ov *= 0.0
-        if "mu" in non_contributing_losses and loss_mu is not None:
-            loss_mu *= 0.0
-        if "pn" in non_contributing_losses and loss_pn is not None:
-            loss_pn *= 0.0
-        if "ne_ov" in non_contributing_losses and loss_ne_ov is not None:
-            loss_ne_ov *= 0.0
-        if "os_ov" in non_contributing_losses and loss_os_ov is not None:
-            loss_os_ov *= 0.0
-        if "cc_pn" in non_contributing_losses and loss_cc_pn is not None:
-            loss_cc_pn *= 0.0
+    terms = [loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, loss_ne_ov, loss_os_ov, loss_cc_pn]
+    keys = ["ne", "os", "cc", "ov", "mu", "pn", "ne_ov", "os_ov", "cc_pn"]
+    filtered_terms = []
+    for key, term in zip(keys, terms):
+        if key in non_contributing_losses and term is not None:
+            term = None if assign_none else term * 0.0
+        filtered_terms.append(term)
 
-    return (loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, loss_ne_ov, loss_os_ov, loss_cc_pn)
+    return filtered_terms
 
 def sum_losses(loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_mu = None, loss_pn = None, 
                loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None, non_contributing_losses = ()): 
     # Remove non-contributing losses
     if len(non_contributing_losses) > 0:
         args = filter_non_contributing(loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, 
-                                       loss_ne_ov, loss_os_ov, loss_cc_pn, non_contributing_losses)
+                                       loss_ne_ov, loss_os_ov, loss_cc_pn, 
+                                       non_contributing_losses, assign_none=False)
         loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, loss_ne_ov, loss_os_ov, loss_cc_pn = args
 
     # Dynamically calculate total loss
@@ -124,6 +113,11 @@ def sum_losses(loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, l
         loss = loss_ne + loss_os + loss_ov + loss_cc_pn + loss_mu
     else: 
         loss = loss_ne + loss_os + loss_ov + loss_cc + loss_pn + loss_mu
+
+    filtered_sum_terms = []
+    for term in filtered_sum_terms:
+        if term is not None:
+            filtered_sum_terms
 
     return loss
 
@@ -192,7 +186,8 @@ def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os 
     # Remove non-contributing losses
     if len(non_contributing_losses) > 0:
         args = filter_non_contributing(loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, 
-                                       loss_ne_ov, loss_os_ov, loss_cc_pn, non_contributing_losses)
+                                       loss_ne_ov, loss_os_ov, loss_cc_pn, 
+                                       non_contributing_losses, assign_none=False)
         loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, loss_ne_ov, loss_os_ov, loss_cc_pn = args
     
     # Get the gradients
