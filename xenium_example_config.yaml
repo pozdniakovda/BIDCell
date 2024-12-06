@@ -68,6 +68,7 @@ training_params:
   combine_os_ov_mode: "top" # "top" rescales to top values at first step; "max" rescales to theoretical maxima; "static" relies only on initial loss weights
   combine_cc_pn: True # combines ne_loss+ov_loss to reduce the number of losses during multi-objective training
   combine_cc_pn_mode: "top" # "top" rescales to top values at first step; "max" rescales to theoretical maxima; "static" relies only on initial loss weights
+  non_contributing_losses: []
   log_scale: False # whether to use logarithmic scaling when graphing the loss values
 
 testing_params:
