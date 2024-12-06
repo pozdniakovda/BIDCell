@@ -365,8 +365,11 @@ def get_ma_losses(losses, window_width=None):
             window_width = max(1, int(len(loss_vals) / 40))  # Ensure window width is at least 1
         loss_vals = np.array(loss_vals)
     
-        moving_averages = np.convolve(loss_vals, np.ones(window_width) / window_width, mode="valid") # main convolution
-        moving_averages = np.concatenate([np.full(window_width - 1, moving_averages[0]), moving_averages]) # padding
+        try: 
+            moving_averages = np.convolve(loss_vals, np.ones(window_width) / window_width, mode="valid") # main convolution
+            moving_averages = np.concatenate([np.full(window_width - 1, moving_averages[0]), moving_averages]) # padding
+        except Exception as e:
+            raise Exception(f"Error during moving average calculation for {loss_name}: {e}")
     
         ma_losses[loss_name] = (moving_averages, window_width)
 
