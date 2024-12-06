@@ -557,7 +557,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     criterion_cc_pn = CellCallingMarkerLoss(cc_weight, pos_weight, neg_weight, device) if combine_cc_pn else None
 
     # Non-contributing losses
-    non_contributing_losses = ()
+    non_contributing_losses = config.training_params.non_contributing_losses
 
     # Solver and learning rate
     if selected_solver is None: 
