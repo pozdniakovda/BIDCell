@@ -172,17 +172,6 @@ def default_solver(optimizer, tracked_losses, loss_ne = None, loss_os = None, lo
 
 def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_mu = None, 
                       loss_pn = None, loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None, scale_mode = "min", non_contributing_losses=()): 
-    # Get scalars for individual losses
-    loss_ne_scalar = to_scalar(loss_ne), 
-    loss_os_scalar = to_scalar(loss_os), 
-    loss_cc_scalar = to_scalar(loss_cc), 
-    loss_ov_scalar = to_scalar(loss_ov), 
-    loss_mu_scalar = to_scalar(loss_mu), 
-    loss_pn_scalar = to_scalar(loss_pn), 
-    loss_ne_ov_scalar = to_scalar(loss_ne_ov), 
-    loss_os_ov_scalar = to_scalar(loss_os_ov), 
-    loss_cc_pn_scalar = to_scalar(loss_cc_pn)
-    
     # Remove non-contributing losses
     if len(non_contributing_losses) > 0:
         args = filter_non_contributing(loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, 
@@ -192,21 +181,44 @@ def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os 
     
     # Get the gradients
     loss_vals = []
+    filtered_loss_vals = []
 
     if loss_ne_ov is not None:
         loss_vals.extend([loss_ne_ov, loss_os])
+        if "ne_ov" not in non_contributing_losses:
+            filtered_loss_vals.append(loss_ne_ov)
+        if "os" not in non_contributing_losses:
+            filtered_loss_vals.append(loss_os)
     elif loss_os_ov is not None:
         loss_vals.extend([loss_os_ov, loss_ne])
+        if "os_ov" not in non_contributing_losses:
+            filtered_loss_vals.append(loss_os_ov)
+        if "ne" not in non_contributing_losses:
+            filtered_loss_vals.append(loss_ne)
     else:
         loss_vals.extend([loss_ne, loss_os, loss_ov])
+        if "ne" not in non_contributing_losses:
+            filtered_loss_vals.append(loss_ne)
+        if "os" not in non_contributing_losses:
+            filtered_loss_vals.append(loss_os)
+        if "ov" not in non_contributing_losses:
+            filtered_loss_vals.append(loss_ov)
     
     if loss_cc_pn is not None:
         loss_vals.append(loss_cc_pn)
+        if "cc_pn" not in non_contributing_losses:
+            filtered_loss_vals.append(loss_cc_pn)
     else:
         loss_vals.extend([loss_cc, loss_pn])
+        if "cc" not in non_contributing_losses:
+            filtered_loss_vals.append(loss_cc)
+        if "pn" not in non_contributing_losses:
+            filtered_loss_vals.append(loss_pn)
 
     if loss_mu is not None:
         loss_vals.append(loss_mu)
+        if "mu" not in non_contributing_losses:
+            filtered_loss_vals.append(loss_mu)
 
     # Backward pass
     grads = []
@@ -237,20 +249,21 @@ def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os 
     # Calculate total loss with Procrustes-processed losses
     total_loss = sum_losses(loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, 
                             loss_ne_ov, loss_os_ov, loss_cc_pn, non_contributing_losses)
-    total_loss_scalar = to_scalar(total_loss)
 
     # Track the loss values for graphing purposes
     track_losses(tracked_losses = tracked_losses, 
-                 loss_ne = loss_ne_scalar, 
-                 loss_os = loss_os_scalar, 
-                 loss_cc = loss_cc_scalar, 
-                 loss_ov = loss_ov_scalar, 
-                 loss_mu = loss_mu_scalar, 
-                 loss_pn = loss_pn_scalar, 
-                 loss_ne_ov = loss_ne_ov_scalar, 
-                 loss_os_ov = loss_os_ov_scalar, 
-                 loss_cc_pn = loss_cc_pn_scalar, 
-                 loss_total = total_loss_scalar)
+                 loss_ne = to_scalar(loss_ne), 
+                 loss_os = to_scalar(loss_os), 
+                 loss_cc = to_scalar(loss_cc), 
+                 loss_ov = to_scalar(loss_ov), 
+                 loss_mu = to_scalar(loss_mu), 
+                 loss_pn = to_scalar(loss_pn), 
+                 loss_ne_ov = to_scalar(loss_ne_ov), 
+                 loss_os_ov = to_scalar(loss_os_ov), 
+                 loss_cc_pn = to_scalar(loss_cc_pn), 
+                 loss_total = to_scalar(total_loss))
+
+    total_loss_scalar = to_scalar(total_loss)
 
     return total_loss_scalar
 
