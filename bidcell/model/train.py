@@ -76,8 +76,40 @@ def track_losses(tracked_losses, loss_ne = None, loss_os = None, loss_cc = None,
     if loss_total is not None:
         track_loss(tracked_losses, "Total Loss", loss_total)
 
+def filter_non_contributing(loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_mu = None, loss_pn = None, 
+                            loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None, non_contributing_losses = ()): 
+    # Remove non-contributing losses
+    if len(non_contributing_losses) > 0: 
+        if "ne" in non_contributing_losses and loss_ne is not None:
+            loss_ne *= 0.0
+        if "os" in non_contributing_losses and loss_os is not None:
+            loss_os *= 0.0
+        if "cc" in non_contributing_losses and loss_cc is not None:
+            loss_cc *= 0.0
+        if "ov" in non_contributing_losses and loss_ov is not None:
+            loss_ov *= 0.0
+        if "mu" in non_contributing_losses and loss_mu is not None:
+            loss_mu *= 0.0
+        if "pn" in non_contributing_losses and loss_pn is not None:
+            loss_pn *= 0.0
+        if "ne_ov" in non_contributing_losses and loss_ne_ov is not None:
+            loss_ne_ov *= 0.0
+        if "os_ov" in non_contributing_losses and loss_os_ov is not None:
+            loss_os_ov *= 0.0
+        if "cc_pn" in non_contributing_losses and loss_cc_pn is not None:
+            loss_cc_pn *= 0.0
+
+    return (loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, loss_ne_ov, loss_os_ov, loss_cc_pn)
+
 def sum_losses(loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_mu = None, loss_pn = None, 
-               loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None): 
+               loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None, non_contributing_losses = ()): 
+    # Remove non-contributing losses
+    if len(non_contributing_losses) > 0:
+        args = filter_non_contributing(loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, 
+                                       loss_ne_ov, loss_os_ov, loss_cc_pn, non_contributing_losses)
+        loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, loss_ne_ov, loss_os_ov, loss_cc_pn = args
+
+    # Dynamically calculate total loss
     if loss_ne_ov is not None:
         if loss_cc_pn is not None:
             loss = loss_ne_ov + loss_os + loss_cc_pn + loss_mu
@@ -96,7 +128,7 @@ def sum_losses(loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, l
     return loss
 
 def default_solver(optimizer, tracked_losses, loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_mu = None, 
-                   loss_pn = None, loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None):
+                   loss_pn = None, loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None, non_contributing_losses=()):
     loss_ne = loss_ne.squeeze() if loss_ne is not None else None
     loss_os = loss_os.squeeze() if loss_os is not None else None
     loss_cc = loss_cc.squeeze() if loss_cc is not None else None
@@ -108,8 +140,9 @@ def default_solver(optimizer, tracked_losses, loss_ne = None, loss_os = None, lo
     loss_os_ov = loss_os_ov.squeeze() if loss_os_ov is not None else None
     loss_cc_pn = loss_cc_pn.squeeze() if loss_cc_pn is not None else None
 
+    # Sum the contributing losses
     loss = sum_losses(loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, 
-                      loss_ne_ov, loss_os_ov, loss_cc_pn)
+                      loss_ne_ov, loss_os_ov, loss_cc_pn, non_contributing_losses)
 
     # Optimisation
     loss.backward()
@@ -144,7 +177,24 @@ def default_solver(optimizer, tracked_losses, loss_ne = None, loss_os = None, lo
     return step_train_loss
 
 def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_mu = None, 
-                      loss_pn = None, loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None, scale_mode = "min"): 
+                      loss_pn = None, loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None, scale_mode = "min", non_contributing_losses=()): 
+    # Get scalars for individual losses
+    loss_ne_scalar = to_scalar(loss_ne), 
+    loss_os_scalar = to_scalar(loss_os), 
+    loss_cc_scalar = to_scalar(loss_cc), 
+    loss_ov_scalar = to_scalar(loss_ov), 
+    loss_mu_scalar = to_scalar(loss_mu), 
+    loss_pn_scalar = to_scalar(loss_pn), 
+    loss_ne_ov_scalar = to_scalar(loss_ne_ov), 
+    loss_os_ov_scalar = to_scalar(loss_os_ov), 
+    loss_cc_pn_scalar = to_scalar(loss_cc_pn)
+    
+    # Remove non-contributing losses
+    if len(non_contributing_losses) > 0:
+        args = filter_non_contributing(loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, 
+                                       loss_ne_ov, loss_os_ov, loss_cc_pn, non_contributing_losses)
+        loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, loss_ne_ov, loss_os_ov, loss_cc_pn = args
+    
     # Get the gradients
     loss_vals = []
 
@@ -190,32 +240,24 @@ def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os 
     optimizer.step()
 
     # Calculate total loss with Procrustes-processed losses
-    total_loss = sum_losses(loss_ne = loss_ne, 
-                            loss_os = loss_os, 
-                            loss_cc = loss_cc, 
-                            loss_ov = loss_ov, 
-                            loss_mu = loss_mu,
-                            loss_pn = loss_pn, 
-                            loss_ne_ov = loss_ne_ov, 
-                            loss_os_ov = loss_os_ov, 
-                            loss_cc_pn = loss_cc_pn)
+    total_loss = sum_losses(loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, 
+                            loss_ne_ov, loss_os_ov, loss_cc_pn, non_contributing_losses)
+    total_loss_scalar = to_scalar(total_loss)
 
     # Track the loss values for graphing purposes
     track_losses(tracked_losses = tracked_losses, 
-                 loss_ne = to_scalar(loss_ne), 
-                 loss_os = to_scalar(loss_os), 
-                 loss_cc = to_scalar(loss_cc), 
-                 loss_ov = to_scalar(loss_ov), 
-                 loss_mu = to_scalar(loss_mu), 
-                 loss_pn = to_scalar(loss_pn), 
-                 loss_ne_ov = to_scalar(loss_ne_ov), 
-                 loss_os_ov = to_scalar(loss_os_ov), 
-                 loss_cc_pn = to_scalar(loss_cc_pn), 
-                 loss_total = to_scalar(total_loss))
+                 loss_ne = loss_ne_scalar, 
+                 loss_os = loss_os_scalar, 
+                 loss_cc = loss_cc_scalar, 
+                 loss_ov = loss_ov_scalar, 
+                 loss_mu = loss_mu_scalar, 
+                 loss_pn = loss_pn_scalar, 
+                 loss_ne_ov = loss_ne_ov_scalar, 
+                 loss_os_ov = loss_os_ov_scalar, 
+                 loss_cc_pn = loss_cc_pn_scalar, 
+                 loss_total = total_loss_scalar)
 
-    total_loss = to_scalar(total_loss)
-
-    return total_loss
+    return total_loss_scalar
 
 def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_loss_ma, total_epochs, 
                          train_loader_len, use_procrustes_title, experiment_path, scale_mode=None, 
@@ -514,6 +556,9 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     criterion_os_ov = OversegOverlapLoss(os_weight, ov_weight, device) if combine_os_ov else None
     criterion_cc_pn = CellCallingMarkerLoss(cc_weight, pos_weight, neg_weight, device) if combine_cc_pn else None
 
+    # Non-contributing losses
+    non_contributing_losses = ()
+
     # Solver and learning rate
     if selected_solver is None: 
         selected_solver = config.training_params.solver
@@ -709,7 +754,8 @@ def train(config: Config, learning_rate = None, selected_solver = None):
                                                loss_ne_ov = loss_ne_ov, 
                                                loss_os_ov = loss_os_ov, 
                                                loss_cc_pn = loss_cc_pn, 
-                                               scale_mode = "min")
+                                               scale_mode = "min", 
+                                               non_contributing_losses = non_contributing_losses)
             else: 
                 total_loss = default_solver(optimizer = optimizer, 
                                             tracked_losses = losses, 
@@ -721,7 +767,8 @@ def train(config: Config, learning_rate = None, selected_solver = None):
                                             loss_pn = loss_pn, 
                                             loss_ne_ov = loss_ne_ov, 
                                             loss_os_ov = loss_os_ov, 
-                                            loss_cc_pn = loss_cc_pn)
+                                            loss_cc_pn = loss_cc_pn, 
+                                            non_contributing_losses = non_contributing_losses)
             
             if (global_step % config.training_params.sample_freq) == 0:
                 coords_h1 = coords_h1.detach().cpu().squeeze().numpy()
