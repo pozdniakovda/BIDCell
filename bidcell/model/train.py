@@ -182,53 +182,81 @@ def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os 
     # Get the gradients
     loss_vals = []
     filtered_loss_vals = []
+    noncontributing_loss_vals = []
 
     if loss_ne_ov is not None:
         loss_vals.extend([loss_ne_ov, loss_os])
         if "ne_ov" not in non_contributing_losses:
             filtered_loss_vals.append(loss_ne_ov)
+        else:
+            noncontributing_loss_vals.append(loss_ne_ov)
         if "os" not in non_contributing_losses:
             filtered_loss_vals.append(loss_os)
+        else:
+            noncontributing_loss_vals.append(loss_os)
     elif loss_os_ov is not None:
         loss_vals.extend([loss_os_ov, loss_ne])
         if "os_ov" not in non_contributing_losses:
             filtered_loss_vals.append(loss_os_ov)
+        else:
+            noncontributing_loss_vals.append(loss_os_ov)
         if "ne" not in non_contributing_losses:
             filtered_loss_vals.append(loss_ne)
+        else:
+            noncontributing_loss_vals.append(loss_ne)
     else:
         loss_vals.extend([loss_ne, loss_os, loss_ov])
         if "ne" not in non_contributing_losses:
             filtered_loss_vals.append(loss_ne)
+        else:
+            noncontributing_loss_vals.append(loss_ne)
         if "os" not in non_contributing_losses:
             filtered_loss_vals.append(loss_os)
+        else:
+            noncontributing_loss_vals.append(loss_os)
         if "ov" not in non_contributing_losses:
             filtered_loss_vals.append(loss_ov)
+        else:
+            noncontributing_loss_vals.append(loss_ov)
     
     if loss_cc_pn is not None:
         loss_vals.append(loss_cc_pn)
         if "cc_pn" not in non_contributing_losses:
             filtered_loss_vals.append(loss_cc_pn)
+        else:
+            noncontributing_loss_vals.append(loss_cc_pn)
     else:
         loss_vals.extend([loss_cc, loss_pn])
         if "cc" not in non_contributing_losses:
             filtered_loss_vals.append(loss_cc)
+        else:
+            noncontributing_loss_vals.append(loss_cc)
         if "pn" not in non_contributing_losses:
             filtered_loss_vals.append(loss_pn)
+        else:
+            noncontributing_loss_vals.append(loss_pn)
 
     if loss_mu is not None:
         loss_vals.append(loss_mu)
         if "mu" not in non_contributing_losses:
             filtered_loss_vals.append(loss_mu)
+        else:
+            noncontributing_loss_vals.append(loss_mu)
 
     # Backward pass
     grads = []
-    for loss in loss_vals:
+    for loss in filtered_loss_vals:
         optimizer.zero_grad()  # Clear previous gradients
         loss.backward(retain_graph=True)  # Retain graph for backpropagation
         grad = torch.cat([p.grad.flatten() if p.grad is not None else torch.zeros_like(p).flatten() for p in model.parameters()])
         grads.append(grad)
 
     grads = torch.stack(grads, dim=0)  # Stack gradients
+
+    # Perform backward pass on spectator losses
+    for loss in noncontributing_loss_vals:
+        optimizer.zero_grad()
+        loss.backward(retain_graph=True)
 
     # Apply Procrustes Solver
     grads, weights, singulars = ProcrustesSolver.apply(grads.T.unsqueeze(0), scale_mode)
