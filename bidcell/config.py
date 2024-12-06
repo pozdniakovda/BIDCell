@@ -205,6 +205,8 @@ class TrainingParams(BaseModel):
     combine_os_ov_mode: Literal["max", "top", "static"] = "top"
     combine_cc_pn: bool = True
     combine_cc_pn_mode: Literal["max", "top", "static"] = "top"
+    # non-contributing (spectator) losses
+    non_contributing_losses: list = []
     # graphing params
     log_scale: bool = True
     # number of training steps per model save
