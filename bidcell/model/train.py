@@ -714,7 +714,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     for epoch in range(initial_epoch, config.training_params.total_epochs):
         # Define current solver
         if dynamic_solvers:
-            current_solver = starting_solver if epoch <= epochs_before_switch else ending_solver
+            current_solver = starting_solver if epoch < epochs_before_switch else ending_solver
         else:
             current_solver = selected_solver
 
