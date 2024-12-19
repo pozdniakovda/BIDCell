@@ -291,7 +291,7 @@ class MultipleAssignmentLoss(nn.Module):
         self.weight = weight
         self.init_weight = weight
         self.device = device
-
+    
     def forward(self, seg_pred, transcript_map, weight=None):
         """
         Args:
@@ -302,53 +302,38 @@ class MultipleAssignmentLoss(nn.Module):
         """
         if weight is not None:
             self.weight = weight
-
+    
         # Apply softmax to get probabilities for each pixel
         seg_probs = F.softmax(seg_pred, dim=1)
-
+    
         # Extract the "cell" probabilities (assuming class 1 corresponds to cells)
         cell_probs = seg_probs[:, 1, :, :]  # (batch_size, height, width)
-
+    
         # Mask cell probabilities by transcript locations
         assigned_probs = cell_probs * transcript_map[:, 0, :, :]  # (batch_size, height, width)
-
-        # Sum probabilities for each transcript location (overlapping predictions add up)
-        summed_probs = torch.sum(assigned_probs, dim=(1, 2))  # (batch_size)
-
-        # Penalize probabilities > 1 (indicating multiple assignments)
-        multiple_assignment_penalty = F.relu(summed_probs - 1)
-
+    
+        # Sort probabilities at each transcript location in descending order
+        sorted_probs, _ = torch.sort(assigned_probs.view(assigned_probs.size(0), -1), dim=1, descending=True)  # (batch_size, num_pixels)
+    
+        # Compute the penalty as the sum of squares of all probabilities except the highest one
+        if sorted_probs.size(1) > 1:
+            penalty_probs = (sorted_probs[:, 1:] ** 2).sum(dim=1)  # Sum of squares of probabilities excluding the highest
+        else:
+            penalty_probs = torch.zeros_like(sorted_probs[:, 0])  # No penalty if there's only one probability
+    
+        # Count the number of cells in the transcript map
+        num_cells = torch.sum(transcript_map[:, 0, :, :], dim=(1, 2))  # (batch_size)
+    
+        # Avoid division by zero
+        num_cells = torch.clamp(num_cells, min=1)
+    
+        # Normalize penalty by number of cells
+        normalized_penalty = penalty_probs / num_cells
+    
         # Compute the total penalty normalized by the batch size
-        loss = torch.mean(multiple_assignment_penalty) * self.weight
-
+        loss = torch.mean(normalized_penalty) * self.weight
+    
         return loss
-
-    def get_max(self, input_shape, num_transcripts, weight=None):
-        """
-        Compute the maximum possible loss assuming the worst-case scenario.
-        
-        Args:
-            input_shape: Shape of seg_pred (batch_size, num_classes, height, width).
-            num_transcripts: Number of transcripts in each image (tensor of shape [batch_size]).
-            weight: Optional weight to override the initialized weight.
-
-        Returns:
-            float: Maximum possible loss value.
-        """
-        batch_size, _, height, width = input_shape
-        max_loss = 0.0
-
-        for b in range(batch_size):
-            if num_transcripts[b] > 0:
-                # Worst case: Each transcript is assigned fully to multiple cells
-                penalty = num_transcripts[b].item()  # Each transcript contributes a maximum penalty of 1
-            else:
-                penalty = 0.0  # No transcripts, no penalty
-
-            max_loss += penalty
-
-        max_loss = (max_loss / batch_size) * (self.weight if weight is None else weight)
-        return max_loss
 
 
 class PosNegMarkerLoss(nn.Module):
