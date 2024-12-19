@@ -52,6 +52,9 @@ training_params:
   total_epochs: 5 # number of training epochs; default: 1
   total_steps: 60 # number of training steps; default: 4000
   solver: "procrustes-median" # whether to use default vs. Procrustes multi-objective training
+  starting_solver: "" # solver for only the first n epochs
+  ending_solver: "" # solver to use after the first n epochs
+  epochs_before_switch: 0 # number of epochs to run before switching from starting solver to ending solver
   learning_rate: 0.000001
   ne_weight: 1.0 # weight for nuclei encapsulation loss; default: 1.0
   os_weight: 1.0 # weight for oversegmentation loss; default: 1.0
