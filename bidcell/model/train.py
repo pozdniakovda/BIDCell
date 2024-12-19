@@ -114,11 +114,6 @@ def sum_losses(loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, l
     else: 
         loss = loss_ne + loss_os + loss_ov + loss_cc + loss_pn + loss_mu
 
-    filtered_sum_terms = []
-    for term in filtered_sum_terms:
-        if term is not None:
-            filtered_sum_terms
-
     return loss
 
 def default_solver(optimizer, tracked_losses, loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_mu = None, 
