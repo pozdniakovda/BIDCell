@@ -291,7 +291,7 @@ class MultipleAssignmentLoss(nn.Module):
         self.weight = weight
         self.init_weight = weight
         self.device = device
-    
+        
     def forward(self, seg_pred, transcript_map, weight=None):
         """
         Args:
@@ -304,35 +304,41 @@ class MultipleAssignmentLoss(nn.Module):
             self.weight = weight
     
         # Apply softmax to get probabilities for each pixel
-        seg_probs = F.softmax(seg_pred, dim=1)
+        seg_probs = F.softmax(seg_pred, dim=1)  # (batch_size, num_classes, height, width)
     
         # Extract the "cell" probabilities (assuming class 1 corresponds to cells)
         cell_probs = seg_probs[:, 1, :, :]  # (batch_size, height, width)
     
         # Mask cell probabilities by transcript locations
-        assigned_probs = cell_probs * transcript_map[:, 0, :, :]  # (batch_size, height, width)
+        transcript_locs = transcript_map[:, 0, :, :]  # (batch_size, height, width)
+        assigned_probs = cell_probs * transcript_locs  # (batch_size, height, width)
     
-        # Sort probabilities at each transcript location in descending order
-        sorted_probs, _ = torch.sort(assigned_probs.view(assigned_probs.size(0), -1), dim=1, descending=True)  # (batch_size, num_pixels)
+        # Flatten transcript locations for easier processing
+        batch_size, height, width = assigned_probs.shape
+        assigned_probs_flat = assigned_probs.view(batch_size, -1)  # (batch_size, height * width)
+        transcript_map_flat = transcript_locs.view(batch_size, -1)  # (batch_size, height * width)
     
-        # Compute the penalty as the sum of squares of all probabilities except the highest one
-        if sorted_probs.size(1) > 1:
-            penalty_probs = (sorted_probs[:, 1:] ** 2).sum(dim=1)  # Sum of squares of probabilities excluding the highest
+        # Mask to keep only probabilities where transcripts exist
+        transcript_indices = (transcript_map_flat > 0).nonzero(as_tuple=True)  # Transcript locations
+        transcript_probs = assigned_probs_flat[transcript_indices]  # (num_transcripts,)
+    
+        # Set the top probability for each transcript to zero
+        top_probs, _ = transcript_probs.max(dim=1, keepdim=True)  # Find the top probability per transcript
+        adjusted_probs = transcript_probs - top_probs  # Subtract the top probability (set it to 0)
+        adjusted_probs = torch.clamp(adjusted_probs, min=0)  # Avoid negatives due to numerical errors
+    
+        # Compute the penalty as the sum of the remaining probabilities
+        penalty = torch.sum(adjusted_probs ** 2)  # Sum of squares of remaining probabilities (scalar)
+    
+        # Normalize by the number of transcripts
+        num_transcripts = transcript_indices[0].numel()  # Total number of transcripts
+        if num_transcripts > 0:
+            normalized_penalty = penalty / num_transcripts
         else:
-            penalty_probs = torch.zeros_like(sorted_probs[:, 0])  # No penalty if there's only one probability
+            normalized_penalty = torch.tensor(0.0, device=seg_pred.device)
     
-        # Count the number of cells in the transcript map
-        num_cells = torch.sum(transcript_map[:, 0, :, :], dim=(1, 2))  # (batch_size)
-    
-        # Avoid division by zero
-        num_cells = torch.clamp(num_cells, min=1)
-    
-        # Normalize penalty by number of cells
-        normalized_penalty = penalty_probs / num_cells
-    
-        # Compute the total penalty normalized by the batch size
-        loss = torch.mean(normalized_penalty) * self.weight
-    
+        # Scale by weight and return
+        loss = normalized_penalty * self.weight
         return loss
 
 
