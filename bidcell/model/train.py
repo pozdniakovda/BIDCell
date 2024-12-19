@@ -478,7 +478,7 @@ def get_weighting_ratio(loss1, loss2, criterion_loss1, criterion_loss2, weights1
 
     return ratio, weights1, weights2
 
-def get_solver_title(selected_solver = None, starting_solver = None, ending_solver = None, epochs_before_switch = 0):
+def get_solver_title(selected_solver = None, starting_solver = None, ending_solver = None, epochs_before_switch = 0, dynamic_solvers = False):
     # Generates a title fragment referencing the solver(s) that were used during training
     
     if dynamic_solvers:        
@@ -902,7 +902,8 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     train_loader_len = len(train_loader)
     log_scale = config.training_params.log_scale
     ma_losses = get_ma_losses(losses)
-    solver_title = get_solver_title(selected_solver, starting_solver, ending_solver, epochs_before_switch)
+    solver_title = get_solver_title(selected_solver, starting_solver, ending_solver, 
+                                    epochs_before_switch, dynamic_solvers)
     plot_losses(losses, ma_losses, combine_ne_ov, combine_os_ov, combine_cc_pn, total_epochs, 
                 train_loader_len, experiment_path, solver_title, log_scale)
 
