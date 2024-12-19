@@ -601,6 +601,9 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     # Solver and learning rate
     if selected_solver is None: 
         selected_solver = config.training_params.solver
+        starting_solver = config.training_params.starting_solver
+        ending_solver = config.training_params.ending_solver
+        epochs_before_switch = config.training_params.epochs_before_switch
     if learning_rate is None:
         learning_rate = config.training_params.learning_rate
 
@@ -610,7 +613,10 @@ def train(config: Config, learning_rate = None, selected_solver = None):
         config.experiment_dirs.dir_id,
         config.files.data_dir,
     )
-    experiment_path = os.path.join(config.files.data_dir, "model_outputs", f"{timestamp}_{selected_solver}_lr-{learning_rate}")
+    if starting_solver == "" or ending_solver == "": 
+        experiment_path = os.path.join(config.files.data_dir, "model_outputs", f"{timestamp}_{selected_solver}_lr-{learning_rate}")
+    else:
+        experiment_path = os.path.join(config.files.data_dir, "model_outputs", f"{timestamp}_{starting_solver}-to-{ending_solver}_switched-after-{epochs_before_switch}-epochs_lr-{learning_rate}")
     make_dir(experiment_path + "/" + config.experiment_dirs.model_dir)
     make_dir(experiment_path + "/" + config.experiment_dirs.samples_dir)
 
