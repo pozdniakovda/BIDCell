@@ -185,6 +185,10 @@ class TrainingParams(BaseModel):
     weight_decay: float = 0.0001
     # solver
     solver: Literal["default", "procrustes", "procrustes-min", "procrustes-median", "procrustes-rmse"] = "default"
+    # dynamically switched solver
+    starting_solver: Literal["default", "procrustes", "procrustes-min", "procrustes-median", "procrustes-rmse"] = "default"
+    ending_solver: Literal["default", "procrustes", "procrustes-min", "procrustes-median", "procrustes-rmse"] = "default"
+    epochs_before_switch: int = 0
     # optimiser
     optimizer: Literal["adam", "rmsprop"] = "adam"
     # static weights
