@@ -296,8 +296,8 @@ def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os 
     return total_loss_scalar
 
 def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_loss_ma, total_epochs, 
-                         train_loader_len, use_procrustes_title, experiment_path, scale_mode=None, 
-                         log_scale=True, rescaling=True, show_moving_averages=True):
+                         train_loader_len, experiment_path, solver_title, log_scale=True, 
+                         rescaling=True, show_moving_averages=True):
     # Plots all the losses on one graph
 
     plt.figure(figsize=(18, 8))
@@ -341,7 +341,7 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
 
     plt.xlabel("Training Step")
     plt.ylabel("Loss")
-    title = f"Training Loss with Procrustes Method (scaling mode: {scale_mode})" if use_procrustes_title else "Training Loss with Default Method"
+    title = f"Training Loss with {solver_title}"
     if rescaling:
         title = title + " (rescaled to max=1000)"
     plt.legend()
@@ -352,8 +352,8 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
     plt.savefig(save_path)
     #plt.show()
 
-def plot_loss(loss_vals, ma_loss_vals, label, total_epochs, use_procrustes_title, experiment_path, train_loader_len,
-              scale_mode=None, log_scale=True, rescaling=True, show_moving_averages=True):
+def plot_loss(loss_vals, ma_loss_vals, label, total_epochs, experiment_path, train_loader_len,
+              solver_title, log_scale=True, rescaling=True, show_moving_averages=True):
     # Plots a single objective's values over the course of the training cycle
     if loss_vals is not None:
         if len(loss_vals) > 0:
@@ -377,11 +377,8 @@ def plot_loss(loss_vals, ma_loss_vals, label, total_epochs, use_procrustes_title
             
             plt.xlabel("Training Step")
             plt.ylabel("Loss")
-            
-            if use_procrustes_title:
-                title = f"{label} During Training with Procrustes Method (scaling mode: {scale_mode})"
-            else: 
-                title = f"{label} During Training with Default Method"
+
+            title = f"{label} During Training with {solver_title}"
         
             if rescaling:
                 title = title + " (rescaled to max=1000)"
@@ -416,8 +413,8 @@ def get_ma_losses(losses, window_width=None):
 
     return ma_losses
 
-def plot_losses(losses, ma_losses, combine_ne_ov, combine_os_ov, combine_cc_pn, selected_solver, total_epochs, 
-                train_loader_len, experiment_path, scale_mode, log_scale=True):
+def plot_losses(losses, ma_losses, combine_ne_ov, combine_os_ov, combine_cc_pn, total_epochs, 
+                train_loader_len, experiment_path, solver_title, log_scale=True):
     # Plot losses
     print(f"Graphing overlaid losses...")
 
@@ -441,32 +438,29 @@ def plot_losses(losses, ma_losses, combine_ne_ov, combine_os_ov, combine_cc_pn, 
     other_loss_vals = {key:losses[key] for key in keys}
     other_loss_ma = {key:ma_losses[key] for key in keys}
 
-    use_procrustes_title = "procrustes" in selected_solver.lower()
     plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_loss_ma, total_epochs, 
-                         train_loader_len, use_procrustes_title, experiment_path, scale_mode, 
-                         log_scale, rescaling=False)
+                         train_loader_len, experiment_path, solver_title, log_scale, rescaling=False)
 
     # Plot individual losses
     print(f"Graphing total loss...")
-    plot_loss(losses["Total Loss"], ma_losses["Total Loss"], "Total Loss", total_epochs, use_procrustes_title, experiment_path, 
-              train_loader_len, scale_mode, log_scale, rescaling=False)
+    plot_loss(losses["Total Loss"], ma_losses["Total Loss"], "Total Loss", total_epochs, experiment_path, 
+              train_loader_len, solver_title, log_scale, rescaling=False)
     print(f"Graphing individual losses...")
     for key in keys:
-        plot_loss(losses[key], ma_losses[key], key, total_epochs, use_procrustes_title, experiment_path, 
-                  train_loader_len, scale_mode, log_scale, rescaling=False)
+        plot_loss(losses[key], ma_losses[key], key, total_epochs, experiment_path, 
+                  train_loader_len, solver_title, log_scale, rescaling=False)
 
     # Repeat for rescaled versions
     print(f"Graphing overlaid rescaled losses...")
     plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_loss_ma, total_epochs, 
-                         train_loader_len, use_procrustes_title, experiment_path, scale_mode, 
-                         log_scale, rescaling=True)
+                         train_loader_len, experiment_path, solver_title, log_scale, rescaling=True)
     print(f"Graphing rescaled total loss...")
-    plot_loss(losses["Total Loss"], ma_losses["Total Loss"], "Total Loss", total_epochs, use_procrustes_title, experiment_path, 
-              train_loader_len, scale_mode, log_scale, rescaling=True)
+    plot_loss(losses["Total Loss"], ma_losses["Total Loss"], "Total Loss", total_epochs, experiment_path, 
+              train_loader_len, solver_title, log_scale, rescaling=True)
     print(f"Graphing rescaled individual losses...")
     for key in keys:
-        plot_loss(losses[key], ma_losses[key], key, total_epochs, use_procrustes_title, experiment_path, 
-                  train_loader_len, scale_mode, log_scale, rescaling=True)
+        plot_loss(losses[key], ma_losses[key], key, total_epochs, experiment_path, 
+                  train_loader_len, solver_title, log_scale, rescaling=True)
 
 def get_weighting_ratio(loss1, loss2, criterion_loss1, criterion_loss2, weights1, weights2, 
                         weights1_names, weights2_names, input_shape, combine_mode, logging):
@@ -500,6 +494,33 @@ def get_weighting_ratio(loss1, loss2, criterion_loss1, criterion_loss2, weights1
         raise ValueError(f"combine_mode must be top, max, or static, but was given as {combine_mode}")
 
     return ratio, weights1, weights2
+
+def get_solver_title(selected_solver = None, starting_solver = None, ending_solver = None, epochs_before_switch = 0):
+    # Generates a title fragment referencing the solver(s) that were used during training
+    
+    if dynamic_solvers:        
+        if "procrustes" in starting_solver.lower():
+            starting_scale_mode = "median" if "median" in starting_solver else "rmse" if "rmse" in starting_solver else "min"
+            starting_solver_title = f"Procrustes Method (scaling mode: {starting_scale_mode})"
+        else:
+            starting_solver_title = f"Default Method"
+
+        if "procrustes" in ending_solver.lower():
+            ending_scale_mode = "median" if "median" in ending_solver else "rmse" if "rmse" in ending_solver else "min"
+            ending_solver_title = f"Procrustes Method (scaling mode: {ending_scale_mode})"
+        else:
+            ending_solver_title = f"Default Method"
+
+        solver_title = f"{starting_solver_title} (epochs 1-{epochs_before_switch}) to {ending_solver_title} (epochs {epochs_before_switch+1} onwards)"
+        
+    elif "procrustes" in selected_solver:
+        scale_mode = "median" if "median" in selected_solver else "rmse" if "rmse" in selected_solver else "min"
+        solver_title = f"Procrustes Method (scaling mode: {scale_mode})"
+        
+    else:
+        solver_title = "Default Method"
+
+    return solver_title
 
 def train(config: Config, learning_rate = None, selected_solver = None):
     logging.basicConfig(
@@ -677,9 +698,28 @@ def train(config: Config, learning_rate = None, selected_solver = None):
 
     if dynamic_solvers:
         logging.info(f"Begin training using {starting_solver} for {epochs_before_switch} epochs, followed by {ending_solver} thereafter")
+        
+        if "procrustes" in starting_solver.lower():
+            starting_scale_mode = "median" if "median" in starting_solver else "rmse" if "rmse" in starting_solver else "min"
+            starting_solver_title = f"Procrustes Method (scaling mode: {starting_scale_mode})"
+        else:
+            starting_solver_title = f"Default Method"
+
+        if "procrustes" in ending_solver.lower():
+            ending_scale_mode = "median" if "median" in ending_solver else "rmse" if "rmse" in ending_solver else "min"
+            ending_solver_title = f"Procrustes Method (scaling mode: {ending_scale_mode})"
+        else:
+            ending_solver_title = f"Default Method"
+
+        solver_title = f"{starting_solver_title} (epochs 1-{epochs_before_switch}) to {ending_solver_title} (epochs {epochs_before_switch+1} onwards)"
+        
     elif "procrustes" in selected_solver:
         logging.info("Begin training using Procrustes method")
+        scale_mode = "median" if "median" in selected_solver else "rmse" if "rmse" in selected_solver else "min"
+        solver_title = f"Procrustes Method (scaling mode: {scale_mode})"
+        
     else:
+        solver_title = "Default Method"
         logging.info("Begin training using default method")
 
     model = model.train()
@@ -689,14 +729,14 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     
     is_first_step = True
     for epoch in range(initial_epoch, config.training_params.total_epochs):
-        cur_lr = optimizer.param_groups[0]["lr"]
-        print("\nEpoch =", (epoch + 1), " lr =", cur_lr)
-
         # Define current solver
         if dynamic_solvers:
             current_solver = starting_solver if epoch <= epochs_before_switch else ending_solver
         else:
             current_solver = selected_solver
+
+        cur_lr = optimizer.param_groups[0]["lr"]
+        print("\nEpoch =", (epoch + 1), " lr =", cur_lr, " solver =", current_solver)
 
         for step_epoch, (
             batch_x313,
@@ -794,8 +834,8 @@ def train(config: Config, learning_rate = None, selected_solver = None):
             loss_cc_pn = criterion_cc_pn(seg_pred, batch_sa, batch_pos, batch_neg, cc_weight, pos_weight, neg_weight) if combine_cc_pn else None
 
             # Apply the Procrustes method
-            if "procrustes" in selected_solver:
-                scale_mode = "median" if "median" in selected_solver else "rmse" if "rmse" in selected_solver else "min"
+            if "procrustes" in current_solver:
+                scale_mode = "median" if "median" in current_solver else "rmse" if "rmse" in current_solver else "min"
                 total_loss = procrustes_method(model = model, 
                                                optimizer = optimizer, 
                                                tracked_losses = losses, 
@@ -879,8 +919,9 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     train_loader_len = len(train_loader)
     log_scale = config.training_params.log_scale
     ma_losses = get_ma_losses(losses)
-    plot_losses(losses, ma_losses, combine_ne_ov, combine_os_ov, combine_cc_pn, selected_solver, total_epochs, 
-                train_loader_len, experiment_path, scale_mode, log_scale)
+    solver_title = get_solver_title(selected_solver, starting_solver, ending_solver, epochs_before_switch)
+    plot_losses(losses, ma_losses, combine_ne_ov, combine_os_ov, combine_cc_pn, total_epochs, 
+                train_loader_len, experiment_path, solver_title, log_scale)
 
     logging.info("Training finished")
 
