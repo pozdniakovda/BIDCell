@@ -263,17 +263,17 @@ def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os 
         scalarized_losses[key] = scalar_loss
 
     total_loss_scalar = to_scalar(total_loss)
-                          
+    
     track_losses(tracked_losses = tracked_losses, 
-                 loss_ne = detached_losses["ne"], 
-                 loss_os = detached_losses["os"], 
-                 loss_cc = detached_losses["cc"], 
-                 loss_ov = detached_losses["ov"], 
-                 loss_mu = detached_losses["mu"], 
-                 loss_pn = detached_losses["pn"], 
-                 loss_ne_ov = detached_losses["ne_ov"], 
-                 loss_os_ov = detached_losses["os_ov"], 
-                 loss_cc_pn = detached_losses["cc_pn"], 
+                 loss_ne = scalarized_losses.get("ne"), 
+                 loss_os = scalarized_losses.get("os"), 
+                 loss_cc = scalarized_losses.get("cc"), 
+                 loss_ov = scalarized_losses.get("ov"), 
+                 loss_mu = scalarized_losses.get("mu"), 
+                 loss_pn = scalarized_losses.get("pn"), 
+                 loss_ne_ov = scalarized_losses.get("ne_ov"), 
+                 loss_os_ov = scalarized_losses.get("os_ov"), 
+                 loss_cc_pn = scalarized_losses.get("cc_pn"), 
                  loss_total = total_loss_scalar)
 
     return total_loss_scalar
