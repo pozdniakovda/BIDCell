@@ -604,6 +604,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
         starting_solver = config.training_params.starting_solver
         ending_solver = config.training_params.ending_solver
         epochs_before_switch = config.training_params.epochs_before_switch
+    dynamic_solvers = starting_solver != "" and ending_solver != "" and epochs_before_switch > 0
     if learning_rate is None:
         learning_rate = config.training_params.learning_rate
 
@@ -613,7 +614,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
         config.experiment_dirs.dir_id,
         config.files.data_dir,
     )
-    if starting_solver == "" or ending_solver == "": 
+    if not dynamic_solvers: 
         experiment_path = os.path.join(config.files.data_dir, "model_outputs", f"{timestamp}_{selected_solver}_lr-{learning_rate}")
     else:
         experiment_path = os.path.join(config.files.data_dir, "model_outputs", f"{timestamp}_{starting_solver}-to-{ending_solver}_switched-after-{epochs_before_switch}-epochs_lr-{learning_rate}")
@@ -674,7 +675,9 @@ def train(config: Config, learning_rate = None, selected_solver = None):
         assert epoch == resume_epoch
         print("Resume training, successfully loaded " + load_path)
 
-    if "procrustes" in selected_solver:
+    if dynamic_solvers:
+        logging.info(f"Begin training using {starting_solver} for {epochs_before_switch} epochs, followed by {ending_solver} thereafter")
+    elif "procrustes" in selected_solver:
         logging.info("Begin training using Procrustes method")
     else:
         logging.info("Begin training using default method")
@@ -688,6 +691,12 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     for epoch in range(initial_epoch, config.training_params.total_epochs):
         cur_lr = optimizer.param_groups[0]["lr"]
         print("\nEpoch =", (epoch + 1), " lr =", cur_lr)
+
+        # Define current solver
+        if dynamic_solvers:
+            current_solver = starting_solver if epoch <= epochs_before_switch else ending_solver
+        else:
+            current_solver = selected_solver
 
         for step_epoch, (
             batch_x313,
