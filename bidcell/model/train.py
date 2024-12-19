@@ -81,13 +81,40 @@ def filter_non_contributing(loss_ne = None, loss_os = None, loss_cc = None, loss
     # Remove non-contributing losses
     terms = [loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, loss_ne_ov, loss_os_ov, loss_cc_pn]
     keys = ["ne", "os", "cc", "ov", "mu", "pn", "ne_ov", "os_ov", "cc_pn"]
-    filtered_terms = []
+    contributing_terms = {}
+    blank_terms = {}
+    spectator_terms = {}
+
     for key, term in zip(keys, terms):
         if key in non_contributing_losses and term is not None:
-            term = None if assign_none else term * 0.0
-        filtered_terms.append(term)
+            spectator_terms[key] = term
+        elif key not in non_contributing_losses and term is not None:
+            contributing_terms[key] = term
+        else:
+            blank_terms[key] = term
 
-    return filtered_terms
+    return (contributing_terms, blank_terms, spectator_terms)
+
+def filter_unnecessary(contributing_terms):
+    # Removes loss terms that are already covered by a combined loss term
+    
+    keys = list(contributing_terms.keys())
+    unnecessary_keys = []
+    necessary_terms = {}
+    unnecessary_terms = {}
+
+    for key in keys:
+        if "_" in key:
+            unnecessary_keys.extend(key.split("_"))
+    unnecessary_keys = list(tuple(unnecessary_keys))
+
+    for key, term in contributing_terms.items():
+        if key in unnecessary_keys:
+            unnecessary_terms[key] = term
+        else:
+            necessary_terms[key] = term
+
+    return (necessary_terms, unnecessary_terms)
 
 def sum_losses(loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_mu = None, loss_pn = None, 
                loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None, non_contributing_losses = ()): 
@@ -96,6 +123,8 @@ def sum_losses(loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, l
         args = filter_non_contributing(loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, 
                                        loss_ne_ov, loss_os_ov, loss_cc_pn, 
                                        non_contributing_losses, assign_none=False)
+        contributing_terms, blank_terms, spectator_terms = args
+        
         loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, loss_ne_ov, loss_os_ov, loss_cc_pn = args
 
     # Dynamically calculate total loss
@@ -130,37 +159,46 @@ def default_solver(optimizer, tracked_losses, loss_ne = None, loss_os = None, lo
     loss_cc_pn = loss_cc_pn.squeeze() if loss_cc_pn is not None else None
 
     # Sum the contributing losses
-    loss = sum_losses(loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, 
-                      loss_ne_ov, loss_os_ov, loss_cc_pn, non_contributing_losses)
+    args = filter_non_contributing(loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, 
+                                   loss_ne_ov, loss_os_ov, loss_cc_pn, 
+                                   non_contributing_losses, assign_none=False)
+    contributing_terms, blank_terms, spectator_terms = args
+    contributing_terms, unnecessary_terms = filter_unnecessary(contributing_terms)
+
+    loss = sum(list(contributing_terms.values()))
 
     # Optimisation
     loss.backward()
     optimizer.step()
 
     # Track individual losses
-    step_ne_loss = loss_ne.detach().cpu().numpy() if loss_ne is not None else 0 # noqa
-    step_os_loss = loss_os.detach().cpu().numpy() if loss_os is not None else 0 # noqa
-    step_cc_loss = loss_cc.detach().cpu().numpy() if loss_cc is not None else 0 # noqa
-    step_ov_loss = loss_ov.detach().cpu().numpy() if loss_ov is not None else 0 # noqa
-    step_mu_loss = loss_mu.detach().cpu().numpy() if loss_mu is not None else 0 # noqa
-    step_pn_loss = loss_pn.detach().cpu().numpy() if loss_pn is not None else 0 # noqa
-    
-    step_ne_ov_loss = loss_ne_ov.detach().cpu().numpy() if loss_ne_ov is not None else 0 # noqa
-    step_os_ov_loss = loss_os_ov.detach().cpu().numpy() if loss_os_ov is not None else 0 # noqa
-    step_cc_pn_loss = loss_cc_pn.detach().cpu().numpy() if loss_cc_pn is not None else 0 # noqa
-    
+    keys = ["ne", "os", "cc", "ov", "mu", "pn", "ne_ov", "os_ov", "cc_pn"]
+    detached_losses = {}
+    for key in keys:
+        if contributing_terms.get(key) is not None:
+            step_term_loss = contributing_terms[key].detach().cpu().numpy()
+        elif spectator_terms.get(key) is not None:
+            step_term_loss = spectator_terms[key].detach().cpu().numpy()
+        elif unnecessary_terms.get(key) is not None:
+            step_term_loss = unnecessary_terms[key].detach().cpu().numpy()
+        elif blank_terms.get(key) is not None:
+            step_term_loss = blank_terms[key].detach().cpu().numpy()
+        else:
+            step_term_loss = 0
+        detached_losses[key] = step_term_loss
+
     step_train_loss = loss.detach().cpu().numpy()
 
     track_losses(tracked_losses = tracked_losses, 
-                 loss_ne = step_ne_loss, 
-                 loss_os = step_os_loss, 
-                 loss_cc = step_cc_loss, 
-                 loss_ov = step_ov_loss, 
-                 loss_mu = step_mu_loss, 
-                 loss_pn = step_pn_loss, 
-                 loss_ne_ov = step_ne_ov_loss, 
-                 loss_os_ov = step_os_ov_loss, 
-                 loss_cc_pn = step_cc_pn_loss, 
+                 loss_ne = detached_losses["ne"], 
+                 loss_os = detached_losses["os"], 
+                 loss_cc = detached_losses["cc"], 
+                 loss_ov = detached_losses["ov"], 
+                 loss_mu = detached_losses["mu"], 
+                 loss_pn = detached_losses["pn"], 
+                 loss_ne_ov = detached_losses["ne_ov"], 
+                 loss_os_ov = detached_losses["os_ov"], 
+                 loss_cc_pn = detached_losses["cc_pn"], 
                  loss_total = step_train_loss)
 
     return step_train_loss
