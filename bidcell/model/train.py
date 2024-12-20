@@ -403,6 +403,11 @@ def train(config: Config, learning_rate = None, selected_solver = None):
                 
                 continue
 
+            print(f"expr_aug_sum: "
+                  f"range=({expr_aug_sum.min():.3f},{expr_aug_sum.max():.3f}) | "
+                  f"mean={expr_aug_sum.mean():.3f} | "
+                  f"shape={expr_aug_sum.shape}")
+            
             # Transfer to GPU
             batch_x313 = batch_x313.to(device)
             batch_sa = batch_sa.to(device)
