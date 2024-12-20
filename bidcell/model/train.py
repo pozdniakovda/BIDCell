@@ -384,16 +384,6 @@ def train(config: Config, learning_rate = None, selected_solver = None):
             nucl_aug,
             expr_aug_sum,
         ) in enumerate(train_loader):
-            print(f"Original data shapes: ")
-            print(f"\tbatch_ess shape: {batch_ess.shape} | type: {type(batch_ess)}")
-            print(f"\tbatch_x313 shape = {batch_x313.shape} | type: {type(batch_x313)}")
-            print(f"\tbatch_n shape = {batch_n.shape} | type: {type(batch_n)}")
-            print(f"\tbatch_sa shape = {batch_sa.shape} | type: {type(batch_sa)}")
-            print(f"\tbatch_pos shape = {batch_pos.shape} | type: {type(batch_pos)}")
-            print(f"\tbatch_neg shape = {batch_neg.shape} | type: {type(batch_neg)}")
-            print(f"\tnucl_aug shape = {nucl_aug.shape} | type: {type(nucl_aug)}")
-            print(f"\texpr_aug_sum shape = {expr_aug_sum.shape} | type: {type(expr_aug_sum)}")
-            
             # Permute channels axis to batch axis
             batch_x313 = batch_x313[0, :, :, :, :].permute(3, 2, 0, 1)
             batch_ess = batch_ess.permute(3, 0, 1, 2)
@@ -415,16 +405,6 @@ def train(config: Config, learning_rate = None, selected_solver = None):
                     logging.info("Model saved: %s" % save_path)
                 
                 continue
-            
-            print(f"Data shapes right before being transferred to GPU: ")
-            print(f"\tbatch_expr_sum shape: {batch_expr_sum.shape} | type: {type(batch_expr_sum)}")
-            print(f"\tbatch_x313 shape = {batch_x313.shape} | type: {type(batch_x313)}")
-            print(f"\tbatch_n shape = {batch_n.shape} | type: {type(batch_n)}")
-            print(f"\tbatch_sa shape = {batch_sa.shape} | type: {type(batch_sa)}")
-            print(f"\tbatch_pos shape = {batch_pos.shape} | type: {type(batch_pos)}")
-            print(f"\tbatch_neg shape = {batch_neg.shape} | type: {type(batch_neg)}")
-            print(f"\tnucl_aug shape = {nucl_aug.shape} | type: {type(nucl_aug)}")
-            print(f"\texpr_aug_sum shape = {expr_aug_sum.shape} | type: {type(expr_aug_sum)}")
             
             # Transfer to GPU
             batch_ess = batch_ess.to(device)
