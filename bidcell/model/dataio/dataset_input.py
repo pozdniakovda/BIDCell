@@ -324,27 +324,36 @@ class DataProcessing(data.Dataset):
 
         search_areas[search_areas > 0] = 1
         search_areas[search_areas < 0] = 0
+        search_areas_torch = torch.tensor(search_areas, dtype=torch.float32)
 
-        # Generate summed (flattened) augmented expression map, preserving the computational graph
-        expr_aug = torch.tensor(expr_aug, dtype=torch.float32, requires_grad=True)
-        expr_aug_sum = torch.sum(expr_aug, dim=-1)
+        # Generate the summed expression map
+        expr_aug = torch.tensor(expr_aug, dtype=torch.float32, requires_grad=True)  # Shape: [H, W, n_channels]
+        expr_aug_sum = torch.sum(expr_aug, dim=-1)  # Shape: [H, W]
         
-        # Mask expressions and change channel order
-        search_areas_torch = torch.tensor(search_areas, dtype=torch.float32)  # Convert search_areas to a PyTorch tensor
-        expr_split = expr_aug.unsqueeze(-1).repeat(1, 1, 1, n_cells)  # Add a new axis and repeat for n_cells
-        expr_split = expr_split * search_areas_torch.unsqueeze(2)  # Element-wise multiplication with search_areas
+        # Mask summed expression map and change channel order
+        expr_sum_split = expr_aug_sum.unsqueeze(-1)  # Shape: [H, W, 1]
+        expr_sum_split = expr_sum_split.repeat(1, 1, n_cells)  # Shape: [H, W, n_cells]
+        expr_sum_split = expr_sum_split * search_areas_torch  # Shape: [H, W, n_cells]
 
-        # Convert to tensor
-        expr_torch = expr_split  # Already a PyTorch tensor
-        nucl_torch = torch.tensor(nucl_split, dtype=torch.long)
-        search_areas_torch = search_areas_torch.to(torch.long)
-        search_pos_torch = torch.tensor(search_pos, dtype=torch.long)
-        search_neg_torch = torch.tensor(search_neg, dtype=torch.long)
+        # Mask expressions and change channel order using PyTorch
+        expr_split = expr_aug.unsqueeze(-1).repeat(1, 1, 1, n_cells)  # Shape: [H, W, n_channels, n_cells]
+        expr_split = expr_split_torch * search_areas_torch.unsqueeze(2)
+
+        # Convert tensor types
+        expr_split_torch = expr_split.float()
+        expr_sum_split_torch = expr_sum_split.float()
+        search_areas_torch = search_areas_torch.long()
+
+        # Convert remaining arrays to tensors
+        nucl_split_torch = torch.from_numpy(nucl_split).long()
+        search_pos_torch = torch.from_numpy(search_pos).long()
+        search_neg_torch = torch.from_numpy(search_neg).long()
 
         if self.isTraining:
             return (
-                expr_torch,
-                nucl_torch,
+                expr_sum_split_torch, 
+                expr_split_torch,
+                nucl_split_torch,
                 search_areas_torch,
                 search_pos_torch,
                 search_neg_torch,
@@ -355,6 +364,7 @@ class DataProcessing(data.Dataset):
             )
         else:
             return (
+                expr_sum_split_torch, 
                 expr_torch,
                 nucl_torch,
                 search_areas_torch,
