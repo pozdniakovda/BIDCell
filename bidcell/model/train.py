@@ -407,7 +407,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
                   f"range=({expr_aug_sum.min():.3f},{expr_aug_sum.max():.3f}) | "
                   f"mean={expr_aug_sum.mean():.3f} | "
                   f"shape={expr_aug_sum.shape}")
-            plt.imshow(expr_aug_sum[0,:,:], cmap="gray")
+            plt.imshow(expr_aug_sum.detach().cpu().numpy()[0,:,:], cmap="gray")
             plt.show()
             
             # Transfer to GPU
