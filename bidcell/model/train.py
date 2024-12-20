@@ -112,7 +112,7 @@ def compute_losses(seg_pred, batch_n, batch_sa, batch_pos, batch_neg, expr_aug_s
             logging.info(f"Computing all constituent losses for first step; subsequent steps will use combined losses.")
 
     # If selected, adjust loss weights to compensate for different magnitudes of initial values
-    if combine_ne_ov
+    if combine_ne_ov:
         if is_first_step:
             ratio, weights1, weights2 = get_weighting_ratio(loss_ne, loss_ov, [weights["ne"]], [ov_weight], 
                                                             ["ne_weight"], ["ov_weight"], seg_pred.shape)
