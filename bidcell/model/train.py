@@ -53,8 +53,7 @@ def to_scalar(value):
             print("Cannot apply .item() to a tensor with more than one element.")
     return value
 
-def get_weighting_ratio(loss1, loss2, criterion_loss1, criterion_loss2, weights1, weights2, 
-                        weights1_names, weights2_names, input_shape):
+def get_weighting_ratio(loss1, loss2, weights1, weights2, weights1_names, weights2_names, input_shape):
     loss1 = to_scalar(loss1)
     loss2 = to_scalar(loss2)
     ratio = None
@@ -70,69 +69,83 @@ def get_weighting_ratio(loss1, loss2, criterion_loss1, criterion_loss2, weights1
     
     return ratio, weights1, weights2
 
-def compute_individual_losses(seg_pred, batch_n, batch_sa, batch_pos, batch_neg, expr_aug_sum, 
-                              ne_weight=1.0, os_weight=1.0, cc_weight=1.0, ov_weight=1.0, mu_weight=1.0, 
-                              pos_weight=1.0, neg_weight=1.0, combine_ne_ov=False, combine_os_ov=False, 
-                              combine_cc_pn=False, is_first_step=True):
+def compute_individual_losses(seg_pred, batch_n, batch_sa, batch_pos, batch_neg, expr_aug_sum, weights,
+                              combine_ne_ov=False, combine_os_ov=False, combine_cc_pn=False, is_first_step=True):
     # Compute individual losses as appropriate
     loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn = None, None, None, None, None, None
-    
+
+    # Loss functions
+    criterion_ne = NucleiEncapsulationLoss(weights["ne"], device)
+    criterion_os = OversegmentationLoss(weights["os"], device)
+    criterion_cc = CellCallingLoss(weights["cc"], device)
+    criterion_ov = OverlapLoss(weights["ov"], device)
+    criterion_mu = MultipleAssignmentLoss(weights["mu"], device)
+    criterion_pn = PosNegMarkerLoss(weights["pos"], weights["neg"], device)
+
+    # Apply losses
     ov_combined = combine_ne_ov or combine_os_ov
     if is_first_step or not ov_combined:
-        loss_ov = criterion_ov(seg_pred, batch_n, ov_weight)
+        loss_ov = criterion_ov(seg_pred, batch_n, weights["ov"])
     
     if is_first_step or not combine_ne_ov:
-        loss_ne = criterion_ne(seg_pred, batch_n, ne_weight)
+        loss_ne = criterion_ne(seg_pred, batch_n, weights["ne"])
     if is_first_step or not combine_os_ov:
-        loss_os = criterion_os(seg_pred, batch_n, os_weight)
+        loss_os = criterion_os(seg_pred, batch_n, weights["os"])
     if is_first_step or not combine_cc_pn:
-        loss_cc = criterion_cc(seg_pred, batch_sa, cc_weight)
-        loss_pn = criterion_pn(seg_pred, batch_pos, batch_neg, pos_weight, neg_weight)
+        loss_cc = criterion_cc(seg_pred, batch_sa, weights["cc"])
+        loss_pn = criterion_pn(seg_pred, batch_pos, batch_neg, weights["pos"], weights["neg"])
     
-    loss_mu = criterion_mu(expr_aug_sum, batch_sa, mu_weight)
+    loss_mu = criterion_mu(expr_aug_sum, batch_sa, weights["mu"])
 
     return (loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn)
 
-def compute_losses(seg_pred, batch_n, batch_sa, batch_pos, batch_neg, expr_aug_sum, 
-                   ne_weight=1.0, os_weight=1.0, cc_weight=1.0, ov_weight=1.0, mu_weight=1.0, 
-                   pos_weight=1.0, neg_weight=1.0, combine_ne_ov=False, combine_os_ov=False, 
-                   combine_cc_pn=False, is_first_step=True):
+def compute_losses(seg_pred, batch_n, batch_sa, batch_pos, batch_neg, expr_aug_sum, weights,
+                   combine_ne_ov=False, combine_os_ov=False, combine_cc_pn=False, is_first_step=True):
     # Compute individual losses as appropriate
-    individual_losses = compute_individual_losses(seg_pred, batch_n, batch_sa, batch_pos, batch_neg, expr_aug_sum, 
-                                                  ne_weight, os_weight, cc_weight, ov_weight, mu_weight, pos_weight, 
-                                                  neg_weight, combine_ne_ov, combine_os_ov, combine_cc_pn, is_first_step)
+    individual_losses = compute_individual_losses(seg_pred, batch_n, batch_sa, batch_pos, batch_neg, expr_aug_sum, weights,
+                                                  combine_ne_ov, combine_os_ov, combine_cc_pn, is_first_step)
     loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn = individual_losses
+    loss_ne_ov, loss_os_ov, loss_cc_pn = None, None, None
     
     if is_first_step:
         if combine_ne_ov or combine_os_ov or combine_cc_pn:
             logging.info(f"Computing all constituent losses for first step; subsequent steps will use combined losses.")
 
     # If selected, adjust loss weights to compensate for different magnitudes of initial values
-    if combine_ne_ov and is_first_step:
-        ratio, weights1, weights2 = get_weighting_ratio(loss_ne, loss_ov, criterion_ne, criterion_ov, [ne_weight], [ov_weight], 
-                                                        ["ne_weight"], ["ov_weight"], seg_pred.shape)
-        ne_weight, ov_weight = weights1[0], weights2[0]
-        loss_ne, loss_ov = None, None # reset to make sure they are not used in grads
-    if combine_os_ov and is_first_step:
-        ratio, weights1, weights2 = get_weighting_ratio(loss_os, loss_ov, criterion_os, criterion_ov, [os_weight], [ov_weight], 
-                                                        ["os_weight"], ["ov_weight"], seg_pred.shape)
-        os_weight, ov_weight = weights1[0], weights2[0]
-        loss_os, loss_ov = None, None # reset to make sure they are not used in grads
-    if combine_cc_pn and is_first_step:
-        ratio, weights1, weights2 = get_weighting_ratio(loss_cc, loss_pn, criterion_cc, criterion_pn, [cc_weight], [pos_weight, neg_weight], 
-                                                        ["cc_weight"], ["pos_weight", "neg_weight"], seg_pred.shape)
-        cc_weight = weights1[0]
-        pos_weight, neg_weight = weights2
-        loss_cc, loss_pn = None, None # reset to make sure they are not used in grads
+    if combine_ne_ov
+        if is_first_step:
+            ratio, weights1, weights2 = get_weighting_ratio(loss_ne, loss_ov, [weights["ne"]], [ov_weight], 
+                                                            ["ne_weight"], ["ov_weight"], seg_pred.shape)
+            weights["ne"] = weights1[0]
+            weights["ov"] = weights2[0]
+            loss_ne, loss_ov = None, None # reset to make sure they are not used in grads
+        criterion_ne_ov = NucEncapOverlapLoss(weights["ne"], weights["ov"], device) if combine_ne_ov else None
+        loss_ne_ov = criterion_ne_ov(seg_pred, batch_n, weights["ne"], weights["ov"]) if combine_ne_ov else None
+
+    if combine_os_ov:
+        if is_first_step:
+            ratio, weights1, weights2 = get_weighting_ratio(loss_os, loss_ov, [weights["os"]], [weights["ov"]], 
+                                                            ["os_weight"], ["ov_weight"], seg_pred.shape)
+            weights["os"] = weights1[0]
+            weights["ov"] = weights2[0]
+            loss_os, loss_ov = None, None # reset to make sure they are not used in grads
+        criterion_os_ov = OversegOverlapLoss(weights["os"], weights["ov"], device) if combine_os_ov else None
+        loss_os_ov = criterion_os_ov(seg_pred, batch_n, weights["os"], weights["ov"]) if combine_os_ov else None    
+        
+    if combine_cc_pn:
+        if is_first_step:
+            ratio, weights1, weights2 = get_weighting_ratio(loss_cc, loss_pn, [weights["cc"]], [weights["pos"], weights["neg"]], 
+                                                            ["cc_weight"], ["pos_weight", "neg_weight"], seg_pred.shape)
+            weights["cc"] = weights1[0]
+            weights["pos"] = weights2[0]
+            weights["neg"] = weights2[1]
+            loss_cc, loss_pn = None, None # reset to make sure they are not used in grads
+        criterion_cc_pn = CellCallingMarkerLoss(weights["cc"], weights["pos"], weights["neg"], device) if combine_cc_pn else None
+        loss_cc_pn = criterion_cc_pn(seg_pred, batch_sa, batch_pos, batch_neg, weights["cc"], weights["pos"], weights["neg"]) if combine_cc_pn else None
     
     is_first_step = False # first step special case handling is concluded
     
-    # Calculate combined losses if required
-    loss_ne_ov = criterion_ne_ov(seg_pred, batch_n, ne_weight, ov_weight) if combine_ne_ov else None
-    loss_os_ov = criterion_os_ov(seg_pred, batch_n, os_weight, ov_weight) if combine_os_ov else None
-    loss_cc_pn = criterion_cc_pn(seg_pred, batch_sa, batch_pos, batch_neg, cc_weight, pos_weight, neg_weight) if combine_cc_pn else None
-
-    return (loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, loss_ne_ov, loss_os_ov, loss_cc_pn)
+    return (loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, loss_ne_ov, loss_os_ov, loss_cc_pn, weights)
 
 def generate_paths(config, make_new, learning_rate, dynamic_solvers, selected_solver=None, 
                    starting_solver=None, ending_solver=None, epochs_before_switch=0):
@@ -288,26 +301,18 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     logging.info("Total number of training examples: %d" % n_train_examples)
 
     # Loss weights
-    ne_weight = config.training_params.ne_weight
-    os_weight = config.training_params.os_weight
-    cc_weight = config.training_params.cc_weight
-    ov_weight = config.training_params.ov_weight
-    mu_weight = config.training_params.mu_weight
-    pos_weight = config.training_params.pos_weight
-    neg_weight = config.training_params.neg_weight
+    weights = {"ne": config.training_params.ne_weight, 
+               "os": config.training_params.os_weight, 
+               "cc": config.training_params.cc_weight, 
+               "ov": config.training_params.ov_weight, 
+               "mu": config.training_params.mu_weight, 
+               "pos": config.training_params.pos_weight, 
+               "neg": config.training_params.neg_weight}
 
     # Overlap loss preferences
     ov_distance_scaling = config.training_params.ov_distance_scaling
     ov_intensity_weighting = config.training_params.ov_intensity_weighting
     
-    # Loss functions
-    criterion_ne = NucleiEncapsulationLoss(ne_weight, device)
-    criterion_os = OversegmentationLoss(os_weight, device)
-    criterion_cc = CellCallingLoss(cc_weight, device)
-    criterion_ov = OverlapLoss(ov_weight, device)
-    criterion_mu = MultipleAssignmentLoss(mu_weight, device)
-    criterion_pn = PosNegMarkerLoss(pos_weight, neg_weight, device)
-
     # Combined loss functions if desired
     combine_ne_ov = config.training_params.combine_ne_ov
     combine_os_ov = config.training_params.combine_os_ov
@@ -315,14 +320,6 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     if combine_ne_ov and combine_os_ov: 
         raise Exception(f"combine_ne_ov and combine_os_ov were both set to True, but they are "
                         "mutually exclusive because they both use OverlapLoss.")
-
-    combine_ne_ov_mode = config.training_params.combine_ne_ov_mode
-    combine_os_ov_mode = config.training_params.combine_os_ov_mode
-    combine_cc_pn_mode = config.training_params.combine_cc_pn_mode
-
-    criterion_ne_ov = NucEncapOverlapLoss(ne_weight, ov_weight, device) if combine_ne_ov else None
-    criterion_os_ov = OversegOverlapLoss(os_weight, ov_weight, device) if combine_os_ov else None
-    criterion_cc_pn = CellCallingMarkerLoss(cc_weight, pos_weight, neg_weight, device) if combine_cc_pn else None
 
     # Non-contributing losses
     non_contributing_losses = config.training_params.non_contributing_losses
@@ -427,10 +424,8 @@ def train(config: Config, learning_rate = None, selected_solver = None):
 
             # Compute individual losses as appropriate
             computed_losses = compute_losses(seg_pred, batch_n, batch_sa, batch_pos, batch_neg, expr_aug_sum, 
-                                             ne_weight, os_weight, cc_weight, ov_weight, mu_weight, 
-                                             pos_weight, neg_weight, combine_ne_ov, combine_os_ov, 
-                                             combine_cc_pn, is_first_step)
-            loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, loss_ne_ov, loss_os_ov, loss_cc_pn = computed_losses
+                                             weights, combine_ne_ov, combine_os_ov, combine_cc_pn, is_first_step)
+            loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, loss_ne_ov, loss_os_ov, loss_cc_pn, weights = computed_losses
             
             # Apply the Procrustes method
             if "procrustes" in current_solver:
