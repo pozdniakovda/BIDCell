@@ -134,7 +134,7 @@ def compute_losses(seg_pred, batch_n, batch_sa, batch_pos, batch_neg, expr_aug_s
 
     return (loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, loss_ne_ov, loss_os_ov, loss_cc_pn)
 
-def generate_paths(config, learning_rate, dynamic_solvers, selected_solver=None, 
+def generate_paths(config, make_new, learning_rate, dynamic_solvers, selected_solver=None, 
                    starting_solver=None, ending_solver=None, epochs_before_switch=0):
     # Generate path for saving outputs
     
@@ -246,10 +246,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     # Create experiment directories
     resume_epoch = None  # could be added
     resume_step = 0
-    if resume_epoch is None:
-        make_new = True
-    else:
-        make_new = False
+    make_new = True if resume_epoch is None else False
 
     if config.training_params.model_freq <= config.testing_params.test_step:
         model_freq = config.training_params.model_freq
@@ -341,7 +338,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
         learning_rate = config.training_params.learning_rate
 
     # Generate path for saving outputs
-    experiment_path = generate_paths(config, learning_rate, dynamic_solvers, selected_solver, 
+    experiment_path = generate_paths(config, make_new, learning_rate, dynamic_solvers, selected_solver, 
                                      starting_solver, ending_solver, epochs_before_switch)
 
     # Optimiser
