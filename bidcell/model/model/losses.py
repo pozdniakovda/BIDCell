@@ -140,67 +140,6 @@ class OverlapLoss(nn.Module):
         return loss
 
 
-class MultipleAssignmentLoss(nn.Module):
-    """
-    Penalize double (or more) assignments of transcripts due to overlapping segmentations.
-    """
-
-    def __init__(self, weight, device):
-        super(MultipleAssignmentLoss, self).__init__()
-        self.weight = weight
-        self.init_weight = weight
-        self.device = device
-        
-    def forward(self, seg_pred, transcript_map, weight=None):
-        """
-        Args:
-            seg_pred: Segmentation predictions (batch_size, num_classes, height, width).
-            transcript_map: Binary map of transcript locations (batch_size, 1, height, width),
-                            where 1 indicates a transcript's presence at that pixel.
-            weight: Optional weight to override the initialized weight.
-        """
-        if weight is not None:
-            self.weight = weight
-    
-        # Apply softmax to get probabilities for each pixel
-        seg_probs = F.softmax(seg_pred, dim=1)  # (batch_size, num_classes, height, width)
-    
-        # Extract the "cell" probabilities (assuming class 1 corresponds to cells)
-        cell_probs = seg_probs[:, 1, :, :]  # (batch_size, height, width)
-    
-        # Mask cell probabilities by transcript locations
-        transcript_locs = transcript_map[:, 0, :, :]  # (batch_size, height, width)
-        assigned_probs = cell_probs * transcript_locs  # (batch_size, height, width)
-    
-        # Flatten transcript locations for easier processing
-        batch_size, height, width = assigned_probs.shape
-        assigned_probs_flat = assigned_probs.view(batch_size, -1)  # (batch_size, height * width)
-        transcript_map_flat = transcript_locs.view(batch_size, -1)  # (batch_size, height * width)
-    
-        # Mask to keep only probabilities where transcripts exist
-        transcript_indices = (transcript_map_flat > 0).nonzero(as_tuple=True)  # Transcript locations
-        transcript_probs = assigned_probs_flat[transcript_indices]  # (num_transcripts,)
-    
-        # Set the top probability for each transcript to zero
-        top_probs, _ = transcript_probs.max(dim=1, keepdim=True)  # Find the top probability per transcript
-        adjusted_probs = transcript_probs - top_probs  # Subtract the top probability (set it to 0)
-        adjusted_probs = torch.clamp(adjusted_probs, min=0)  # Avoid negatives due to numerical errors
-    
-        # Compute the penalty as the sum of the remaining probabilities
-        penalty = torch.sum(adjusted_probs ** 2)  # Sum of squares of remaining probabilities (scalar)
-    
-        # Normalize by the number of transcripts
-        num_transcripts = transcript_indices[0].numel()  # Total number of transcripts
-        if num_transcripts > 0:
-            normalized_penalty = penalty / num_transcripts
-        else:
-            normalized_penalty = torch.tensor(0.0, device=seg_pred.device)
-    
-        # Scale by weight and return
-        loss = normalized_penalty * self.weight
-        return loss
-
-
 class PosNegMarkerLoss(nn.Module):
     """
     Positive and negative markers of cell type
@@ -240,3 +179,46 @@ class PosNegMarkerLoss(nn.Module):
         loss_total = loss_total / seg_pred.shape[0]
 
         return loss_total
+
+
+class MultipleAssignmentLoss(nn.Module):
+    """
+    Penalize double (or more) assignments of transcripts due to overlapping segmentations.
+    """
+
+    def __init__(self, weight, device):
+        super(MultipleAssignmentLoss, self).__init__()
+        self.weight = weight
+        self.init_weight = weight
+        self.device = device
+
+    def forward(self, seg_pred, transcript_map, weight=None):
+        """
+        Args:
+            seg_pred: Segmentation predictions (batch_size, num_classes, height, width).
+            transcript_map: Binary map of transcript locations (batch_size, 1, height, width),
+                            where 1 indicates a transcript's presence at that pixel.
+            weight: Optional weight to override the initialized weight.
+        """
+        if weight is not None:
+            self.weight = weight
+
+        # Apply softmax to get probabilities for each pixel
+        seg_probs = F.softmax(seg_pred, dim=1)
+
+        # Extract the "cell" probabilities (assuming class 1 corresponds to cells)
+        cell_probs = seg_probs[:, 1, :, :]  # (batch_size, height, width)
+
+        # Mask cell probabilities by transcript locations
+        assigned_probs = cell_probs * transcript_map[:, 0, :, :]  # (batch_size, height, width)
+
+        # Sum probabilities for each transcript location (overlapping predictions add up)
+        summed_probs = torch.sum(assigned_probs, dim=(1, 2))  # (batch_size)
+
+        # Penalize probabilities > 1 (indicating multiple assignments)
+        multiple_assignment_penalty = F.relu(summed_probs - 1)
+
+        # Compute the total penalty normalized by the batch size
+        loss = torch.mean(multiple_assignment_penalty) * self.weight
+
+        return loss
