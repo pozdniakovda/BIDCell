@@ -149,9 +149,12 @@ def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os 
                           
     # Backward pass
     grads = []
-    for loss in contributing_terms.values():
+    for key, loss in contributing_terms.items():
         optimizer.zero_grad()  # Clear previous gradients
-        loss.backward(retain_graph=True)  # Retain graph for backpropagation
+        try:
+            loss.backward(retain_graph=True)  # Retain graph for backpropagation
+        except Exception as e:
+            raise Exception(f"Loss {key} of type {type(loss)} produced the following exception during backpropagation: \n{e}")
         grad = torch.cat([p.grad.flatten() if p.grad is not None else torch.zeros_like(p).flatten() for p in model.parameters()])
         grads.append(grad)
 
