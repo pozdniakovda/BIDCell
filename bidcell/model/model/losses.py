@@ -183,42 +183,40 @@ class PosNegMarkerLoss(nn.Module):
 
 class MultipleAssignmentLoss(nn.Module):
     """
-    Penalize double (or more) assignments of transcripts due to overlapping segmentations.
+    Penalize assigning transcripts to more than one cell.
     """
 
-    def __init__(self, weight, device):
+    def __init__(self, weight, device) -> None:
         super(MultipleAssignmentLoss, self).__init__()
         self.weight = weight
         self.init_weight = weight
         self.device = device
 
-    def forward(self, seg_pred, transcript_map, weight=None):
+    def forward(self, expr_aug_sum, batch_sa, weight=None):
         """
         Args:
-            seg_pred: Segmentation predictions (batch_size, num_classes, height, width).
-            transcript_map: Binary map of transcript locations (batch_size, 1, height, width),
-                            where 1 indicates a transcript's presence at that pixel.
+            expr_aug_sum: Summed expression map for the patch (batch_size, height, width).
+            batch_sa: Search areas separated by cell (batch_size, n_cells, height, width).
             weight: Optional weight to override the initialized weight.
         """
+        # Overwrite self.weight if new weight is given; original is preserved as self.init_weight
         if weight is not None:
             self.weight = weight
 
-        # Apply softmax to get probabilities for each pixel
-        seg_probs = F.softmax(seg_pred, dim=1)
+        # Batch size and spatial dimensions
+        batch_size, n_cells, height, width = batch_sa.shape
 
-        # Extract the "cell" probabilities (assuming class 1 corresponds to cells)
-        cell_probs = seg_probs[:, 1, :, :]  # (batch_size, height, width)
+        # Sum over all cells to get the total number of cells each pixel is assigned to
+        total_cell_assignments = torch.sum(batch_sa, dim=1)  # (batch_size, height, width)
 
-        # Mask cell probabilities by transcript locations
-        assigned_probs = cell_probs * transcript_map[:, 0, :, :]  # (batch_size, height, width)
+        # Penalize pixels assigned to more than one cell
+        extra_assignments = torch.clamp(total_cell_assignments - 1, min=0)
 
-        # Sum probabilities for each transcript location (overlapping predictions add up)
-        summed_probs = torch.sum(assigned_probs, dim=(1, 2))  # (batch_size)
+        # Mask with expression data (penalize only for pixels with expression)
+        penalty = extra_assignments * expr_aug_sum  # (batch_size, height, width)
 
-        # Penalize probabilities > 1 (indicating multiple assignments)
-        multiple_assignment_penalty = F.relu(summed_probs - 1)
-
-        # Compute the total penalty normalized by the batch size
-        loss = torch.mean(multiple_assignment_penalty) * self.weight
+        # Sum the penalty over all pixels and normalize by batch size
+        loss = torch.sum(penalty) / batch_size
+        loss = loss * self.weight
 
         return loss
