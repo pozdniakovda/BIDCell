@@ -428,6 +428,9 @@ def train(config: Config, learning_rate = None, selected_solver = None):
 
             seg_pred = model(batch_x313)
             print(f"seg_pred shape: {seg_pred.shape}")
+            seg_pred_img = np.transpose(seg_pred[0,:,:,:], axes=(1,2,0))
+            plt.imshow(seg_pred_img)
+            plt.show()
 
             # Compute individual losses as appropriate
             computed_losses = compute_losses(seg_pred, batch_n, batch_sa, batch_pos, batch_neg, expr_aug_sum, 
