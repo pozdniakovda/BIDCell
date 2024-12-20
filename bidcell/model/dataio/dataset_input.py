@@ -337,7 +337,7 @@ class DataProcessing(data.Dataset):
 
         # Mask expressions and change channel order using PyTorch
         expr_split = expr_aug.unsqueeze(-1).repeat(1, 1, 1, n_cells)  # Shape: [H, W, n_channels, n_cells]
-        expr_split = expr_split_torch * search_areas_torch.unsqueeze(2)
+        expr_split = expr_split * search_areas_torch.unsqueeze(2)
 
         # Convert tensor types
         expr_split_torch = expr_split.float()
@@ -365,8 +365,8 @@ class DataProcessing(data.Dataset):
         else:
             return (
                 expr_sum_split_torch, 
-                expr_torch,
-                nucl_torch,
+                expr_split_torch,
+                nucl_split_torch,
                 search_areas_torch,
                 search_pos_torch,
                 search_neg_torch,
