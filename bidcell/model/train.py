@@ -310,28 +310,10 @@ def train(config: Config, learning_rate = None, selected_solver = None):
 
     if dynamic_solvers:
         logging.info(f"Begin training using {starting_solver} for {epochs_before_switch} epochs, followed by {ending_solver} thereafter")
-        
-        if "procrustes" in starting_solver.lower():
-            starting_scale_mode = "median" if "median" in starting_solver else "rmse" if "rmse" in starting_solver else "min"
-            starting_solver_title = f"Procrustes Method (scaling mode: {starting_scale_mode})"
-        else:
-            starting_solver_title = f"Default Method"
-
-        if "procrustes" in ending_solver.lower():
-            ending_scale_mode = "median" if "median" in ending_solver else "rmse" if "rmse" in ending_solver else "min"
-            ending_solver_title = f"Procrustes Method (scaling mode: {ending_scale_mode})"
-        else:
-            ending_solver_title = f"Default Method"
-
-        solver_title = f"{starting_solver_title} (epochs 1-{epochs_before_switch}) to {ending_solver_title} (epochs {epochs_before_switch+1} onwards)"
-        
     elif "procrustes" in selected_solver:
         logging.info("Begin training using Procrustes method")
-        scale_mode = "median" if "median" in selected_solver else "rmse" if "rmse" in selected_solver else "min"
-        solver_title = f"Procrustes Method (scaling mode: {scale_mode})"
-        
+        scale_mode = "median" if "median" in selected_solver else "rmse" if "rmse" in selected_solver else "min"        
     else:
-        solver_title = "Default Method"
         logging.info("Begin training using default method")
 
     model = model.train()
