@@ -26,27 +26,6 @@ class NucleiEncapsulationLoss(nn.Module):
 
         return self.weight * loss
 
-    def get_max(self, input_shape, weight=None):
-        '''
-        CrossEntropyLoss is maximized when predictions are completely wrong.
-        The worst-case scenario assumes that for every pixel, the predicted class has the lowest probability 
-        (close to zero), and the true class is completely misclassified.
-        '''
-        
-        batch_size, num_classes, height, width = input_shape
-    
-        # The maximum loss per pixel is given by -log(1/num_classes).
-        max_loss_per_pixel = -torch.log(torch.tensor(1.0 / num_classes)).to(self.device)
-    
-        # Compute the total maximum loss for all pixels in the batch
-        total_max_loss = max_loss_per_pixel * batch_size * height * width
-
-        # Apply the weight
-        weight = self.weight if weight is None else weight
-        max_loss = weight * total_max_loss
-
-        return max_loss.item()
-
 
 class OversegmentationLoss(nn.Module):
     """
@@ -92,29 +71,6 @@ class OversegmentationLoss(nn.Module):
     
         return loss
 
-    def get_max(self, input_shape, weight=None):
-        '''
-        In the worst-case scenario, the entire image is predicted as cytoplasm,
-        and there are no nuclei predictions, which maximizes the count difference.
-        '''
-        
-        batch_size, num_classes, height, width = input_shape
-
-        max_count_cyto = batch_size * height * width  # All pixels are cytoplasm
-        max_count_nuc = 0  # No pixels are classified as nuclei
-    
-        # The maximum extra count is the difference: max_count_cyto - max_count_nuc
-        max_extra = max_count_cyto - max_count_nuc
-    
-        # Since ReLU is applied, max_extra is already non-negative.
-        max_loss = max_extra / batch_size # normalize by the batch size (as in the forward method)
-
-        # Apply the weight
-        weight = self.weight if weight is None else weight
-        max_loss = weight * max_loss
-        
-        return max_loss
-
 
 class CellCallingLoss(nn.Module):
     """
@@ -142,30 +98,6 @@ class CellCallingLoss(nn.Module):
         loss_total = loss_total / seg_pred.shape[0]
 
         return self.weight * loss_total
-
-    def get_max(self, input_shape, weight=None):
-        '''
-        In the worst-case scenario, every pixel within the searchable area
-        is misclassified, maximizing the CrossEntropy loss.
-        '''
-        
-        batch_size, num_classes, height, width = input_shape
-    
-        # The maximum loss per pixel occurs when the predicted probability for the true class is zero.
-        # This corresponds to a loss of -log(1/num_classes) for each pixel.
-        max_loss_per_pixel = -torch.log(torch.tensor(1.0 / num_classes)).to(self.device)
-    
-        # Total maximum loss across all pixels in the batch
-        max_loss_total = max_loss_per_pixel * batch_size * height * width
-    
-        # Normalize by the batch size (as in the forward method)
-        max_loss = max_loss_total / batch_size
-    
-        # Apply the weight
-        weight = self.weight if weight is None else weight
-        max_loss = weight * max_loss
-        
-        return max_loss.item()
 
 
 class OverlapLoss(nn.Module):
@@ -238,47 +170,6 @@ class OverlapLoss(nn.Module):
         gradients_y = torch.nn.functional.conv2d(all_nuclei.unsqueeze(0).unsqueeze(0), kernel.transpose(-1, -2), padding=1)
         boundaries = torch.sqrt(gradients_x**2 + gradients_y**2)
         return (boundaries > 0).float().squeeze(0).squeeze(0)
-
-    def get_max(self, seg_pred_shape, distance_scaling=False, intensity_weighting=False):
-        """
-        Computes the maximum possible value of the OverlapLoss.
-
-        Args:
-            seg_pred_shape (tuple): Shape of the segmentation predictions (batch_size, num_classes, height, width).
-            distance_scaling (bool): Whether distance-based scaling is applied.
-            intensity_weighting (bool): Whether intensity weighting is applied.
-
-        Returns:
-            float: Maximum possible loss value.
-        """
-        _, _, height, width = seg_pred_shape
-
-        if distance_scaling:
-            # Create a synthetic boundary mask
-            boundary_mask = torch.zeros((height, width), dtype=torch.float32).to(self.device)
-            boundary_mask[::10, :] = 1  # Example: Horizontal boundaries every 10 pixels
-            boundary_mask[:, ::10] = 1  # Example: Vertical boundaries every 10 pixels
-
-            # Compute distance transform
-            distances = distance_transform_edt(1 - boundary_mask.cpu().numpy())
-            distances = torch.tensor(distances).to(self.device)
-
-            # Max overlap scaled by distance
-            max_overlap = 1 / (1 + distances)
-            if intensity_weighting:
-                max_overlap = max_overlap ** 2
-            total_max_overlap = torch.sum(max_overlap).item()
-        else:
-            # Without distance scaling, all pixels contribute fully
-            total_max_overlap = height * width
-            if intensity_weighting:
-                total_max_overlap = total_max_overlap ** 2
-
-        # Normalize by the total number of pixels
-        scale = height * width
-        max_loss = total_max_overlap / scale
-
-        return self.weight * max_loss
 
 
 class MultipleAssignmentLoss(nn.Module):
@@ -389,34 +280,3 @@ class PosNegMarkerLoss(nn.Module):
         ) / seg_pred.shape[0]
 
         return loss_total
-
-    def get_max(self, input_shape, weight_pos=None, weight_neg=None):
-        '''
-        In the worst-case scenario:
-        - For positive markers, every pixel is misclassified, maximizing CrossEntropy loss.
-        - For negative markers, every pixel is predicted as a cell, maximizing the overlap with the negative mask.
-        '''
-    
-        batch_size, num_classes, height, width = input_shape
-    
-        # Set default weights if not provided
-        weight_pos = self.weight_pos if weight_pos is None else weight_pos
-        weight_neg = self.weight_neg if weight_neg is None else weight_neg
-    
-        # MAXIMUM POSITIVE LOSS:
-        # Assume every pixel is misclassified for the positive markers (worst case).
-        max_loss_pos_per_pixel = -torch.log(torch.tensor(1.0 / num_classes)).to(self.device)
-        max_loss_pos = max_loss_pos_per_pixel * batch_size * height * width
-    
-        # MAXIMUM NEGATIVE LOSS:
-        # Assume every pixel is classified as a cell, maximizing overlap with the negative mask.
-        max_loss_neg = batch_size * height * width  # All pixels contribute to the negative loss.
-    
-        # Normalize losses by the batch size
-        max_loss_pos = max_loss_pos / batch_size
-        max_loss_neg = max_loss_neg / batch_size
-    
-        # Apply weights
-        max_loss = (weight_pos * max_loss_pos) + (weight_neg * max_loss_neg)
-    
-        return max_loss.item()
