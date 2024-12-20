@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from scipy.ndimage import distance_transform_edt
+import matplotlib.pyplot as plt
 
 
 class NucleiEncapsulationLoss(nn.Module):
@@ -207,11 +208,17 @@ class MultipleAssignmentLoss(nn.Module):
               f"\texpr_aug_sum shape: {expr_aug_sum.shape}\n"
               f"\tbatch_sa shape: {batch_sa.shape}")
 
-        # Batch size and spatial dimensions
-        batch_size, n_cells, height, width = batch_sa.shape
+        batch_sa_img = batch_sa.detach().cpu().numpy()
+        batch_sa_img = np.transpose(batch_sa_img[:,0,:,:], axes=(1, 2, 0))
+        plt.imshow(batch_sa_img)
+        plt.show()
 
         # Sum over all cells to get the total number of cells each pixel is assigned to
-        total_cell_assignments = torch.sum(batch_sa, dim=1)  # (batch_size, height, width)
+        total_cell_assignments = torch.sum(batch_sa, dim=0)  # (batch_size, height, width)
+        print(f"total_cell_assignments: \n"
+              f"\tshape: {total_cell_assignments.shape}\n"
+              f"\trange: {total_cell_assignments.min()} - {total_cell_assignments.max()}\n"
+              f"\tmean: {total_cell_assignments.mean()}")
 
         # Penalize pixels assigned to more than one cell
         extra_assignments = torch.clamp(total_cell_assignments - 1, min=0)
@@ -220,7 +227,8 @@ class MultipleAssignmentLoss(nn.Module):
         penalty = extra_assignments * expr_aug_sum  # (batch_size, height, width)
 
         # Sum the penalty over all pixels and normalize by batch size
-        loss = torch.sum(penalty) / batch_size
+        scale = batch_sa.shape[0] * batch_sa.shape[1]
+        loss = torch.sum(penalty) / scale
         loss = loss * self.weight
 
         return loss
