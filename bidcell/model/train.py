@@ -134,6 +134,18 @@ def compute_losses(seg_pred, batch_n, batch_sa, batch_pos, batch_neg, expr_aug_s
 
     return (loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, loss_ne_ov, loss_os_ov, loss_cc_pn)
 
+def detach_fig_outputs(coords_h1, coords_w1, seg_pred, nucl_aug, batch_sa, expr_aug_sum):
+    # Detaches fig outputs from device and returns them so they can be saved
+    
+    coords_h1 = coords_h1.detach().cpu().squeeze().numpy()
+    coords_w1 = coords_w1.detach().cpu().squeeze().numpy()
+    sample_seg = seg_pred.detach().cpu().numpy()
+    sample_n = nucl_aug.detach().cpu().numpy()
+    sample_sa = batch_sa.detach().cpu().numpy()
+    sample_expr = expr_aug_sum.detach().cpu().numpy()
+
+    return (coords_h1, coords_w1, sample_seg, sample_n, sample_sa, sample_expr)
+
 def save_model(config, experiment_path, epoch, model, optimizer):
     # Save model
     save_path = (
@@ -338,9 +350,10 @@ def train(config: Config, learning_rate = None, selected_solver = None):
 
     lrs = []
     scale_mode = ""
-    
+
+    total_epochs = config.training_params.total_epochs
     is_first_step = True
-    for epoch in range(initial_epoch, config.training_params.total_epochs):
+    for epoch in range(initial_epoch, total_epochs):
         # Define current solver
         if dynamic_solvers:
             current_solver = starting_solver if epoch < epochs_before_switch else ending_solver
@@ -439,30 +452,14 @@ def train(config: Config, learning_rate = None, selected_solver = None):
                                             non_contributing_losses = non_contributing_losses)
             
             if (global_step % config.training_params.sample_freq) == 0:
-                coords_h1 = coords_h1.detach().cpu().squeeze().numpy()
-                coords_w1 = coords_w1.detach().cpu().squeeze().numpy()
-                sample_seg = seg_pred.detach().cpu().numpy()
-                sample_n = nucl_aug.detach().cpu().numpy()
-                sample_sa = batch_sa.detach().cpu().numpy()
-                sample_expr = expr_aug_sum.detach().cpu().numpy()
-                patch_fp = (
-                    experiment_path
-                    + "/"
-                    + config.experiment_dirs.samples_dir
-                    + "/epoch_%d_%d_%d_%d.png"
-                    % (epoch + 1, step_epoch, coords_h1, coords_w1)
-                )
-
+                fig_outputs = detach_fig_outputs(coords_h1, coords_w1, seg_pred, 
+                                                 nucl_aug, batch_sa, expr_aug_sum)
+                coords_h1, coords_w1, sample_seg, sample_n, sample_sa, sample_expr = fig_outputs
+                patch_fp = os.path.join(f"{experiment_path}/{config.experiment_dirs.samples_dir}", 
+                                        f"epoch_{epoch+1}_{step_epoch}_{coords_h1}_{coords_w1}.png")
                 save_fig_outputs(sample_seg, sample_n, sample_sa, sample_expr, patch_fp)
-
-                print(
-                    "Epoch[{}/{}], Step[{}], Total Loss:{:.4f}".format(
-                        epoch + 1,
-                        config.training_params.total_epochs,
-                        step_epoch,
-                        total_loss,
-                    )
-                )
+                
+                print(f"Epoch[{epoch+1}/{total_epochs}], Step[{step_epoch}], Total Loss:{total_loss:.4f}")
 
             # Save model
             if (step_epoch % model_freq) == 0:
@@ -475,7 +472,6 @@ def train(config: Config, learning_rate = None, selected_solver = None):
         lrs.append(cur_lr)
 
     # Graph the losses
-    total_epochs = config.training_params.total_epochs
     train_loader_len = len(train_loader)
     log_scale = config.training_params.log_scale
     ma_losses = get_ma_losses(losses)
