@@ -1,5 +1,5 @@
 import torch
-from .solvers.procrustes_solver import ProcrustesSolver
+from .procrustes_solver import ProcrustesSolver
 from ..config import load_config, Config
 
 def to_scalar(value):
