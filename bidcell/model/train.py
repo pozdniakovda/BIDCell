@@ -134,6 +134,22 @@ def compute_losses(seg_pred, batch_n, batch_sa, batch_pos, batch_neg, expr_aug_s
 
     return (loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, loss_ne_ov, loss_os_ov, loss_cc_pn)
 
+def get_scheduler(total_epochs):
+    # Scheduler https://arxiv.org/pdf/1812.01187.pdf
+    
+    lf = (
+        lambda x: (
+            ((1 + math.cos(x * math.pi / total_epochs)) / 2)
+            ** 1.0
+        )
+        * 0.95
+        + 0.05
+    )  # cosine
+    scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lf)
+    scheduler.last_epoch = global_step
+    
+    return scheduler
+
 def detach_fig_outputs(coords_h1, coords_w1, seg_pred, nucl_aug, batch_sa, expr_aug_sum):
     # Detaches fig outputs from device and returns them so they can be saved
     
@@ -319,16 +335,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     losses = {}
 
     # Scheduler https://arxiv.org/pdf/1812.01187.pdf
-    lf = (
-        lambda x: (
-            ((1 + math.cos(x * math.pi / config.training_params.total_epochs)) / 2)
-            ** 1.0
-        )
-        * 0.95
-        + 0.05
-    )  # cosine
-    scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lf)
-    scheduler.last_epoch = global_step
+    scheduler = get_scheduler(config.training_params.total_epochs)
 
     # Starting epoch
     initial_epoch = resume_epoch if resume_epoch is not None else 0
