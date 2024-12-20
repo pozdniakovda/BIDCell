@@ -134,6 +134,24 @@ def compute_losses(seg_pred, batch_n, batch_sa, batch_pos, batch_neg, expr_aug_s
 
     return (loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, loss_ne_ov, loss_os_ov, loss_cc_pn)
 
+def save_model(config, experiment_path, epoch, model, optimizer):
+    # Save model
+    save_path = (
+        experiment_path
+        + "/"
+        + config.experiment_dirs.model_dir
+        + "/epoch_%d_step_%d.pth" % (epoch + 1, step_epoch)
+    )
+    torch.save(
+        {
+            "epoch": epoch + 1,
+            "model_state_dict": model.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
+        },
+        save_path,
+    )
+    logging.info("Model saved: %s" % save_path)
+
 def train(config: Config, learning_rate = None, selected_solver = None):
     logging.basicConfig(
         format="%(asctime)s %(levelname)s %(message)s",
@@ -448,21 +466,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
 
             # Save model
             if (step_epoch % model_freq) == 0:
-                save_path = (
-                    experiment_path
-                    + "/"
-                    + config.experiment_dirs.model_dir
-                    + "/epoch_%d_step_%d.pth" % (epoch + 1, step_epoch)
-                )
-                torch.save(
-                    {
-                        "epoch": epoch + 1,
-                        "model_state_dict": model.state_dict(),
-                        "optimizer_state_dict": optimizer.state_dict(),
-                    },
-                    save_path,
-                )
-                logging.info("Model saved: %s" % save_path)
+                save_model(config, experiment_path, epoch, model, optimizer)
 
             global_step += 1
 
