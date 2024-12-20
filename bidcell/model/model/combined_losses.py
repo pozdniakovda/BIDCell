@@ -25,17 +25,6 @@ class NucEncapOverlapLoss(nn.Module):
         # Return the sum of both losses
         return encap_loss + overlap_loss
 
-    def get_max(self, input_shape, weight_encap=None, weight_overlap=None, distance_scaling=False, intensity_weighting=False):
-        # Compute maximum possible NucleiEncapsulationLoss
-        max_encap_loss = self.nuclei_encapsulation_loss.get_max(input_shape, weight=weight_encap)
-
-        # Compute maximum possible OverlapLoss
-        max_overlap_loss = self.overlap_loss.get_max(input_shape, distance_scaling=distance_scaling, 
-                                                     intensity_weighting=intensity_weighting)
-
-        # Return the sum of both maximum losses
-        return max_encap_loss + max_overlap_loss
-
 
 class OversegOverlapLoss(nn.Module):
     """
@@ -59,18 +48,6 @@ class OversegOverlapLoss(nn.Module):
 
         # Return the sum of both losses
         return oversegmentation_loss + overlap_loss
-
-    def get_max(self, input_shape, weight_oversegmentation=None, weight_overlap=None, 
-                distance_scaling=False, intensity_weighting=False):
-        # Compute maximum possible OversegmentationLoss
-        max_oversegmentation_loss = self.oversegmentation_loss.get_max(input_shape, weight=weight_oversegmentation)
-
-        # Compute maximum possible OverlapLoss
-        max_overlap_loss = self.overlap_loss.get_max(input_shape, distance_scaling=distance_scaling, 
-                                                     intensity_weighting=intensity_weighting)
-
-        # Return the sum of both maximum losses
-        return max_oversegmentation_loss + max_overlap_loss
 
 
 class CellCallingMarkerLoss(nn.Module):
@@ -97,17 +74,3 @@ class CellCallingMarkerLoss(nn.Module):
 
         # Return the sum of both losses
         return calling_loss + marker_loss
-
-    def get_max(self, input_shape, cc_weight=None, weight_pos=None, weight_neg=None):
-        # Compute maximum possible CellCallingLoss
-        max_calling_loss = self.cell_calling_loss.get_max(
-            input_shape, weight=cc_weight
-        )
-
-        # Compute maximum possible PosNegMarkerLoss
-        max_marker_loss = self.pos_neg_marker_loss.get_max(
-            input_shape, weight_pos=weight_pos, weight_neg=weight_neg
-        )
-
-        # Return the sum of both maximum losses
-        return max_calling_loss + max_marker_loss
