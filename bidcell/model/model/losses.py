@@ -211,6 +211,10 @@ class MultipleAssignmentLoss(nn.Module):
         # Sum over all cells to get the total number of cells each pixel is assigned to
         total_cell_assignments = torch.sum(batch_sa, dim=0)  # (batch_size, height, width)
 
+        tca_img = total_cell_assignments.squeeze().detach().cpu().numpy()
+        plt.imshow(tca_img)
+        plt.show()
+
         # Penalize pixels assigned to more than one cell
         extra_assignments = torch.clamp(total_cell_assignments - 1, min=0)
 
