@@ -203,6 +203,9 @@ class MultipleAssignmentLoss(nn.Module):
         if weight is not None:
             self.weight = weight
 
+        print(f"expr_aug_sum shape: {expr_aug_sum.shape}")
+        print(f"batch_sa shape: {batch_sa.shape}")
+
         # Batch size and spatial dimensions
         batch_size, n_cells, height, width = batch_sa.shape
 
