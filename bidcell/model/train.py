@@ -427,6 +427,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
             optimizer.zero_grad()
 
             seg_pred = model(batch_x313)
+            print(f"seg_pred shape: {seg_pred.shape}")
 
             # Compute individual losses as appropriate
             computed_losses = compute_losses(seg_pred, batch_n, batch_sa, batch_pos, batch_neg, expr_aug_sum, 
