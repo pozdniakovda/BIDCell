@@ -416,7 +416,6 @@ def train(config: Config, learning_rate = None, selected_solver = None):
             seg_pred = model(batch_x313)
 
             # Compute individual losses as appropriate
-            print(f"expr_aug_sum info: shape = {expr_aug_sum.shape}, requires_grad = {expr_aug_sum.requires_grad}")
             computed_losses = compute_losses(seg_pred, batch_n, batch_sa, batch_pos, batch_neg, expr_aug_sum, 
                                              weights, device, combine_ne_ov, combine_os_ov, combine_cc_pn, is_first_step)
             loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, loss_ne_ov, loss_os_ov, loss_cc_pn, weights = computed_losses
