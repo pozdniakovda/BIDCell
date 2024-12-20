@@ -150,6 +150,28 @@ def get_scheduler(total_epochs):
     
     return scheduler
 
+def get_optimizer(config, model, learning_rate):
+    # Optimiser
+    
+    print(f"Current learning rate: {learning_rate}")
+    if config.training_params.optimizer == "rmsprop":
+        optimizer = torch.optim.RMSprop(
+            model.parameters(),
+            lr=learning_rate,
+            weight_decay=1e-8,
+        )
+    elif config.training_params.optimizer == "adam":
+        optimizer = torch.optim.Adam(
+            model.parameters(),
+            lr=learning_rate,
+            betas=(config.training_params.beta1, config.training_params.beta2),
+            weight_decay=config.training_params.weight_decay,
+        )
+    else:
+        sys.exit("Select optimiser from rmsprop or adam")
+
+    return optimizer
+
 def detach_fig_outputs(coords_h1, coords_w1, seg_pred, nucl_aug, batch_sa, expr_aug_sum):
     # Detaches fig outputs from device and returns them so they can be saved
     
@@ -314,22 +336,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     make_dir(experiment_path + "/" + config.experiment_dirs.samples_dir)
 
     # Optimiser
-    print(f"Current learning rate: {learning_rate}")
-    if config.training_params.optimizer == "rmsprop":
-        optimizer = torch.optim.RMSprop(
-            model.parameters(),
-            lr=learning_rate,
-            weight_decay=1e-8,
-        )
-    elif config.training_params.optimizer == "adam":
-        optimizer = torch.optim.Adam(
-            model.parameters(),
-            lr=learning_rate,
-            betas=(config.training_params.beta1, config.training_params.beta2),
-            weight_decay=config.training_params.weight_decay,
-        )
-    else:
-        sys.exit("Select optimiser from rmsprop or adam")
+    optimizer = get_optimizer(config, model, learning_rate)
 
     global_step = 0
     losses = {}
