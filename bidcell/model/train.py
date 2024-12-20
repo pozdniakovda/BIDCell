@@ -384,21 +384,14 @@ def train(config: Config, learning_rate = None, selected_solver = None):
             if batch_x313.shape[0] == 0:
                 # Save the model periodically
                 if (step_epoch % model_freq) == 0:
-                    save_path = (
-                        experiment_path
-                        + "/"
-                        + config.experiment_dirs.model_dir
-                        + "/epoch_%d_step_%d.pth" % (epoch + 1, step_epoch)
-                    )
-                    torch.save(
-                        {
-                            "epoch": epoch + 1,
-                            "model_state_dict": model.state_dict(),
-                            "optimizer_state_dict": optimizer.state_dict(),
-                        },
-                        save_path,
-                    )
+                    filename = f"epoch_{epoch+1}_step_{step_epoch}.pth"
+                    save_path = os.path.join(experiment_path, config.experiment_dirs.model_dir, filename)
+                    output_dict = {"epoch": epoch + 1,
+                                   "model_state_dict": model.state_dict(),
+                                   "optimizer_state_dict": optimizer.state_dict()}
+                    torch.save(output_dict, save_path)
                     logging.info("Model saved: %s" % save_path)
+                
                 continue
 
             # Transfer to GPU
