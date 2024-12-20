@@ -405,6 +405,14 @@ def train(config: Config, learning_rate = None, selected_solver = None):
                     logging.info("Model saved: %s" % save_path)
                 
                 continue
+
+            print(f"batch_ess shape: {batch_ess.shape}")
+            print(f"batch_x313 shape: {batch_x313.shape}")
+            print(f"batch_sa shape: {batch_sa.shape}")
+            print(f"batch_pos shape: {batch_pos.shape}")
+            print(f"batch_neg shape: {batch_neg.shape}")
+            print(f"batch_n shape: {batch_n.shape}")
+            print(f"expr_aug_sum shape: {expr_aug_sum.shape}")
             
             # Transfer to GPU
             batch_ess = batch_ess.to(device)
