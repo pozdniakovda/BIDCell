@@ -429,9 +429,9 @@ def train(config: Config, learning_rate = None, selected_solver = None):
             seg_pred = model(batch_x313)
             print(f"seg_pred shape: {seg_pred.shape}")
             seg_pred_img = seg_pred.detach().cpu().numpy()
-            plt.imshow(np.stack([seg_pred_img[0,0,:,:], seg_pred_img[0,1,:,:], np.zeros_like(seg_pred_img[0,0,:,:])]))
+            plt.imshow(np.stack([seg_pred_img[0,0,:,:], seg_pred_img[0,1,:,:], np.zeros_like(seg_pred_img[0,0,:,:])], axis=2))
             plt.show()
-            plt.imshow(np.stack([seg_pred_img[1,0,:,:], seg_pred_img[1,1,:,:], np.zeros_like(seg_pred_img[1,0,:,:])]))
+            plt.imshow(np.stack([seg_pred_img[1,0,:,:], seg_pred_img[1,1,:,:], np.zeros_like(seg_pred_img[1,0,:,:])], axis=2))
             plt.show()
 
             # Compute individual losses as appropriate
