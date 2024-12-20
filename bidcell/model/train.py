@@ -389,7 +389,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
             batch_pos = batch_pos.permute(3, 0, 1, 2)
             batch_neg = batch_neg.permute(3, 0, 1, 2)
             batch_n = batch_n.permute(3, 0, 1, 2)
-            expr_aug_sum = expr_aug_sum.permute(3, 0, 1, 2)
+            expr_aug_sum = expr_aug_sum.unsqueeze(0)
 
             if batch_x313.shape[0] == 0:
                 # Save the model periodically
