@@ -1,8 +1,8 @@
+import numpy as np
+import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from scipy.ndimage import distance_transform_edt
-import matplotlib.pyplot as plt
 
 
 class NucleiEncapsulationLoss(nn.Module):
