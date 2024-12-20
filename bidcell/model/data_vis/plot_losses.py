@@ -2,7 +2,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-from ..config import load_config, Config
+from ...config import load_config, Config
 
 def get_solver_title(selected_solver = None, starting_solver = None, ending_solver = None, epochs_before_switch = 0, dynamic_solvers = False):
     # Generates a title fragment referencing the solver(s) that were used during training
