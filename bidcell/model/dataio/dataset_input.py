@@ -325,19 +325,21 @@ class DataProcessing(data.Dataset):
         search_areas[search_areas > 0] = 1
         search_areas[search_areas < 0] = 0
 
-        expr_aug_sum = np.sum(expr_aug, -1)
-
+        # Generate summed (flattened) augmented expression map, preserving the computational graph
+        expr_aug = torch.tensor(expr_aug, dtype=torch.float32, requires_grad=True)
+        expr_aug_sum = torch.sum(expr_aug, dim=-1)
+        
         # Mask expressions and change channel order
-        expr_split = np.repeat(expr_aug[:, :, :, np.newaxis], n_cells, axis=3)
-        expr_split = expr_split * np.expand_dims(search_areas, 2)
+        search_areas_torch = torch.tensor(search_areas, dtype=torch.float32)  # Convert search_areas to a PyTorch tensor
+        expr_split = expr_aug.unsqueeze(-1).repeat(1, 1, 1, n_cells)  # Add a new axis and repeat for n_cells
+        expr_split = expr_split * search_areas_torch.unsqueeze(2)  # Element-wise multiplication with search_areas
 
         # Convert to tensor
-        expr_torch = torch.from_numpy(expr_split).float()
-        expr_sum_torch = torch.from_numpy(expr_aug_sum).float()
-        nucl_torch = torch.from_numpy(nucl_split).long()
-        search_areas_torch = torch.from_numpy(search_areas).long()
-        search_pos_torch = torch.from_numpy(search_pos).long()
-        search_neg_torch = torch.from_numpy(search_neg).long()
+        expr_torch = expr_split  # Already a PyTorch tensor
+        nucl_torch = torch.tensor(nucl_split, dtype=torch.long)
+        search_areas_torch = search_areas_torch.to(torch.long)
+        search_pos_torch = torch.tensor(search_pos, dtype=torch.long)
+        search_neg_torch = torch.tensor(search_neg, dtype=torch.long)
 
         if self.isTraining:
             return (
@@ -349,7 +351,7 @@ class DataProcessing(data.Dataset):
                 coords_h1,
                 coords_w1,
                 nucl_aug,
-                expr_sum_torch,
+                expr_aug_sum,
             )
         else:
             return (
@@ -361,7 +363,7 @@ class DataProcessing(data.Dataset):
                 coords_h1,
                 coords_w1,
                 nucl_aug,
-                expr_sum_torch,
+                expr_aug_sum,
                 self.nuclei.shape[0],
                 self.nuclei.shape[1],
                 self.expr_fp,
