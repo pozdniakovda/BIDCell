@@ -152,7 +152,7 @@ def generate_paths(config, make_new, learning_rate, dynamic_solvers, selected_so
     
     return experiment_path
 
-def get_scheduler(total_epochs):
+def get_scheduler(total_epochs, optimizer):
     # Scheduler https://arxiv.org/pdf/1812.01187.pdf
     
     lf = (
@@ -348,7 +348,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     losses = {}
 
     # Scheduler https://arxiv.org/pdf/1812.01187.pdf
-    scheduler = get_scheduler(config.training_params.total_epochs)
+    scheduler = get_scheduler(config.training_params.total_epochs, optimizer)
 
     # Starting epoch
     initial_epoch = resume_epoch if resume_epoch is not None else 0
