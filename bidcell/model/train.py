@@ -134,6 +134,21 @@ def compute_losses(seg_pred, batch_n, batch_sa, batch_pos, batch_neg, expr_aug_s
 
     return (loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, loss_ne_ov, loss_os_ov, loss_cc_pn)
 
+def generate_paths(config, experiment_path, learning_rate, dynamic_solvers, selected_solver=None, 
+                   starting_solver=None, ending_solver=None, epochs_before_switch=0):
+    # Generate path for saving outputs
+    timestamp = get_experiment_id(
+        make_new,
+        config.experiment_dirs.dir_id,
+        config.files.data_dir,
+    )
+    if not dynamic_solvers: 
+        experiment_path = os.path.join(config.files.data_dir, "model_outputs", f"{timestamp}_{selected_solver}_lr-{learning_rate}")
+    else:
+        experiment_path = os.path.join(config.files.data_dir, "model_outputs", f"{timestamp}_{starting_solver}-to-{ending_solver}_switched-after-{epochs_before_switch}-epochs_lr-{learning_rate}")
+    make_dir(experiment_path + "/" + config.experiment_dirs.model_dir)
+    make_dir(experiment_path + "/" + config.experiment_dirs.samples_dir)
+
 def get_scheduler(total_epochs):
     # Scheduler https://arxiv.org/pdf/1812.01187.pdf
     
@@ -323,17 +338,8 @@ def train(config: Config, learning_rate = None, selected_solver = None):
         learning_rate = config.training_params.learning_rate
 
     # Generate path for saving outputs
-    timestamp = get_experiment_id(
-        make_new,
-        config.experiment_dirs.dir_id,
-        config.files.data_dir,
-    )
-    if not dynamic_solvers: 
-        experiment_path = os.path.join(config.files.data_dir, "model_outputs", f"{timestamp}_{selected_solver}_lr-{learning_rate}")
-    else:
-        experiment_path = os.path.join(config.files.data_dir, "model_outputs", f"{timestamp}_{starting_solver}-to-{ending_solver}_switched-after-{epochs_before_switch}-epochs_lr-{learning_rate}")
-    make_dir(experiment_path + "/" + config.experiment_dirs.model_dir)
-    make_dir(experiment_path + "/" + config.experiment_dirs.samples_dir)
+    generate_paths(config, experiment_path, learning_rate, dynamic_solvers, selected_solver, 
+                   starting_solver, ending_solver, epochs_before_switch)
 
     # Optimiser
     optimizer = get_optimizer(config, model, learning_rate)
