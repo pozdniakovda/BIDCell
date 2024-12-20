@@ -210,7 +210,7 @@ class MultipleAssignmentLoss(nn.Module):
 
         batch_sa_img = batch_sa.detach().cpu().numpy()
         batch_sa_img = np.transpose(batch_sa_img[:,0,:,:], axes=(1, 2, 0))
-        plt.imshow(batch_sa_img)
+        plt.imshow(batch_sa_img[:,:,:3])
         plt.show()
 
         # Sum over all cells to get the total number of cells each pixel is assigned to
