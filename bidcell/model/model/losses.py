@@ -193,27 +193,20 @@ class MultipleAssignmentLoss(nn.Module):
         self.init_weight = weight
         self.device = device
 
-    def forward(self, expr_aug_sum, batch_sa, weight=None):
-        """
-        Args:
-            expr_aug_sum: Summed expression map for the patch (batch_size, height, width).
-            batch_sa: Search areas separated by cell (batch_size, n_cells, height, width).
-            weight: Optional weight to override the initialized weight.
-        """
+    def forward(self, seg_pred, expr_aug_sum, weight=None, alpha=1.0):
         # Overwrite self.weight if new weight is given; original is preserved as self.init_weight
         if weight is not None:
             self.weight = weight
 
-        print(f"MultipleAssignmentLoss input info: \n"
-              f"\texpr_aug_sum shape: {expr_aug_sum.shape} | range: {expr_aug_sum.min()} - {expr_aug_sum.max()}\n"
-              f"\tbatch_sa shape: {batch_sa.shape} | range: {batch_sa.min()} - {batch_sa.max()}")
+        seg_probs = F.softmax(seg_pred, dim=1)
+        probs_cell = seg_probs[:, 1, :, :]
+        preds_cyto = torch.sigmoid((probs_cyto - 0.5) * alpha)
+        count_cell = torch.sum(preds_cyto, 0)
+
+        # TODO Finish integrating seg_pred
 
         # Sum over all cells to get the total number of cells each pixel is assigned to
         total_cell_assignments = torch.sum(batch_sa, dim=0)  # (batch_size, height, width)
-
-        tca_img = total_cell_assignments.squeeze().detach().cpu().numpy()
-        plt.imshow(tca_img)
-        plt.show()
 
         # Penalize pixels assigned to more than one cell
         extra_assignments = torch.clamp(total_cell_assignments - 1, min=0)
