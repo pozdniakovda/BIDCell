@@ -765,6 +765,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
             batch_pos = batch_pos.to(device)
             batch_neg = batch_neg.to(device)
             batch_n = batch_n.to(device)
+            expr_aug_sum = expr_aug_sum.to(device)
 
             optimizer.zero_grad()
 
@@ -782,7 +783,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
             if is_first_step or not combine_cc_pn:
                 loss_cc = criterion_cc(seg_pred, batch_sa, cc_weight)
                 loss_pn = criterion_pn(seg_pred, batch_pos, batch_neg, pos_weight, neg_weight)
-            loss_mu = criterion_mu(seg_pred, batch_sa, mu_weight)
+            loss_mu = criterion_mu(expr_aug_sum, batch_sa, mu_weight)
             
             if is_first_step:
                 if combine_ne_ov or combine_os_ov or combine_cc_pn:
