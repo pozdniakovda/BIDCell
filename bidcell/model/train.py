@@ -69,7 +69,7 @@ def get_weighting_ratio(loss1, loss2, weights1, weights2, weights1_names, weight
     
     return ratio, weights1, weights2
 
-def compute_individual_losses(seg_pred, batch_n, batch_sa, batch_pos, batch_neg, expr_aug_sum, weights,
+def compute_individual_losses(seg_pred, batch_n, batch_sa, batch_pos, batch_neg, expr_aug_sum, weights, device,
                               combine_ne_ov=False, combine_os_ov=False, combine_cc_pn=False, is_first_step=True):
     # Compute individual losses as appropriate
     loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn = None, None, None, None, None, None
@@ -99,11 +99,11 @@ def compute_individual_losses(seg_pred, batch_n, batch_sa, batch_pos, batch_neg,
 
     return (loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn)
 
-def compute_losses(seg_pred, batch_n, batch_sa, batch_pos, batch_neg, expr_aug_sum, weights,
+def compute_losses(seg_pred, batch_n, batch_sa, batch_pos, batch_neg, expr_aug_sum, weights, device,
                    combine_ne_ov=False, combine_os_ov=False, combine_cc_pn=False, is_first_step=True):
     # Compute individual losses as appropriate
     individual_losses = compute_individual_losses(seg_pred, batch_n, batch_sa, batch_pos, batch_neg, expr_aug_sum, weights,
-                                                  combine_ne_ov, combine_os_ov, combine_cc_pn, is_first_step)
+                                                  device, combine_ne_ov, combine_os_ov, combine_cc_pn, is_first_step)
     loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn = individual_losses
     loss_ne_ov, loss_os_ov, loss_cc_pn = None, None, None
     
@@ -424,7 +424,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
 
             # Compute individual losses as appropriate
             computed_losses = compute_losses(seg_pred, batch_n, batch_sa, batch_pos, batch_neg, expr_aug_sum, 
-                                             weights, combine_ne_ov, combine_os_ov, combine_cc_pn, is_first_step)
+                                             weights, device, combine_ne_ov, combine_os_ov, combine_cc_pn, is_first_step)
             loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, loss_ne_ov, loss_os_ov, loss_cc_pn, weights = computed_losses
             
             # Apply the Procrustes method
