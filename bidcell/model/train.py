@@ -409,10 +409,13 @@ def train(config: Config, learning_rate = None, selected_solver = None):
                   f"mean={expr_aug_sum.mean():.3f} | "
                   f"shape={expr_aug_sum.shape}")
             
-            print(f"batch_sa: "
-                  f"range=({batch_sa.min():.3f},{batch_sa.max():.3f}) | "
-                  f"mean={batch_sa.mean():.3f} | "
-                  f"shape={batch_sa.shape}")
+            print(f"batch_x313 shape = {batch_x313.shape}")
+            print(f"batch_n shape = {batch_n.shape}")
+            print(f"batch_sa shape = {batch_sa.shape}")
+            print(f"batch_pos shape = {batch_pos.shape}")
+            print(f"batch_neg shape = {batch_neg.shape}")
+            print(f"nucl_aug shape = {nucl_aug.shape}")
+            print(f"expr_aug_sum shape = {expr_aug_sum.shape}")
             
             # Transfer to GPU
             batch_x313 = batch_x313.to(device)
