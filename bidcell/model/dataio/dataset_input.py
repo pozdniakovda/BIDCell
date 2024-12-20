@@ -333,6 +333,7 @@ class DataProcessing(data.Dataset):
 
         # Convert to tensor
         expr_torch = torch.from_numpy(expr_split).float()
+        expr_sum_torch = torch.from_numpy(expr_aug_sum).float()
         nucl_torch = torch.from_numpy(nucl_split).long()
         search_areas_torch = torch.from_numpy(search_areas).long()
         search_pos_torch = torch.from_numpy(search_pos).long()
@@ -348,7 +349,7 @@ class DataProcessing(data.Dataset):
                 coords_h1,
                 coords_w1,
                 nucl_aug,
-                expr_aug_sum,
+                expr_sum_torch,
             )
         else:
             return (
@@ -360,7 +361,7 @@ class DataProcessing(data.Dataset):
                 coords_h1,
                 coords_w1,
                 nucl_aug,
-                expr_aug_sum,
+                expr_sum_torch,
                 self.nuclei.shape[0],
                 self.nuclei.shape[1],
                 self.expr_fp,
