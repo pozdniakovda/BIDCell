@@ -1,6 +1,6 @@
 import torch
 from .procrustes_solver import ProcrustesSolver
-from ..config import load_config, Config
+from ...config import load_config, Config
 
 def to_scalar(value):
     # Helper function that converts one-item Torch tensors into Python scalars (e.g. float)
