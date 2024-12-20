@@ -204,21 +204,12 @@ class MultipleAssignmentLoss(nn.Module):
         if weight is not None:
             self.weight = weight
 
-        print(f"Shapes of MultipleAssignmentLoss inputs: \n"
-              f"\texpr_aug_sum shape: {expr_aug_sum.shape}\n"
-              f"\tbatch_sa shape: {batch_sa.shape}")
-
-        batch_sa_img = batch_sa.detach().cpu().numpy()
-        batch_sa_img = np.transpose(batch_sa_img[:,0,:,:], axes=(1, 2, 0))
-        plt.imshow(batch_sa_img[:,:,:3])
-        plt.show()
+        print(f"MultipleAssignmentLoss input info: \n"
+              f"\texpr_aug_sum shape: {expr_aug_sum.shape} | range: {expr_aug_sum.min()} - {expr_aug_sum.max()}\n"
+              f"\tbatch_sa shape: {batch_sa.shape} | range: {batch_sa.min()} - {batch_sa.max()}")
 
         # Sum over all cells to get the total number of cells each pixel is assigned to
         total_cell_assignments = torch.sum(batch_sa, dim=0)  # (batch_size, height, width)
-        print(f"total_cell_assignments: \n"
-              f"\tshape: {total_cell_assignments.shape}\n"
-              f"\trange: {total_cell_assignments.min()} - {total_cell_assignments.max()}\n"
-              f"\tmean: {total_cell_assignments.mean()}")
 
         # Penalize pixels assigned to more than one cell
         extra_assignments = torch.clamp(total_cell_assignments - 1, min=0)
