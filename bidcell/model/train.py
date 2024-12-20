@@ -19,7 +19,8 @@ from .solvers.solvers import default_solver, procrustes_method
 from .data_vis.plot_losses import (
     plot_overlaid_losses, 
     plot_losses, 
-    get_ma_losses
+    get_ma_losses,
+    get_solver_title
 )
 from .dataio.dataset_input import DataProcessing
 from .model.losses import (
