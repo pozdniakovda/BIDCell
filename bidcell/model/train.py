@@ -164,6 +164,19 @@ def save_model(config, experiment_path, epoch, model, optimizer):
     )
     logging.info("Model saved: %s" % save_path)
 
+def restore_saved_model(config, experiment_path, resume_epoch, resume_step, optimizer):
+    # Restore saved model
+    load_path = os.path.join(experiment_path, config.experiment_dirs.model_dir, 
+                             f"epoch_{resume_epoch}_step_{resume_step}.pth")
+    checkpoint = torch.load(load_path)
+    model.load_state_dict(checkpoint["model_state_dict"])
+    optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+    epoch = checkpoint["epoch"]
+    assert epoch == resume_epoch
+    print("Resume training, successfully loaded " + load_path)
+
+    return model, optimizer, epoch
+
 def train(config: Config, learning_rate = None, selected_solver = None):
     logging.basicConfig(
         format="%(asctime)s %(levelname)s %(message)s",
@@ -318,25 +331,11 @@ def train(config: Config, learning_rate = None, selected_solver = None):
     scheduler.last_epoch = global_step
 
     # Starting epoch
-    if resume_epoch is not None:
-        initial_epoch = resume_epoch
-    else:
-        initial_epoch = 0
+    initial_epoch = resume_epoch if resume_epoch is not None else 0
 
     # Restore saved model
     if resume_epoch is not None:
-        load_path = (
-            experiment_path
-            + "/"
-            + config.experiment_dirs.model_dir
-            + "/epoch_%d_step_%d.pth" % (resume_epoch, resume_step)
-        )
-        checkpoint = torch.load(load_path)
-        model.load_state_dict(checkpoint["model_state_dict"])
-        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-        epoch = checkpoint["epoch"]
-        assert epoch == resume_epoch
-        print("Resume training, successfully loaded " + load_path)
+        model, optimizer, epoch = restore_saved_model(config, experiment_path, resume_epoch, resume_step, optimizer)
 
     if dynamic_solvers:
         logging.info(f"Begin training using {starting_solver} for {epochs_before_switch} epochs, followed by {ending_solver} thereafter")
