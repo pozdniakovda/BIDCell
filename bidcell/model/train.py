@@ -373,6 +373,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
         print("\nEpoch =", (epoch + 1), " lr =", cur_lr, " solver =", current_solver)
 
         for step_epoch, (
+            batch_expr_sum,
             batch_x313,
             batch_n,
             batch_sa,
