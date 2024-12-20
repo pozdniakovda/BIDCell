@@ -215,22 +215,15 @@ def detach_fig_outputs(coords_h1, coords_w1, seg_pred, nucl_aug, batch_sa, expr_
 
     return (coords_h1, coords_w1, sample_seg, sample_n, sample_sa, sample_expr)
 
-def save_model(config, experiment_path, epoch, model, optimizer):
+def save_model(config, experiment_path, epoch, step_epoch, model, optimizer):
     # Save model
-    save_path = (
-        experiment_path
-        + "/"
-        + config.experiment_dirs.model_dir
-        + "/epoch_%d_step_%d.pth" % (epoch + 1, step_epoch)
-    )
-    torch.save(
-        {
-            "epoch": epoch + 1,
-            "model_state_dict": model.state_dict(),
-            "optimizer_state_dict": optimizer.state_dict(),
-        },
-        save_path,
-    )
+    save_path = os.path.join(experiment_path, config.experiment_dirs.model_dir, 
+                             f"epoch_{epoch+1}_step_{step_epoch}.pth")
+    output_dict = {"epoch": epoch + 1,
+                   "model_state_dict": model.state_dict(),
+                   "optimizer_state_dict": optimizer.state_dict()}
+    
+    torch.save(output_dict, save_path)
     logging.info("Model saved: %s" % save_path)
 
 def restore_saved_model(config, experiment_path, resume_epoch, resume_step, optimizer):
@@ -470,7 +463,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
 
             # Save model
             if (step_epoch % model_freq) == 0:
-                save_model(config, experiment_path, epoch, model, optimizer)
+                save_model(config, experiment_path, epoch, step_epoch, model, optimizer)
 
             global_step += 1
 
