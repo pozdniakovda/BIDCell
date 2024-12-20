@@ -20,7 +20,6 @@ class NucleiEncapsulationLoss(nn.Module):
         if weight is not None:
             self.weight = weight
 
-        # This loss is simply a CrossEntropyLoss
         criterion_ce = torch.nn.CrossEntropyLoss(reduction="mean")
         loss = criterion_ce(seg_pred, batch_n[:, 0, :, :])
 
@@ -38,7 +37,7 @@ class OversegmentationLoss(nn.Module):
         self.init_weight = weight
         self.device = device
     
-    def forward(self, seg_pred, batch_n, weight=None):
+    def forward(self, seg_pred, batch_n, weight=None, alpha=1.0):
         # Overwrite self.weight if new weight is given; original is preserved as self.init_weight
         if weight is not None:
             self.weight = weight
@@ -53,21 +52,23 @@ class OversegmentationLoss(nn.Module):
         probs_nuc = seg_probs[:, 1, :, :] * batch_n
     
         # Cytoplasm predictions masked by non-nuclei regions
-        mask_cyto = 1.0 - batch_n
+        mask_cyto = torch.ones(batch_n.shape).to(self.device) - batch_n
         probs_cyto = seg_probs[:, 1, :, :] * mask_cyto
     
         # Apply sigmoid to emphasize probabilities > 0.5
-        preds_nuc = torch.sigmoid((probs_nuc - 0.5))
+        preds_nuc = torch.sigmoid((probs_nuc - 0.5) * alpha)
+        preds_cyto = torch.sigmoid((probs_cyto - 0.5) * alpha)
+
         count_nuc = torch.sum(preds_nuc)
-    
-        preds_cyto = torch.sigmoid((probs_cyto - 0.5))
         count_cyto = torch.sum(preds_cyto)
     
         # Compute extra cytoplasm predictions (oversegmentation)
-        extra = torch.nn.ReLU()(count_cyto - count_nuc)
+        extra = count_cyto - count_nuc
+        m = torch.nn.ReLU()
+        loss = m(extra)
     
         # Normalize by batch size and apply weight
-        loss = (extra / seg_pred.shape[0]) * self.weight
+        loss = (loss / seg_pred.shape[0]) * self.weight
     
         return loss
 
@@ -94,10 +95,9 @@ class CellCallingLoss(nn.Module):
         loss = criterion_ce(seg_pred, penalisable[:, 0, :, :])
 
         loss_total = torch.sum(loss)
+        loss_total = (loss_total / seg_pred.shape[0]) * self.weight
 
-        loss_total = loss_total / seg_pred.shape[0]
-
-        return self.weight * loss_total
+        return loss_total
 
 
 class OverlapLoss(nn.Module):
@@ -111,7 +111,7 @@ class OverlapLoss(nn.Module):
         self.init_weight = weight
         self.device = device
 
-    def forward(self, seg_pred, batch_n, weight=None, distance_scaling=False, intensity_weighting=False):
+    def forward(self, seg_pred, batch_n, weight=None, alpha=1.0):
         # Overwrite self.weight if new weight is given; original is preserved as self.init_weight
         if weight is not None:
             self.weight = weight
@@ -123,53 +123,21 @@ class OverlapLoss(nn.Module):
         all_nuclei = torch.sum(batch_n, 0)
         all_not_nuclei = torch.ones(batch_n.shape).to(self.device) - all_nuclei
 
-        # Cytoplasm probabilities where there are no nuclei
+        # Cytoplasm probabilities and predictions where there are no nuclei
         probs_cyto = seg_probs[:, 1, :, :] * all_not_nuclei
-
-        # Apply a threshold to identify overlapping cytoplasmic regions
-        alpha = 1.0
         preds_cyto = torch.sigmoid((probs_cyto - 0.5) * alpha)
 
         # Calculate the overlap (regions where multiple cell probabilities exceed 0.5)
         count_cyto_overlap = torch.sum(preds_cyto, 0) - all_not_nuclei
-        count_cyto_overlap = torch.nn.ReLU()(count_cyto_overlap)
-
-        # Optionally apply intensity weighting
-        if intensity_weighting:
-            count_cyto_overlap = count_cyto_overlap ** 2
-
-        if distance_scaling:
-            # Compute boundary mask
-            boundary_mask = self._compute_boundaries(all_nuclei)
-
-            # Compute distance transform (distance to nearest boundary)
-            distances = distance_transform_edt(1 - boundary_mask.cpu().numpy())  # Distance to nearest boundary
-            distances = torch.tensor(distances).to(self.device)
-
-            # Scale overlap penalty by distance (reduce penalty for overlaps near boundaries)
-            count_cyto_overlap = count_cyto_overlap / (1 + distances)
-
+        m = torch.nn.ReLU()
+        count_cyto_overlap = m(count_cyto_overlap)
+        
         # Compute final loss
         loss = torch.sum(count_cyto_overlap)
         scale = seg_pred.shape[0] * seg_pred.shape[2] * seg_pred.shape[3]
-        loss = loss / scale
+        loss = (loss / scale) * self.weight
 
-        return self.weight * loss
-
-    def _compute_boundaries(self, all_nuclei):
-        """
-        Compute boundaries of nuclei regions using simple convolutional gradient method.
-        """
-        # Define a kernel to compute gradients
-        kernel = torch.tensor([[[[1, 0, -1],
-                                 [0, 0, 0],
-                                 [-1, 0, 1]]]], dtype=torch.float32).to(self.device)
-
-        # Apply convolution to detect boundaries
-        gradients_x = torch.nn.functional.conv2d(all_nuclei.unsqueeze(0).unsqueeze(0), kernel, padding=1)
-        gradients_y = torch.nn.functional.conv2d(all_nuclei.unsqueeze(0).unsqueeze(0), kernel.transpose(-1, -2), padding=1)
-        boundaries = torch.sqrt(gradients_x**2 + gradients_y**2)
-        return (boundaries > 0).float().squeeze(0).squeeze(0)
+        return loss
 
 
 class MultipleAssignmentLoss(nn.Module):
@@ -246,7 +214,7 @@ class PosNegMarkerLoss(nn.Module):
         self.init_weight_neg = weight_neg
         self.device = device
 
-    def forward(self, seg_pred, batch_pos, batch_neg, weight_pos=None, weight_neg=None):
+    def forward(self, seg_pred, batch_pos, batch_neg, weight_pos=None, weight_neg=None, alpha=1.0):
         # Overwrite weights if new weights are given; originals are preserved as self.init_weight_pos or _neg
         if weight_pos is not None:
             self.weight_pos = weight_pos
@@ -261,22 +229,14 @@ class PosNegMarkerLoss(nn.Module):
         loss_pos = criterion_ce(seg_pred, batch_pos)
 
         # NEGATIVE markers
-        seg_probs = torch.nn.functional.softmax(seg_pred, dim=1)
+        seg_probs = F.softmax(seg_pred, dim=1)
         probs_cells = seg_probs[:, 1, :, :]
-
-        ones = torch.ones(probs_cells.shape).to(self.device)
-        zeros = torch.zeros(probs_cells.shape).to(self.device)
-
-        alpha = 1.0
-
-        preds_cells = (
-            torch.sigmoid((probs_cells - 0.5) * alpha) * (ones - zeros) + zeros
-        )
+        preds_cells = torch.sigmoid((probs_cells - 0.5) * alpha)
 
         loss_neg = torch.sum(preds_cells * batch_neg)
 
-        loss_total = (
-            weight_pos * loss_pos + weight_neg * loss_neg
-        ) / seg_pred.shape[0]
+        # Calculate total loss
+        loss_total = (loss_pos * self.weight_pos) + (loss_neg * self.weight_neg)
+        loss_total = loss_total / seg_pred.shape[0]
 
         return loss_total
