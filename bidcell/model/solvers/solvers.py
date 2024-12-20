@@ -154,7 +154,7 @@ def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os 
         try:
             loss.backward(retain_graph=True)  # Retain graph for backpropagation
         except Exception as e:
-            raise Exception(f"Loss {key} of type {type(loss)} produced the following exception during backpropagation: \n{e}")
+            raise Exception(f"Contributing loss {key} of type {type(loss)} produced the following exception during backpropagation: \n\t{e}")
         grad = torch.cat([p.grad.flatten() if p.grad is not None else torch.zeros_like(p).flatten() for p in model.parameters()])
         grads.append(grad)
 
@@ -163,7 +163,11 @@ def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os 
     # Perform backward pass on spectator losses
     for loss in spectator_terms.values():
         optimizer.zero_grad()
-        loss.backward(retain_graph=True)
+        try:
+            loss.backward(retain_graph=True)
+        except Exception as e:
+            raise Exception(f"Spectator loss [{key}] of type [{type(loss)}] produced the following exception during backpropagation: \n\t{e}")
+
 
     # Apply Procrustes Solver
     grads, weights, singulars = ProcrustesSolver.apply(grads.T.unsqueeze(0), scale_mode)
