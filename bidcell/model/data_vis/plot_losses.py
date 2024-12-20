@@ -4,6 +4,33 @@ import numpy as np
 import torch
 from ..config import load_config, Config
 
+def get_solver_title(selected_solver = None, starting_solver = None, ending_solver = None, epochs_before_switch = 0, dynamic_solvers = False):
+    # Generates a title fragment referencing the solver(s) that were used during training
+    
+    if dynamic_solvers:        
+        if "procrustes" in starting_solver.lower():
+            starting_scale_mode = "median" if "median" in starting_solver else "rmse" if "rmse" in starting_solver else "min"
+            starting_solver_title = f"Procrustes Method (scaling mode: {starting_scale_mode})"
+        else:
+            starting_solver_title = f"Default Method"
+
+        if "procrustes" in ending_solver.lower():
+            ending_scale_mode = "median" if "median" in ending_solver else "rmse" if "rmse" in ending_solver else "min"
+            ending_solver_title = f"Procrustes Method (scaling mode: {ending_scale_mode})"
+        else:
+            ending_solver_title = f"Default Method"
+
+        solver_title = f"{starting_solver_title} (epochs 1-{epochs_before_switch}) to {ending_solver_title} (epochs {epochs_before_switch+1} onwards)"
+        
+    elif "procrustes" in selected_solver:
+        scale_mode = "median" if "median" in selected_solver else "rmse" if "rmse" in selected_solver else "min"
+        solver_title = f"Procrustes Method (scaling mode: {scale_mode})"
+        
+    else:
+        solver_title = "Default Method"
+
+    return solver_title
+
 def to_scalar(value):
     # Helper function that converts one-item Torch tensors into Python scalars (e.g. float)
     if isinstance(value, torch.Tensor):
