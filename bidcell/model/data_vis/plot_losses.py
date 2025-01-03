@@ -90,7 +90,7 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
     if rescaling:
         title = title + " (rescaled to max=1000)"
     plt.legend()
-    plt.grid()
+    plt.grid(True, axis="y")
     plt.tight_layout()
 
     filename = "training_losses_overlaid.pdf" if not rescaling else "training_losses_overlaid_rescaled.pdf"
@@ -129,7 +129,7 @@ def plot_loss(loss_vals, ma_loss_vals, label, total_epochs, experiment_path, tra
             if rescaling:
                 title = title + " (rescaled to max=1000)"
             plt.title(title)
-            plt.grid()
+            plt.grid(True, axis="y")
             plt.tight_layout()
             
             underscored_label = "_".join(label.lower().split(" "))
