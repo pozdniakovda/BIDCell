@@ -198,22 +198,31 @@ class MultipleAssignmentLoss(nn.Module):
         if weight is not None:
             self.weight = weight
 
+        print(f"seg_pred shape: {seg_pred.shape}")
+        print(f"expr_aug_sum shape: {expr_aug_sum.shape}")
+
         # Compute softmax probabilities
         seg_probs = F.softmax(seg_pred, dim=1)
+        print(f"seg_probs shape: {seg_probs.shape}")
         probs_cell = seg_probs[:, 1, :, :]  # Assumes class 1 corresponds to cells
+        print(f"probs_cell shape: {probs_cell.shape}")
         preds_cyto = torch.sigmoid((probs_cell - 0.5) * alpha) # emphasize probabilities > 0.5
+        print(f"preds_cyto shape: {preds_cyto.shape}")
 
         # Sum over all cells to get the total number of assignments per pixel
         total_cell_assignments = torch.sum(preds_cyto, dim=0)
+        print(f"total_cell_assignments shape: {total_cell_assignments.shape}")
 
         # Penalize pixels assigned to more than one cell
         extra_assignments = torch.clamp(total_cell_assignments - 1, min=0)
+        print(f"extra_assignments shape: {extra_assignments.shape}")
 
         # Mask with expression data (penalize only for pixels with expression)
         penalty = extra_assignments * expr_aug_sum  # (height, width)
+        print(f"penalty shape: {penalty.shape}")
 
         # Sum the penalty over all pixels and normalize by batch size
-        loss = torch.sum(penalty) / seg_pred.shape[0]
-        loss = loss * self.weight
-
+        loss = (torch.sum(penalty) / seg_pred.shape[0]) * self.weight
+        print(f"loss: {loss}")
+        
         return loss
