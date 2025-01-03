@@ -49,34 +49,29 @@ model_params:
   - SMC
 
 training_params:
-  total_epochs: 5 # number of training epochs; default: 1
-  total_steps: 500 # number of training steps; default: 4000
-  solver: "procrustes-median" # if given, this is the solver that will be used for the entire training process
-  starting_solver: "" # solver for only the first n epochs
-  ending_solver: "" # solver to use after the first n epochs
-  epochs_before_switch: 0 # number of epochs to run before switching from starting solver to ending solver
-  learning_rate: 0.000001
+  total_epochs: 10 # number of training epochs; default: 1
+  total_steps: 1000 # number of training steps; default: 4000
+  solver: "" # if given, this is the solver that will be used for the entire training process
+  starting_solver: "default" # solver for only the first n epochs
+  ending_solver: "procrustes-min" # solver to use after the first n epochs
+  epochs_before_switch: 5 # number of epochs to run before switching from starting solver to ending solver
+  learning_rate: 0.00001
   ne_weight: 1.0 # weight for nuclei encapsulation loss; default: 1.0
   os_weight: 1.0 # weight for oversegmentation loss; default: 1.0
   cc_weight: 1.0 # weight for cell-calling loss; default: 1.0
-  ov_weight: 1.0 # weight for overlap loss; default: 1.0
+  ov_weight: 0.0 # weight for overlap loss; default: 1.0
   mu_weight: 1.0 # weight for multiple assignment loss; default: 1.0
   pos_weight: 1.0 # weight for positive marker loss; default: 1.0
   neg_weight: 1.0 # weight for negative marker loss; default: 1.0
-  ov_distance_scaling: False # whether to use distance scaling to penalize overlaps that invade further into another cell
-  ov_intensity_weighting: False # whether to use overlap intensity weighting to penalize more confident overlaps more heavily, nonlinearly
   combine_ne_ov: False # combines ne_loss+ov_loss to reduce the number of losses during multi-objective training
-  combine_ne_ov_mode: "top" # "top" rescales to top values at first step; "max" rescales to theoretical maxima; "static" relies only on initial loss weights
-  combine_os_ov: True # combines os_loss+ov_loss to reduce the number of losses during multi-objective training
-  combine_os_ov_mode: "top" # "top" rescales to top values at first step; "max" rescales to theoretical maxima; "static" relies only on initial loss weights
-  combine_cc_pn: True # combines ne_loss+ov_loss to reduce the number of losses during multi-objective training
-  combine_cc_pn_mode: "top" # "top" rescales to top values at first step; "max" rescales to theoretical maxima; "static" relies only on initial loss weights
+  combine_os_ov: False # combines os_loss+ov_loss to reduce the number of losses during multi-objective training
+  combine_cc_pn: False # combines ne_loss+ov_loss to reduce the number of losses during multi-objective training
   non_contributing_losses: []
   log_scale: False # whether to use logarithmic scaling when graphing the loss values
 
 testing_params:
-  test_epoch: 5 # epoch to test; default: 1
-  test_step: 500 # step number to test; default: 4000
+  test_epoch: 10 # epoch to test; default: 1
+  test_step: 1000 # step number to test; default: 4000
 
 experiment_dirs:
   dir_id: last # specify timestamp of output dir or leave blank to use latest dir, default: last
