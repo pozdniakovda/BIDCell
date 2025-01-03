@@ -101,6 +101,33 @@ def compute_individual_losses(seg_pred, batch_n, batch_sa, batch_pos, batch_neg,
 
 def compute_losses(seg_pred, batch_n, batch_sa, batch_pos, batch_neg, batch_expr_sum, weights, device,
                    combine_ne_ov=False, combine_os_ov=False, combine_cc_pn=False, is_first_step=True):
+    '''
+    Computes losses from input tensors
+
+    Args: 
+        seg_pred:        predicted segmentations
+        batch_n:         nuclei map masked by search areas;       shape: [H, W, n_cells]
+        batch_sa:        search areas defining individual cells;  shape: [H, W, n_cells]
+        batch_pos:       positive markers masked by search areas; shape: [H, W, n_cells]
+        batch_neg:       negative markers masked by search areas; shape: [H, W, n_cells]
+        coords_h1:       coords_h1
+        coords_w1:       coords_w1
+        nucl_aug:        augmented nuclei map;                    shape: [H, W]
+        batch_expr_sum:  summed expression map;                   shape: [H, W]
+
+    Returns: 
+        loss_ne:         nuclei encapsulation loss
+        loss_os:         oversegmentation loss
+        loss_cc:         cell calling loss
+        loss_ov:         overlap loss
+        loss_mu:         multiple assignment loss
+        loss_pn:         positive/negative marker loss
+        loss_ne_ov:      combined loss_ne + loss_ov
+        loss_os_ov:      combined loss_os + loss_ov
+        loss_cc_pn:      combined loss_cc + loss_pn
+        weights:         weights
+    '''
+    
     # Compute individual losses as appropriate
     individual_losses = compute_individual_losses(seg_pred, batch_n, batch_sa, batch_pos, batch_neg, batch_expr_sum, weights,
                                                   device, combine_ne_ov, combine_os_ov, combine_cc_pn, is_first_step)
@@ -373,16 +400,16 @@ def train(config: Config, learning_rate = None, selected_solver = None):
         print("\nEpoch =", (epoch + 1), " lr =", cur_lr, " solver =", current_solver)
 
         for step_epoch, (
-            batch_ess,     # shape: [H, W, n_cells]
-            batch_x313,    # shape: [H, W, n_channels, n_cells]
-            batch_n,       # shape: [H, W, n_cells]
-            batch_sa,      # shape: [H, W, n_cells]
-            batch_pos,     # shape: [H, W, n_cells]
-            batch_neg,     # shape: [H, W, n_cells]
+            batch_ess,       # shape: [H, W, n_cells]
+            batch_x313,      # shape: [H, W, n_channels, n_cells]
+            batch_n,         # shape: [H, W, n_cells]
+            batch_sa,        # shape: [H, W, n_cells]
+            batch_pos,       # shape: [H, W, n_cells]
+            batch_neg,       # shape: [H, W, n_cells]
             coords_h1,
             coords_w1,
-            nucl_aug,      # shape: [H, W]
-            expr_aug_sum,  # shape: [H, W]
+            nucl_aug,        # shape: [H, W]
+            batch_expr_sum,  # shape: [H, W]
         ) in enumerate(train_loader): 
             # Permute channels axis to batch axis
             batch_ess = batch_ess.permute(3, 0, 1, 2)                  # new shape: [n_cells, 1, H, W]
@@ -391,7 +418,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
             batch_sa = batch_sa.permute(3, 0, 1, 2)                    # new shape: [n_cells, 1, H, W]
             batch_pos = batch_pos.permute(3, 0, 1, 2)                  # new shape: [n_cells, 1, H, W]
             batch_neg = batch_neg.permute(3, 0, 1, 2)                  # new shape: [n_cells, 1, H, W]
-            expr_aug_sum = expr_aug_sum.unsqueeze(0)                   # new shape: [1, 1, H, W]
+            batch_expr_sum = batch_expr_sum.unsqueeze(0)               # new shape: [1, 1, H, W]
 
             if batch_x313.shape[0] == 0:
                 # Save the model periodically
@@ -413,7 +440,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
                   f"\tbatch_sa shape: {batch_sa.shape}\n"
                   f"\tbatch_pos shape: {batch_pos.shape}\n"
                   f"\tbatch_neg shape: {batch_neg.shape}\n"
-                  f"\texpr_aug_sum shape: {expr_aug_sum.shape}")
+                  f"\texpr_aug_sum (batch_expr_sum) shape: {batch_expr_sum.shape}")
             
             # Transfer to GPU
             batch_ess = batch_ess.to(device)
@@ -422,7 +449,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
             batch_pos = batch_pos.to(device)
             batch_neg = batch_neg.to(device)
             batch_n = batch_n.to(device)
-            expr_aug_sum = expr_aug_sum.to(device)
+            batch_expr_sum = batch_expr_sum.to(device)
 
             optimizer.zero_grad()
 
@@ -430,7 +457,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
             print(f"seg_pred shape: {seg_pred.shape}")
 
             # Compute individual losses as appropriate
-            computed_losses = compute_losses(seg_pred, batch_n, batch_sa, batch_pos, batch_neg, expr_aug_sum, 
+            computed_losses = compute_losses(seg_pred, batch_n, batch_sa, batch_pos, batch_neg, batch_expr_sum, 
                                              weights, device, combine_ne_ov, combine_os_ov, combine_cc_pn, is_first_step)
             loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, loss_ne_ov, loss_os_ov, loss_cc_pn, weights = computed_losses
             
