@@ -193,13 +193,16 @@ class MultipleAssignmentLoss(nn.Module):
         self.init_weight = weight
         self.device = device
 
-    def forward(self, seg_pred, batch_expr_sum, weight=None, alpha=1.0):
+    def forward(self, seg_pred, batch_expr_sum, weight=None, alpha=1.0, verbose=True):
         '''
         Forward pass
 
         Args:
             seg_pred:       predicted binary cell segmentations; shape: [n_cells, 2, H, W]
             batch_expr_sum: summed expression map;               shape: [1, 1, H, W]
+            weight:         overriding weight
+            alpha:          controls sharpness of sigmoid function
+            verbose:        whether to display tensor shapes
 
         Returns: 
             loss:           multiple assignment loss
@@ -209,31 +212,33 @@ class MultipleAssignmentLoss(nn.Module):
         if weight is not None:
             self.weight = weight
 
-        print(f"seg_pred shape: {seg_pred.shape}")
-        print(f"batch_expr_sum (expr_aug_sum) shape: {batch_expr_sum.shape}")
-
         # Compute softmax probabilities
         seg_probs = F.softmax(seg_pred, dim=1)
-        print(f"seg_probs shape: {seg_probs.shape}")
         probs_cell = seg_probs[:, 1, :, :]  # Assumes class 1 corresponds to cells
-        print(f"probs_cell shape: {probs_cell.shape}")
         preds_cyto = torch.sigmoid((probs_cell - 0.5) * alpha) # emphasize probabilities > 0.5
-        print(f"preds_cyto shape: {preds_cyto.shape}")
 
         # Sum over all cells to get the total number of assignments per pixel
         total_cell_assignments = torch.sum(preds_cyto, dim=0)
-        print(f"total_cell_assignments shape: {total_cell_assignments.shape}")
 
         # Penalize pixels assigned to more than one cell
         extra_assignments = torch.clamp(total_cell_assignments - 1, min=0)
-        print(f"extra_assignments shape: {extra_assignments.shape}")
 
         # Mask with expression data (penalize only for pixels with expression)
         penalty = extra_assignments * batch_expr_sum  # (height, width)
-        print(f"penalty shape: {penalty.shape}")
 
         # Sum the penalty over all pixels and normalize by batch size
         loss = (torch.sum(penalty) / seg_pred.shape[0]) * self.weight
-        print(f"loss: {loss}")
+
+        if verbose: 
+            print(f"Multiple Assignment Loss argument shapes:\n"
+                  f"\tseg_pred shape: {seg_pred.shape}\n"
+                  f"\tbatch_expr_sum (expr_aug_sum) shape: {batch_expr_sum.shape}\n"
+                  f"\tseg_probs shape: {seg_probs.shape}\n"
+                  f"\tprobs_cell shape: {probs_cell.shape}\n"
+                  f"\tpreds_cyto shape: {preds_cyto.shape}\n"
+                  f"\ttotal_cell_assignments shape: {total_cell_assignments.shape}\n"
+                  f"\textra_assignments shape: {extra_assignments.shape}\n"
+                  f"\tpenalty shape: {penalty.shape}\n"
+                  f"\tloss: {loss}")
         
         return loss
