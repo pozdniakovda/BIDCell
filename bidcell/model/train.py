@@ -494,7 +494,7 @@ def train(config: Config, learning_rate = None, selected_solver = None):
             
             if (global_step % config.training_params.sample_freq) == 0:
                 fig_outputs = detach_fig_outputs(coords_h1, coords_w1, seg_pred, 
-                                                 nucl_aug, batch_sa, expr_aug_sum)
+                                                 nucl_aug, batch_sa, batch_expr_sum)
                 coords_h1, coords_w1, sample_seg, sample_n, sample_sa, sample_expr = fig_outputs
                 patch_fp = os.path.join(f"{experiment_path}/{config.experiment_dirs.samples_dir}", 
                                         f"epoch_{epoch+1}_{step_epoch}_{coords_h1}_{coords_w1}.png")
