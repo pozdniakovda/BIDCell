@@ -193,7 +193,7 @@ class MultipleAssignmentLoss(nn.Module):
         self.init_weight = weight
         self.device = device
 
-    def forward(self, seg_pred, batch_expr_sum, weight=None, alpha=1.0, verbose=True):
+    def forward(self, seg_pred, batch_expr_sum, weight=None, alpha=1.0, verbose=False):
         '''
         Forward pass
 
