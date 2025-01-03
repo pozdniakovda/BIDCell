@@ -95,7 +95,7 @@ def compute_individual_losses(seg_pred, batch_n, batch_sa, batch_pos, batch_neg,
         loss_cc = criterion_cc(seg_pred, batch_sa, weights["cc"])
         loss_pn = criterion_pn(seg_pred, batch_pos, batch_neg, weights["pos"], weights["neg"])
     
-    loss_mu = criterion_mu(batch_expr_sum, batch_sa, weights["mu"])
+    loss_mu = criterion_mu(seg_pred, batch_expr_sum, weights["mu"])
 
     return (loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn)
 
