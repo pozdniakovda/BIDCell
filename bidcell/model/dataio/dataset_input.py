@@ -324,7 +324,7 @@ class DataProcessing(data.Dataset):
 
         search_areas[search_areas > 0] = 1
         search_areas[search_areas < 0] = 0
-        search_areas_torch = torch.tensor(search_areas, dtype=torch.float32)
+        search_areas = torch.tensor(search_areas, dtype=torch.float32)
 
         # Generate the summed expression map
         expr_aug = torch.tensor(expr_aug, dtype=torch.float32, requires_grad=True)  # Shape: [H, W, n_channels]
@@ -333,30 +333,30 @@ class DataProcessing(data.Dataset):
         # Mask summed expression map and change channel order
         expr_sum_split = expr_aug_sum.unsqueeze(-1)  # Shape: [H, W, 1]
         expr_sum_split = expr_sum_split.repeat(1, 1, n_cells)  # Shape: [H, W, n_cells]
-        expr_sum_split = expr_sum_split * search_areas_torch  # Shape: [H, W, n_cells]
+        expr_sum_split = expr_sum_split * search_areas  # Shape: [H, W, n_cells]
 
         # Mask expressions and change channel order using PyTorch
         expr_split = expr_aug.unsqueeze(-1).repeat(1, 1, 1, n_cells)  # Shape: [H, W, n_channels, n_cells]
-        expr_split = expr_split * search_areas_torch.unsqueeze(2)
+        expr_split = expr_split * search_areas.unsqueeze(2)
 
         # Convert tensor types
-        expr_split_torch = expr_split.float()
-        expr_sum_split_torch = expr_sum_split.float()
-        search_areas_torch = search_areas_torch.long()
+        expr_split = expr_split.float()
+        expr_sum_split = expr_sum_split.float()
+        search_areas = search_areas.long()
 
         # Convert remaining arrays to tensors
-        nucl_split_torch = torch.from_numpy(nucl_split).long()
-        search_pos_torch = torch.from_numpy(search_pos).long()
-        search_neg_torch = torch.from_numpy(search_neg).long()
+        nucl_split = torch.from_numpy(nucl_split).long()
+        search_pos = torch.from_numpy(search_pos).long()
+        search_neg = torch.from_numpy(search_neg).long()
 
         if self.isTraining:
             return (
-                expr_sum_split_torch, 
-                expr_split_torch,
-                nucl_split_torch,
-                search_areas_torch,
-                search_pos_torch,
-                search_neg_torch,
+                expr_sum_split, 
+                expr_split,
+                nucl_split,
+                search_areas,
+                search_pos,
+                search_neg,
                 coords_h1,
                 coords_w1,
                 nucl_aug,
@@ -364,12 +364,12 @@ class DataProcessing(data.Dataset):
             )
         else:
             return (
-                expr_sum_split_torch, 
-                expr_split_torch,
-                nucl_split_torch,
-                search_areas_torch,
-                search_pos_torch,
-                search_neg_torch,
+                expr_sum_split, 
+                expr_split,
+                nucl_split,
+                search_areas,
+                search_pos,
+                search_neg,
                 coords_h1,
                 coords_w1,
                 nucl_aug,
