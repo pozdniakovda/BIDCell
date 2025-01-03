@@ -198,7 +198,25 @@ class DataProcessing(data.Dataset):
         return len(self.fp_patches)
 
     def __getitem__(self, index, verbose=True):
-        "Generates one sample of data"
+        '''
+        Generates one sample of data
+
+        Args:
+            index:   index
+            verbose: whether to display tensor shapes
+        
+        Returns: 
+            expr_sum_split: summed expression map masked by search areas; shape: [H, W, n_cells]
+            expr_split:     expression map masked by search areas;        shape: [H, W, n_channels, n_cells]
+            nucl_split:     nuclei map masked by search areas;            shape: [H, W, n_cells]
+            search_areas:   search areas defining individual cells;       shape: [H, W, n_cells]
+            search_pos:     positive markers masked by search areas;      shape: [H, W, n_cells]
+            search_neg:     negative markers masked by search areas;      shape: [H, W, n_cells]
+            coords_h1:      coords_h1
+            coords_w1:      coords_w1
+            nucl_aug:       augmented nuclei map;                         shape: [H, W]
+            expr_aug_sum:   summed expression map;                        shape: [H, W]
+        '''
 
         patch_fp = self.fp_patches[index]
         h5f = h5py.File(patch_fp, "r")
