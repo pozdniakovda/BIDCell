@@ -329,6 +329,7 @@ class DataProcessing(data.Dataset):
         # Generate the summed expression map
         expr_aug = torch.tensor(expr_aug, dtype=torch.float32, requires_grad=True)  # Shape: [H, W, n_channels]
         expr_aug_sum = torch.sum(expr_aug, dim=-1)  # Shape: [H, W]
+        expr_aug_sum = expr_aug_sum.unsqueeze(0).unsqueeze(0)  # Shape: [1, 1, H, W]
         
         # Mask summed expression map and change channel order
         expr_sum_split = expr_aug_sum.unsqueeze(-1)  # Shape: [H, W, 1]
