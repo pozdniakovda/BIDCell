@@ -373,25 +373,25 @@ def train(config: Config, learning_rate = None, selected_solver = None):
         print("\nEpoch =", (epoch + 1), " lr =", cur_lr, " solver =", current_solver)
 
         for step_epoch, (
-            batch_ess,
-            batch_x313,
-            batch_n,
-            batch_sa,
-            batch_pos,
-            batch_neg,
+            batch_ess,     # shape: [H, W, n_cells]
+            batch_x313,    # shape: [H, W, n_channels, n_cells]
+            batch_n,       # shape: [H, W, n_cells]
+            batch_sa,      # shape: [H, W, n_cells]
+            batch_pos,     # shape: [H, W, n_cells]
+            batch_neg,     # shape: [H, W, n_cells]
             coords_h1,
             coords_w1,
-            nucl_aug,
-            expr_aug_sum,
-        ) in enumerate(train_loader):
+            nucl_aug,      # shape: [H, W]
+            expr_aug_sum,  # shape: [H, W]
+        ) in enumerate(train_loader): 
             # Permute channels axis to batch axis
-            batch_x313 = batch_x313[0, :, :, :, :].permute(3, 2, 0, 1)
-            batch_ess = batch_ess.permute(3, 0, 1, 2)
-            batch_sa = batch_sa.permute(3, 0, 1, 2)
-            batch_pos = batch_pos.permute(3, 0, 1, 2)
-            batch_neg = batch_neg.permute(3, 0, 1, 2)
-            batch_n = batch_n.permute(3, 0, 1, 2)
-            expr_aug_sum = expr_aug_sum.unsqueeze(0)
+            batch_ess = batch_ess.permute(3, 0, 1, 2)                  # new shape: [n_cells, 1, H, W]
+            batch_x313 = batch_x313[0, :, :, :, :].permute(3, 2, 0, 1) # new shape: [n_cells, n_channels, H, W]
+            batch_n = batch_n.permute(3, 0, 1, 2)                      # new shape: [n_cells, 1, H, W]
+            batch_sa = batch_sa.permute(3, 0, 1, 2)                    # new shape: [n_cells, 1, H, W]
+            batch_pos = batch_pos.permute(3, 0, 1, 2)                  # new shape: [n_cells, 1, H, W]
+            batch_neg = batch_neg.permute(3, 0, 1, 2)                  # new shape: [n_cells, 1, H, W]
+            expr_aug_sum = expr_aug_sum.unsqueeze(0)                   # new shape: [1, 1, H, W]
 
             if batch_x313.shape[0] == 0:
                 # Save the model periodically
@@ -409,10 +409,10 @@ def train(config: Config, learning_rate = None, selected_solver = None):
             print(f"Shapes of tensors immediately before being transferred to GPU: \n"
                   f"\tbatch_ess shape: {batch_ess.shape}\n"
                   f"\tbatch_x313 shape: {batch_x313.shape}\n"
+                  f"\tbatch_n shape: {batch_n.shape}\n"
                   f"\tbatch_sa shape: {batch_sa.shape}\n"
                   f"\tbatch_pos shape: {batch_pos.shape}\n"
                   f"\tbatch_neg shape: {batch_neg.shape}\n"
-                  f"\tbatch_n shape: {batch_n.shape}\n"
                   f"\texpr_aug_sum shape: {expr_aug_sum.shape}")
             
             # Transfer to GPU
