@@ -193,7 +193,7 @@ class MultipleAssignmentLoss(nn.Module):
         self.init_weight = weight
         self.device = device
 
-    def forward(self, seg_pred, batch_expr_sum, weight=None, alpha=1.0, verbose=False):
+    def forward(self, seg_pred, batch_expr_sum, weight=None, alpha=10.0, verbose=False):
         '''
         Forward pass
 
@@ -215,8 +215,12 @@ class MultipleAssignmentLoss(nn.Module):
         # Compute softmax probabilities
         seg_probs = F.softmax(seg_pred, dim=1)
         probs_cell = seg_probs[:, 1, :, :]  # Class 1 corresponds to cells; new shape is [n_cells, H, W]
-        print(f"probs_cell range: {probs_cell.min()} to {probs_cell.max()}")
+
+        # Apply sigmoid function
+        sigmoid_min = 1 / (1 + np.exp(-(alpha * (0 - 0.5))))
+        sigmoid_max = 1 / (1 + np.exp(-(alpha * (1 - 0.5))))
         preds_cyto = torch.sigmoid((probs_cell - 0.5) * alpha) # emphasize probabilities > 0.5; shape: [n_cells, H, W]
+        preds_cyto = (preds_cyto - sigmoid_min) / (sigmoid_max - sigmoid_min)
 
         # Sum over all cells to get the total number of assignments per pixel
         total_cell_assignments = torch.sum(preds_cyto, dim=0) # shape: [H, W]
