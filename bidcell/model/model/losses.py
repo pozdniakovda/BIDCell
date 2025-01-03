@@ -193,13 +193,24 @@ class MultipleAssignmentLoss(nn.Module):
         self.init_weight = weight
         self.device = device
 
-    def forward(self, seg_pred, expr_aug_sum, weight=None, alpha=1.0):
+    def forward(self, seg_pred, batch_expr_sum, weight=None, alpha=1.0):
+        '''
+        Forward pass
+
+        Args:
+            seg_pred:       predicted binary cell segmentations; shape: [n_cells, 2, H, W]
+            batch_expr_sum: summed expression map;               shape: [1, 1, H, W]
+
+        Returns: 
+            loss:           multiple assignment loss
+        '''
+        
         # Overwrite self.weight if new weight is given; original is preserved as self.init_weight
         if weight is not None:
             self.weight = weight
 
         print(f"seg_pred shape: {seg_pred.shape}")
-        print(f"expr_aug_sum shape: {expr_aug_sum.shape}")
+        print(f"batch_expr_sum (expr_aug_sum) shape: {batch_expr_sum.shape}")
 
         # Compute softmax probabilities
         seg_probs = F.softmax(seg_pred, dim=1)
@@ -218,7 +229,7 @@ class MultipleAssignmentLoss(nn.Module):
         print(f"extra_assignments shape: {extra_assignments.shape}")
 
         # Mask with expression data (penalize only for pixels with expression)
-        penalty = extra_assignments * expr_aug_sum  # (height, width)
+        penalty = extra_assignments * batch_expr_sum  # (height, width)
         print(f"penalty shape: {penalty.shape}")
 
         # Sum the penalty over all pixels and normalize by batch size
