@@ -328,10 +328,6 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
                "mu": config.training_params.mu_weight, 
                "pos": config.training_params.pos_weight, 
                "neg": config.training_params.neg_weight}
-
-    # Overlap loss preferences
-    ov_distance_scaling = config.training_params.ov_distance_scaling
-    ov_intensity_weighting = config.training_params.ov_intensity_weighting
     
     # Combined loss functions if desired
     combine_ne_ov = config.training_params.combine_ne_ov
