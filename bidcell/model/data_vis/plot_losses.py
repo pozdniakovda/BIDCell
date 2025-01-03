@@ -163,9 +163,10 @@ def get_ma_losses(losses, window_width=None):
     return ma_losses
 
 def plot_losses(losses, ma_losses, combine_ne_ov, combine_os_ov, combine_cc_pn, total_epochs, 
-                train_loader_len, experiment_path, solver_title, switch_after=0, log_scale=True):
+                train_loader_len, experiment_path, solver_title, epochs_before_switch=0, log_scale=True):
     # Plot losses
     print(f"Graphing overlaid losses...")
+    switch_after = epochs_before_switch + 1
 
     # Plot all losses on one graph
     total_loss_vals = losses["Total Loss"]
@@ -197,12 +198,12 @@ def plot_losses(losses, ma_losses, combine_ne_ov, combine_os_ov, combine_cc_pn, 
     print(f"Graphing individual losses...")
     for key in keys:
         plot_loss(losses[key], ma_losses[key], key, total_epochs, experiment_path, 
-                  train_loader_len, solver_title, log_scale, rescaling=False)
+                  train_loader_len, solver_title, switch_after, log_scale, rescaling=False)
 
     # Repeat for rescaled versions
     print(f"Graphing overlaid rescaled losses...")
     plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_loss_ma, total_epochs, 
-                         train_loader_len, experiment_path, solver_title, switch_after, switch_after, log_scale, rescaling=True)
+                         train_loader_len, experiment_path, solver_title, switch_after, log_scale, rescaling=True)
     print(f"Graphing rescaled total loss...")
     plot_loss(losses["Total Loss"], ma_losses["Total Loss"], "Total Loss", total_epochs, experiment_path, 
               train_loader_len, solver_title, switch_after, log_scale, rescaling=True)
