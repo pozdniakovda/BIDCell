@@ -106,14 +106,14 @@ def compute_losses(seg_pred, batch_n, batch_sa, batch_pos, batch_neg, batch_expr
 
     Args: 
         seg_pred:        predicted segmentations
-        batch_n:         nuclei map masked by search areas;       shape: [H, W, n_cells]
-        batch_sa:        search areas defining individual cells;  shape: [H, W, n_cells]
-        batch_pos:       positive markers masked by search areas; shape: [H, W, n_cells]
-        batch_neg:       negative markers masked by search areas; shape: [H, W, n_cells]
+        batch_n:         nuclei map masked by search areas;       shape: [n_cells, 1, H, W]
+        batch_sa:        search areas defining individual cells;  shape: [n_cells, 1, H, W]
+        batch_pos:       positive markers masked by search areas; shape: [n_cells, 1, H, W]
+        batch_neg:       negative markers masked by search areas; shape: [n_cells, 1, H, W]
         coords_h1:       coords_h1
         coords_w1:       coords_w1
-        nucl_aug:        augmented nuclei map;                    shape: [H, W]
-        batch_expr_sum:  summed expression map;                   shape: [H, W]
+        nucl_aug:        augmented nuclei map;                    shape: [1, 1, H, W]
+        batch_expr_sum:  summed expression map;                   shape: [1, 1, H, W]
 
     Returns: 
         loss_ne:         nuclei encapsulation loss
