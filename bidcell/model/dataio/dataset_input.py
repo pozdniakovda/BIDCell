@@ -339,9 +339,6 @@ class DataProcessing(data.Dataset):
         expr_split = expr_aug.unsqueeze(-1).repeat(1, 1, 1, n_cells)  # Shape: [H, W, n_channels, n_cells]
         expr_split = expr_split * search_areas_torch.unsqueeze(2)
 
-        # Expand dims of summed expression map
-        expr_aug_sum = expr_aug_sum.unsqueeze(0).unsqueeze(0)  # Shape: [1, 1, H, W]
-
         # Convert tensor types
         expr_split_torch = expr_split.float()
         expr_sum_split_torch = expr_sum_split.float()
