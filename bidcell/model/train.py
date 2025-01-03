@@ -266,7 +266,7 @@ def restore_saved_model(config, experiment_path, resume_epoch, resume_step, opti
 
     return model, optimizer, epoch
 
-def train(config: Config, learning_rate = None, selected_solver = None):
+def train(config: Config, learning_rate = None, selected_solver = None, verbose=False):
     logging.basicConfig(
         format="%(asctime)s %(levelname)s %(message)s",
         level=logging.INFO,
@@ -433,14 +433,15 @@ def train(config: Config, learning_rate = None, selected_solver = None):
                 
                 continue
 
-            print(f"Shapes of tensors immediately before being transferred to GPU: \n"
-                  f"\tbatch_ess shape: {batch_ess.shape}\n"
-                  f"\tbatch_x313 shape: {batch_x313.shape}\n"
-                  f"\tbatch_n shape: {batch_n.shape}\n"
-                  f"\tbatch_sa shape: {batch_sa.shape}\n"
-                  f"\tbatch_pos shape: {batch_pos.shape}\n"
-                  f"\tbatch_neg shape: {batch_neg.shape}\n"
-                  f"\texpr_aug_sum (batch_expr_sum) shape: {batch_expr_sum.shape}")
+            if verbose: 
+                print(f"Shapes of tensors immediately before being transferred to GPU: \n"
+                      f"\tbatch_ess shape: {batch_ess.shape}\n"
+                      f"\tbatch_x313 shape: {batch_x313.shape}\n"
+                      f"\tbatch_n shape: {batch_n.shape}\n"
+                      f"\tbatch_sa shape: {batch_sa.shape}\n"
+                      f"\tbatch_pos shape: {batch_pos.shape}\n"
+                      f"\tbatch_neg shape: {batch_neg.shape}\n"
+                      f"\texpr_aug_sum (batch_expr_sum) shape: {batch_expr_sum.shape}")
             
             # Transfer to GPU
             batch_ess = batch_ess.to(device)
