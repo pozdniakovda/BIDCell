@@ -197,7 +197,7 @@ class DataProcessing(data.Dataset):
         "Denotes the total number of samples"
         return len(self.fp_patches)
 
-    def __getitem__(self, index):
+    def __getitem__(self, index, verbose=True):
         "Generates one sample of data"
 
         patch_fp = self.fp_patches[index]
@@ -348,6 +348,18 @@ class DataProcessing(data.Dataset):
         nucl_split = torch.from_numpy(nucl_split).long()
         search_pos = torch.from_numpy(search_pos).long()
         search_neg = torch.from_numpy(search_neg).long()
+
+        if verbose:
+            print(f"Shapes of tensors output from DataProcessing: \n"
+                  f"\tn_cells: {n_cells}\n"
+                  f"\texpr_sum_split shape: {expr_sum_split.shape}\n"
+                  f"\texpr_split shape: {expr_split.shape}\n"
+                  f"\tnucl_split shape: {nucl_split.shape}\n"
+                  f"\tsearch_areas shape: {search_areas.shape}\n"
+                  f"\tsearch_pos shape: {search_pos.shape}\n"
+                  f"\tsearch_neg shape: {search_neg.shape}\n"
+                  f"\tnucl_aug shape: {nucl_aug.shape}\n"
+                  f"\texpr_aug_sum shape: {expr_aug_sum.shape}")
 
         if self.isTraining:
             return (
