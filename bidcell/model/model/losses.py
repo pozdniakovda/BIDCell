@@ -213,8 +213,7 @@ class MultipleAssignmentLoss(nn.Module):
         penalty = extra_assignments * expr_aug_sum  # (height, width)
 
         # Sum the penalty over all pixels and normalize by batch size
-        scale = seg_pred.shape[0] * seg_pred.shape[2] * seg_pred.shape[3]  # Total number of pixels
-        loss = torch.sum(penalty) / scale
+        loss = torch.sum(penalty) / seg_pred.shape[0]
         loss = loss * self.weight
 
         return loss
