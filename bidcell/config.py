@@ -199,16 +199,10 @@ class TrainingParams(BaseModel):
     mu_weight: float = 1.0
     pos_weight: float = 1.0
     neg_weight: float = 1.0
-    # overlap loss preferences
-    ov_distance_scaling: bool = False
-    ov_intensity_weighting: bool = False
     # loss combination
-    combine_ne_ov: bool = True
-    combine_ne_ov_mode: Literal["max", "top", "static"] = "top"
-    combine_os_ov: bool = True
-    combine_os_ov_mode: Literal["max", "top", "static"] = "top"
-    combine_cc_pn: bool = True
-    combine_cc_pn_mode: Literal["max", "top", "static"] = "top"
+    combine_ne_ov: bool = False
+    combine_os_ov: bool = False
+    combine_cc_pn: bool = False
     # non-contributing (spectator) losses
     non_contributing_losses: list = []
     # graphing params
