@@ -215,6 +215,7 @@ class MultipleAssignmentLoss(nn.Module):
         # Compute softmax probabilities
         seg_probs = F.softmax(seg_pred, dim=1)
         probs_cell = seg_probs[:, 1, :, :]  # Class 1 corresponds to cells; new shape is [n_cells, H, W]
+        print(f"probs_cell range: {probs_cell.min()} to {probs_cell.max()}")
         preds_cyto = torch.sigmoid((probs_cell - 0.5) * alpha) # emphasize probabilities > 0.5; shape: [n_cells, H, W]
 
         # Sum over all cells to get the total number of assignments per pixel
