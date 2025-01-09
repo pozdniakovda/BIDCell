@@ -516,7 +516,7 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
     solver_title = get_solver_title(selected_solver, starting_solver, ending_solver, 
                                     epochs_before_switch, dynamic_solvers)
     plot_losses(losses, ma_losses, combine_ne_ov, combine_os_ov, combine_cc_pn, total_epochs, 
-                experiment_path, solver_title, log_scale)
+                experiment_path, solver_title, epochs_before_switch, log_scale)
 
     logging.info("Training finished")
 
