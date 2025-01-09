@@ -83,7 +83,7 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
     vals_per_epoch = round(loss_vals_count / total_epochs)
     for epoch in np.arange(0, total_epochs + 1):
         color = "r" if epoch == switch_after-1 else "black"
-        plt.axvline(x=epoch*vals_per_epoch - 1, color=color, linestyle="--", alpha=0.5)
+        plt.axvline(x=epoch*vals_per_epoch - 1, color=color, linewidth=2, linestyle="--", alpha=0.5)
 
     if log_scale:
         plt.yscale("log")
@@ -124,7 +124,7 @@ def plot_loss(loss_vals, ma_loss_vals, label, total_epochs, experiment_path,
             
             for epoch in np.arange(0, total_epochs + 1):
                 color = "r" if epoch == switch_after-1 else "black"
-                plt.axvline(x=epoch*vals_per_epoch - 1, color=color, linestyle="--")
+                plt.axvline(x=epoch*vals_per_epoch - 1, color=color, linewidth=2, linestyle="--")
             
             if log_scale:
                 plt.yscale("log")
