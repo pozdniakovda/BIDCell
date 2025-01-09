@@ -41,7 +41,7 @@ def to_scalar(value):
     return value
 
 def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_loss_ma, total_epochs, 
-                         train_loader_len, experiment_path, solver_title, switch_after=0, log_scale=True, 
+                         experiment_path, solver_title, switch_after=0, log_scale=True, 
                          rescaling=True, show_moving_averages=True):
     # Plots all the losses on one graph
 
@@ -53,15 +53,17 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
     plt.plot(total_loss_vals, label="Total Loss", linewidth=1)
 
     divisors = {}
+    loss_vals_count = 0
     for label, loss_vals in other_loss_vals.items():
         if loss_vals is not None:
+            loss_vals_count = max(len(loss_vals), loss_vals_count)
             if len(loss_vals) > 0:
                 divisor = max(loss_vals) / 1000 if max(loss_vals) != 0 else 1
                 if rescaling:
                     divisors[label] = divisor
                     loss_vals = np.divide(loss_vals, divisor)
                 plt.plot(loss_vals, label=label, linewidth=0.5, alpha=0.5)
-
+    
     if show_moving_averages:
         ma_loss_vals, ma_window_width = total_loss_ma
         if rescaling:
@@ -78,9 +80,10 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
                         loss_ma = np.divide(loss_ma, divisor)
                     plt.plot(loss_ma, label=f"{label} (moving average, {ma_window_width})", linewidth=1, alpha=0.5)
 
-    for epoch in range(total_epochs):
-        color = "b" if epoch+1 == switch_after and switch_after != 0 else "r"
-        plt.axvline(x=epoch * train_loader_len, color=color, linestyle="--", alpha=0.5)
+    vals_per_epoch = round(loss_vals_count / total_epochs)
+    for epoch in np.arange(1, total_epochs + 1):
+        color = "b" if epoch == switch_after and switch_after != 0 else "r"
+        plt.axvline(x=epoch * vals_per_epoch, color=color, linestyle="--", alpha=0.5)
 
     if log_scale:
         plt.yscale("log")
@@ -99,10 +102,12 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
     plt.savefig(save_path)
     #plt.show()
 
-def plot_loss(loss_vals, ma_loss_vals, label, total_epochs, experiment_path, train_loader_len,
+def plot_loss(loss_vals, ma_loss_vals, label, total_epochs, experiment_path,
               solver_title, switch_after=0, log_scale=True, rescaling=True, show_moving_averages=True):
     # Plots a single objective's values over the course of the training cycle
+    loss_vals_count = 0
     if loss_vals is not None:
+        loss_vals_count = max(len(loss_vals), loss_vals_count)
         if len(loss_vals) > 0:
             ma_loss_vals, ma_window_width = ma_loss_vals
             if rescaling:
@@ -116,9 +121,9 @@ def plot_loss(loss_vals, ma_loss_vals, label, total_epochs, experiment_path, tra
             if show_moving_averages:
                 plt.plot(ma_loss_vals, label=f"{label} (moving average, {ma_window_width})", linewidth=2)
             
-            for epoch in range(total_epochs):
-                color = "b" if epoch+1 == switch_after and switch_after != 0 else "r"
-                plt.axvline(x=epoch * train_loader_len, color="r", linestyle="--")
+            for epoch in np.arange(1, total_epochs + 1):
+                color = "b" if epoch == switch_after and switch_after != 0 else "r"
+                plt.axvline(x=epoch * loss_vals_count, color="r", linestyle="--")
             
             if log_scale:
                 plt.yscale("log")
@@ -163,7 +168,7 @@ def get_ma_losses(losses, window_width=None):
     return ma_losses
 
 def plot_losses(losses, ma_losses, combine_ne_ov, combine_os_ov, combine_cc_pn, total_epochs, 
-                train_loader_len, experiment_path, solver_title, epochs_before_switch=0, log_scale=True):
+                experiment_path, solver_title, epochs_before_switch=0, log_scale=True):
     # Plot losses
     print(f"Graphing overlaid losses...")
     switch_after = epochs_before_switch + 1
@@ -189,26 +194,26 @@ def plot_losses(losses, ma_losses, combine_ne_ov, combine_os_ov, combine_cc_pn, 
     other_loss_ma = {key:ma_losses[key] for key in keys}
 
     plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_loss_ma, total_epochs, 
-                         train_loader_len, experiment_path, solver_title, switch_after, log_scale, rescaling=False)
+                         experiment_path, solver_title, switch_after, log_scale, rescaling=False)
 
     # Plot individual losses
     print(f"Graphing total loss...")
     plot_loss(losses["Total Loss"], ma_losses["Total Loss"], "Total Loss", total_epochs, experiment_path, 
-              train_loader_len, solver_title, switch_after, log_scale, rescaling=False)
+              solver_title, switch_after, log_scale, rescaling=False)
     print(f"Graphing individual losses...")
     for key in keys:
         plot_loss(losses[key], ma_losses[key], key, total_epochs, experiment_path, 
-                  train_loader_len, solver_title, switch_after, log_scale, rescaling=False)
+                  solver_title, switch_after, log_scale, rescaling=False)
 
     # Repeat for rescaled versions
     print(f"Graphing overlaid rescaled losses...")
     plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_loss_ma, total_epochs, 
-                         train_loader_len, experiment_path, solver_title, switch_after, log_scale, rescaling=True)
+                         experiment_path, solver_title, switch_after, log_scale, rescaling=True)
     print(f"Graphing rescaled total loss...")
     plot_loss(losses["Total Loss"], ma_losses["Total Loss"], "Total Loss", total_epochs, experiment_path, 
-              train_loader_len, solver_title, switch_after, log_scale, rescaling=True)
+              solver_title, switch_after, log_scale, rescaling=True)
     print(f"Graphing rescaled individual losses...")
     for key in keys:
         plot_loss(losses[key], ma_losses[key], key, total_epochs, experiment_path, 
-                  train_loader_len, solver_title, switch_after, log_scale, rescaling=True)
+                  solver_title, switch_after, log_scale, rescaling=True)
 
