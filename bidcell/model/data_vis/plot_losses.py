@@ -81,8 +81,13 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
                     plt.plot(loss_ma, label=f"{label} (moving average, {ma_window_width})", linewidth=1, alpha=0.5)
 
     vals_per_epoch = round(loss_vals_count / total_epochs)
-    for epoch in np.arange(1, total_epochs + 1):
-        color = "b" if epoch >= switch_after else "r"
+    for epoch in np.arange(0, total_epochs + 1):
+        if epoch >= switch_after: 
+            color = "b"
+        elif epoch == switch_after-1: 
+            color = "black"
+        else: 
+            color = "r"
         plt.axvline(x=epoch*vals_per_epoch - 1, color=color, linestyle="--", alpha=0.5)
 
     if log_scale:
@@ -122,9 +127,14 @@ def plot_loss(loss_vals, ma_loss_vals, label, total_epochs, experiment_path,
             if show_moving_averages:
                 plt.plot(ma_loss_vals, label=f"{label} (moving average, {ma_window_width})", linewidth=2)
             
-            for epoch in np.arange(1, total_epochs + 1):
-                color = "b" if epoch >= switch_after else "r"
-                plt.axvline(x=epoch*vals_per_epoch - 1, color="r", linestyle="--")
+            for epoch in np.arange(0, total_epochs + 1):
+                if epoch >= switch_after: 
+                    color = "b"
+                elif epoch == switch_after-1: 
+                    color = "black"
+                else: 
+                    color = "r"
+                plt.axvline(x=epoch*vals_per_epoch - 1, color=color, linestyle="--")
             
             if log_scale:
                 plt.yscale("log")
