@@ -62,7 +62,7 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
                 if rescaling:
                     divisors[label] = divisor
                     loss_vals = np.divide(loss_vals, divisor)
-                plt.plot(loss_vals, label=label, linewidth=0.5, alpha=0.5)
+                plt.plot(loss_vals, label=label, linewidth=0.25, alpha=0.5)
     
     if show_moving_averages:
         ma_loss_vals, ma_window_width = total_loss_ma
@@ -118,7 +118,7 @@ def plot_loss(loss_vals, ma_loss_vals, label, total_epochs, experiment_path,
                     ma_loss_vals = np.divide(ma_loss_vals, divisor)
             
             plt.figure(figsize=(18, 8))
-            plt.plot(loss_vals, label=label, linewidth=0.5)
+            plt.plot(loss_vals, label=label, linewidth=0.25, alpha=0.75)
             if show_moving_averages:
                 plt.plot(ma_loss_vals, label=f"{label} (moving average, {ma_window_width})", linewidth=2)
             
