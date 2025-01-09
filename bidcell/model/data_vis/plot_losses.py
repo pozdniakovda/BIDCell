@@ -41,7 +41,7 @@ def to_scalar(value):
     return value
 
 def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_loss_ma, total_epochs, 
-                         experiment_path, solver_title, switch_after=0, log_scale=True, 
+                         experiment_path, solver_title, switch_after=0, log_scale=False, 
                          rescaling=True, show_moving_averages=True):
     # Plots all the losses on one graph
 
@@ -103,7 +103,7 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
     #plt.show()
 
 def plot_loss(loss_vals, ma_loss_vals, label, total_epochs, experiment_path,
-              solver_title, switch_after=0, log_scale=True, rescaling=True, show_moving_averages=True):
+              solver_title, switch_after=0, log_scale=False, rescaling=True, show_moving_averages=True):
     # Plots a single objective's values over the course of the training cycle
     if loss_vals is not None:
         loss_vals_count = len(loss_vals)
