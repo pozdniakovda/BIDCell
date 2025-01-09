@@ -169,7 +169,7 @@ def get_ma_losses(losses, window_width=None):
     return ma_losses
 
 def plot_losses(losses, ma_losses, combine_ne_ov, combine_os_ov, combine_cc_pn, total_epochs, 
-                experiment_path, solver_title, epochs_before_switch=0, log_scale=True):
+                experiment_path, solver_title, epochs_before_switch=0, log_scale=False):
     # Plot losses
     print(f"Graphing overlaid losses...")
     switch_after = epochs_before_switch + 1
