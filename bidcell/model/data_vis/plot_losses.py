@@ -82,8 +82,8 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
 
     vals_per_epoch = round(loss_vals_count / total_epochs)
     for epoch in np.arange(1, total_epochs + 1):
-        color = "b" if epoch == switch_after and switch_after != 0 else "r"
-        plt.axvline(x=epoch * vals_per_epoch, color=color, linestyle="--", alpha=0.5)
+        color = "b" if epoch >= switch_after else "r"
+        plt.axvline(x=epoch*vals_per_epoch - 1, color=color, linestyle="--", alpha=0.5)
 
     if log_scale:
         plt.yscale("log")
@@ -105,10 +105,11 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
 def plot_loss(loss_vals, ma_loss_vals, label, total_epochs, experiment_path,
               solver_title, switch_after=0, log_scale=True, rescaling=True, show_moving_averages=True):
     # Plots a single objective's values over the course of the training cycle
-    loss_vals_count = 0
     if loss_vals is not None:
-        loss_vals_count = max(len(loss_vals), loss_vals_count)
+        loss_vals_count = len(loss_vals)
         if len(loss_vals) > 0:
+            vals_per_epoch = round(loss_vals_count / total_epochs)
+
             ma_loss_vals, ma_window_width = ma_loss_vals
             if rescaling:
                 divisor = max(loss_vals) / 1000 if max(loss_vals) != 0 else 1
@@ -122,8 +123,8 @@ def plot_loss(loss_vals, ma_loss_vals, label, total_epochs, experiment_path,
                 plt.plot(ma_loss_vals, label=f"{label} (moving average, {ma_window_width})", linewidth=2)
             
             for epoch in np.arange(1, total_epochs + 1):
-                color = "b" if epoch == switch_after and switch_after != 0 else "r"
-                plt.axvline(x=epoch * loss_vals_count, color="r", linestyle="--")
+                color = "b" if epoch >= switch_after else "r"
+                plt.axvline(x=epoch*vals_per_epoch - 1, color="r", linestyle="--")
             
             if log_scale:
                 plt.yscale("log")
