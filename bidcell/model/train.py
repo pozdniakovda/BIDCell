@@ -511,13 +511,12 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
         lrs.append(cur_lr)
 
     # Graph the losses
-    train_loader_len = len(train_loader)
     log_scale = config.training_params.log_scale
     ma_losses = get_ma_losses(losses)
     solver_title = get_solver_title(selected_solver, starting_solver, ending_solver, 
                                     epochs_before_switch, dynamic_solvers)
     plot_losses(losses, ma_losses, combine_ne_ov, combine_os_ov, combine_cc_pn, total_epochs, 
-                train_loader_len, experiment_path, solver_title, log_scale)
+                experiment_path, solver_title, log_scale)
 
     logging.info("Training finished")
 
