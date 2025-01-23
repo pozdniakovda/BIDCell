@@ -55,6 +55,8 @@ training_params:
   starting_solver: "default" # solver for only the first n epochs
   ending_solver: "procrustes-min" # solver to use after the first n epochs
   epochs_before_switch: 5 # number of epochs to run before switching from starting solver to ending solver
+  stch_mu: 1.0 # Smooth Tchebycheff coefficient (controls the weight smoothing); only used for STCH-MTL
+  stch_warmup_epoch: 4 # Number of epochs for warm-up if the STCH-MTL method is being used
   learning_rate: 0.00001
   ne_weight: 1.0 # weight for nuclei encapsulation loss; default: 1.0
   os_weight: 1.0 # weight for oversegmentation loss; default: 1.0
