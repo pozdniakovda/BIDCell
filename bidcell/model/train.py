@@ -14,7 +14,7 @@ import torch
 import torch.optim.lr_scheduler as lr_scheduler
 from torch.utils.data import DataLoader
 
-from .solvers.solvers import default_solver, procrustes_method, stch_solver
+from .solvers.solvers import default_solver, procrustes_method, stch_method
 
 from .data_vis.plot_losses import (
     plot_overlaid_losses, 
