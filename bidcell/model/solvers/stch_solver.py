@@ -25,6 +25,7 @@ class STCHSolver:
             # Compute gradient norms
             grad_norms = torch.norm(grads, dim=1)  # Shape: (num_tasks, num_batches)
             grad_norms = torch.clamp(grad_norms, min=1e-6)  # Avoid zero norms
+            grad_norms = grad_norms.squeeze()
 
             # Apply smoothing to gradients (Tchebycheff scalarization)
             smoothed_norms = torch.pow(grad_norms, mu)  # Shape: (num_tasks, num_batches)
