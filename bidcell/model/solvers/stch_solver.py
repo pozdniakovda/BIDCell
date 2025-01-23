@@ -33,7 +33,7 @@ class STCHSolver:
             max_norms = grad_norms.max(dim=0).values  # Shape: (num_batches,)
             max_norms = torch.clamp(max_norms, min=1e-6)  # Ensure max norms are not zero
             
-            weighted_norms = grad_norms / max_norms.unsqueeze(0)  # Shape: (num_tasks, num_batches)
+            weighted_norms = grad_norms / (max_norms.unsqueeze(0) + 1e-6)  # Shape: (num_tasks, num_batches)
 
             # Apply smoothing with mu
             smoothed_norms = torch.pow(weighted_norms, mu)  # Shape: (num_tasks, num_batches)
