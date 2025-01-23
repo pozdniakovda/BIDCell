@@ -41,7 +41,7 @@ class STCHSolver:
 
             # Convert to weights (emphasize the worst task)
             weights = torch.zeros_like(smoothed_norms)  # Initialize weights
-            weights[worst_task_indices, range(num_batches)] = 1.0  # Assign full weight to the worst task
+            weights[worst_task_indices] = 1.0  # Assign full weight to the worst task
             print(f"\tTask Weights (before warm-up): {weights} (shape={weights.shape})") if verbose else None
 
             # Warm-up phase: blend with uniform weights
