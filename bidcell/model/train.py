@@ -387,8 +387,13 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
     is_first_step = True
     for epoch in range(initial_epoch, total_epochs):
         # Define current solver
+        stch_epoch = epoch
         if dynamic_solvers:
-            current_solver = starting_solver if epoch < epochs_before_switch else ending_solver
+            if epoch < epochs_before_switch: 
+                current_solver = starting_solver
+                stch_epoch = epoch - epochs_before_switch
+            else:
+                current_solver = ending_solver
         else:
             current_solver = selected_solver
 
@@ -491,7 +496,7 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
                                          loss_cc_pn = loss_cc_pn,
                                          mu = config.training_params.stch_mu,  # Smooth Tchebycheff parameter
                                          warmup_epoch = config.training_params.stch_warmup_epoch,  # Number of warmup epochs
-                                         current_epoch = epoch,
+                                         current_epoch = stch_epoch,
                                          non_contributing_losses = non_contributing_losses)
             else: 
                 total_loss = default_solver(optimizer = optimizer, 
