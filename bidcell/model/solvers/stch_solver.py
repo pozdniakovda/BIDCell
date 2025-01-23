@@ -33,7 +33,7 @@ class STCHSolver:
             max_norms = grad_norms.max(dim=0).values  # Shape: (num_batches,)
             max_norms = torch.clamp(max_norms, min=1e-6)  # Ensure max norms are not zero
             
-            weighted_norms = grad_norms / (max_norms.unsqueeze(0) + 1e-6)  # Shape: (num_tasks, num_batches)
+            weighted_norms = grad_norms / (max_norms.unsqueeze(0))  # Shape: (num_tasks, num_batches)
 
             # Apply smoothing with mu
             smoothed_norms = torch.pow(weighted_norms, mu)  # Shape: (num_tasks, num_batches)
@@ -41,10 +41,13 @@ class STCHSolver:
             # Normalize to ensure weights sum to 1 across tasks for each batch
             weights = smoothed_norms / smoothed_norms.sum(dim=0, keepdim=True)  # Shape: (num_tasks, num_batches)
 
-            print("Gradient Norms:", grad_norms)
-            print("Weighted Norms:", weighted_norms)
-            print("Smoothed Norms:", smoothed_norms)
-            print("Task Weights:", weights)
+            print(f"---\n"
+                  f"Shape of grads: {grads.shape}\n"
+                  f"Gradient Norms: {grad_norms} (shape={grad_norms.shape})\n"
+                  f"Weighted Norms: {weighted_norms} (shape={weighted_norms.shape})\n"
+                  f"Smoothed Norms: {smoothed_norms} (shape={smoothed_norms.shape})\n"
+                  f"Task Weights: {weights} (shape={weights.shape})\n"
+                  f"---")
 
             # Warm-up phase: linearly adjust mu from 1.0 to the target value
             if current_epoch < warmup_epoch:
