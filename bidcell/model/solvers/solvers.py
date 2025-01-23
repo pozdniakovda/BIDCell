@@ -152,7 +152,7 @@ def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os 
 
 def stch_method(model, optimizer, tracked_losses, loss_ne=None, loss_os=None, loss_cc=None, loss_ov=None, loss_mu=None,
                 loss_pn=None, loss_ne_ov=None, loss_os_ov=None, loss_cc_pn=None, mu=1.0, warmup_epoch=4, current_epoch=0,
-                non_contributing_losses=()):
+                non_contributing_losses=(), verbose=False):
     """
     Applies STCH-MTL to align gradients dynamically using smooth Tchebycheff scalarization. 
     
@@ -168,6 +168,7 @@ def stch_method(model, optimizer, tracked_losses, loss_ne=None, loss_os=None, lo
         warmup_epoch:            Number of warm-up epochs to stabilize weights
         current_epoch:           The current training epoch (for warm-up adjustment)
         non_contributing_losses: A list of non-contributing loss keys to exclude from scalarization
+        verbose:                 Whether to provide extensive information on tensor shapes and contents. 
 
     Returns:
         float: The total scalarized loss value for tracking.
@@ -203,7 +204,7 @@ def stch_method(model, optimizer, tracked_losses, loss_ne=None, loss_os=None, lo
 
     # Apply STCHSolver to align gradients
     aligned_grads, weights, tchebycheff_values = STCHSolver.apply(
-        grads.T.unsqueeze(0), mu=mu, warmup_epoch=warmup_epoch, current_epoch=current_epoch
+        grads.T.unsqueeze(0), mu=mu, warmup_epoch=warmup_epoch, current_epoch=current_epoch, verbose=verbose
     )
     aligned_grads = aligned_grads[0].sum(-1)  # Aggregate aligned gradients
 
