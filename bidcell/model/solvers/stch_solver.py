@@ -38,6 +38,11 @@ class STCHSolver:
             # Normalize to ensure weights sum to 1 across tasks for each batch
             weights = smoothed_norms / smoothed_norms.sum(dim=0, keepdim=True)  # Shape: (num_tasks, num_batches)
 
+            print("Gradient Norms:", grad_norms)
+            print("Weighted Norms:", weighted_norms)
+            print("Smoothed Norms:", smoothed_norms)
+            print("Task Weights:", weights)
+
             # Warm-up phase: linearly adjust mu from 1.0 to the target value
             if current_epoch < warmup_epoch:
                 warmup_factor = current_epoch / warmup_epoch
