@@ -29,15 +29,13 @@ class STCHSolver:
             grad_norms = torch.norm(grads, dim=1)  # Shape: (num_tasks, num_batches)
             grad_norms = torch.clamp(grad_norms, min=1e-6)  # Avoid zero norms
             print(f"\tGradient Norms: {grad_norms} (shape={grad_norms.shape})") if verbose else None
-            grad_norms = grad_norms.squeeze()
-            print(f"\tGradient Norms (squeezed): {grad_norms} (shape={grad_norms.shape})") if verbose else None
 
             # Apply smoothing to gradients (Tchebycheff scalarization)
             smoothed_norms = torch.pow(grad_norms, mu)  # Shape: (num_tasks, num_batches)
             print(f"\tSmoothed Norms (mu={mu}): {smoothed_norms} (shape={smoothed_norms.shape})") if verbose else None
 
             # Identify the worst-performing task for each batch
-            tchebycheff_values, worst_task_indices = smoothed_norms.max(dim=0)  # Shape: (num_batches,)
+            tchebycheff_values, worst_task_indices = smoothed_norms.max(dim=1)  # Shape: (num_batches,)
             print(f"\tTchebycheff Values: {tchebycheff_values} (shape={tchebycheff_values.shape})") if verbose else None
             print(f"\tWorst Task Indices: {worst_task_indices} (shape={worst_task_indices.shape})") if verbose else None
 
