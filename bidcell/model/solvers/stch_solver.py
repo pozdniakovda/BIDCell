@@ -44,6 +44,7 @@ class STCHSolver:
             print(f"---\n"
                   f"Shape of grads: {grads.shape}\n"
                   f"Gradient Norms: {grad_norms} (shape={grad_norms.shape})\n"
+                  f"Max Norms: {max_norms} (shape={max_norms.shape})\n"
                   f"Weighted Norms: {weighted_norms} (shape={weighted_norms.shape})\n"
                   f"Smoothed Norms: {smoothed_norms} (shape={smoothed_norms.shape})\n"
                   f"Task Weights: {weights} (shape={weights.shape})\n"
