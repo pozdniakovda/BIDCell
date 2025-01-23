@@ -14,7 +14,7 @@ import torch
 import torch.optim.lr_scheduler as lr_scheduler
 from torch.utils.data import DataLoader
 
-from .solvers.solvers import default_solver, procrustes_method
+from .solvers.solvers import default_solver, procrustes_method, stch_solver
 
 from .data_vis.plot_losses import (
     plot_overlaid_losses, 
@@ -476,6 +476,23 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
                                                loss_cc_pn = loss_cc_pn, 
                                                scale_mode = "min", 
                                                non_contributing_losses = non_contributing_losses)
+            elif "stch" in current_solver:
+                total_loss = stch_method(model = model,
+                                         optimizer = optimizer,
+                                         tracked_losses = losses,
+                                         loss_ne = loss_ne,
+                                         loss_os = loss_os,
+                                         loss_cc = loss_cc,
+                                         loss_ov = loss_ov,
+                                         loss_mu = loss_mu,
+                                         loss_pn = loss_pn,
+                                         loss_ne_ov = loss_ne_ov,
+                                         loss_os_ov = loss_os_ov,
+                                         loss_cc_pn = loss_cc_pn,
+                                         mu = config.training_params.stch_mu,  # Smooth Tchebycheff parameter
+                                         warmup_epoch = config.training_params.stch_warmup_epoch,  # Number of warmup epochs
+                                         current_epoch = epoch,
+                                         non_contributing_losses = non_contributing_losses)
             else: 
                 total_loss = default_solver(optimizer = optimizer, 
                                             tracked_losses = losses, 
