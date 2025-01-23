@@ -11,12 +11,16 @@ def get_solver_title(selected_solver = None, starting_solver = None, ending_solv
         if "procrustes" in starting_solver.lower():
             starting_scale_mode = "median" if "median" in starting_solver else "rmse" if "rmse" in starting_solver else "min"
             starting_solver_title = f"Procrustes Method (scaling mode: {starting_scale_mode})"
+        elif "stch" in starting_solver.lower():
+            starting_solver_title = f"STCH-MTL Method"
         else:
             starting_solver_title = f"Default Method"
 
         if "procrustes" in ending_solver.lower():
             ending_scale_mode = "median" if "median" in ending_solver else "rmse" if "rmse" in ending_solver else "min"
             ending_solver_title = f"Procrustes Method (scaling mode: {ending_scale_mode})"
+        elif "stch" in ending_solver.lower():
+            ending_solver_title = f"STCH-MTL Method"
         else:
             ending_solver_title = f"Default Method"
 
@@ -25,6 +29,9 @@ def get_solver_title(selected_solver = None, starting_solver = None, ending_solv
     elif "procrustes" in selected_solver:
         scale_mode = "median" if "median" in selected_solver else "rmse" if "rmse" in selected_solver else "min"
         solver_title = f"Procrustes Method (scaling mode: {scale_mode})"
+
+    elif "stch" in selected_solver.lower():
+        solver_title = f"STCH-MTL Method"
         
     else:
         solver_title = "Default Method"
