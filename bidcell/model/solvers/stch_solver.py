@@ -2,7 +2,7 @@ import torch
 
 class STCHSolver:
     @staticmethod
-    def apply(grads, mu=1.0, warmup_epoch=4, current_epoch=0, verbose=True):
+    def apply(grads, mu=1.0, warmup_epoch=4, current_epoch=0, verbose=False):
         """
         Applies true Tchebycheff scalarization to align gradients, using proportional weights.
 
