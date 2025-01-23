@@ -150,7 +150,7 @@ def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os 
 
     return total_loss_scalar
 
-def stch_solver(model, optimizer, tracked_losses, loss_ne=None, loss_os=None, loss_cc=None, loss_ov=None, loss_mu=None,
+def stch_method(model, optimizer, tracked_losses, loss_ne=None, loss_os=None, loss_cc=None, loss_ov=None, loss_mu=None,
                 loss_pn=None, loss_ne_ov=None, loss_os_ov=None, loss_cc_pn=None, mu=1.0, warmup_epoch=4, current_epoch=0,
                 non_contributing_losses=()):
     """
