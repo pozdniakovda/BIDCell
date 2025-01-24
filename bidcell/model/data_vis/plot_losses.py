@@ -57,8 +57,9 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
     if rescaling:
         last_epoch_steps = int(len(total_loss_vals) / total_epochs)
         last_epoch_vals = total_loss_vals[-last_epoch_steps:]
-        divisor = max(last_epoch_vals) / 1000 if max(last_epoch_vals) != 0 else 1
-        total_loss_vals = np.divide(total_loss_vals, divisor)
+        last_epoch_mean = sum(last_epoch_vals) / len(last_epoch_vals)
+        divisor = last_epoch_mean if last_epoch_mean != 0 else 1
+        total_loss_vals = np.divide(total_loss_vals, divisor) * 1000
     plt.plot(total_loss_vals, label="Total Loss", linewidth=1)
 
     divisors = {}
@@ -69,10 +70,11 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
             if len(loss_vals) > 0:
                 last_epoch_steps = int(len(loss_vals) / total_epochs)
                 last_epoch_vals = loss_vals[-last_epoch_steps:]
-                divisor = max(last_epoch_vals) / 1000 if max(last_epoch_vals) != 0 else 1
+                last_epoch_mean = sum(last_epoch_vals) / len(last_epoch_vals)
+                divisor = last_epoch_mean if last_epoch_mean != 0 else 1
                 if rescaling:
                     divisors[label] = divisor
-                    loss_vals = np.divide(loss_vals, divisor)
+                    loss_vals = np.divide(loss_vals, divisor) * 1000
                 plt.plot(loss_vals, label=label, linewidth=0.25, alpha=0.5)
     
     if show_moving_averages:
@@ -80,8 +82,9 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
         if rescaling:
             last_epoch_steps = int(len(ma_loss_vals) / total_epochs)
             last_epoch_ma_vals = ma_loss_vals[-last_epoch_steps:]
-            divisor = max(last_epoch_ma_vals) / 1000 if max(last_epoch_ma_vals) != 0 else 1
-            ma_loss_vals = np.divide(ma_loss_vals, divisor)
+            last_epoch_ma_mean = sum(last_epoch_ma_vals) / len(last_epoch_ma_vals)
+            divisor = last_epoch_ma_mean if last_epoch_ma_mean != 0 else 1
+            ma_loss_vals = np.divide(ma_loss_vals, divisor) * 1000
         plt.plot(ma_loss_vals, label=f"Total Loss (moving average, {ma_window_width})", linewidth=2)
 
         for label, loss_ma_tuple in other_loss_ma.items():
@@ -90,7 +93,7 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
                 if len(loss_ma) > 0:
                     if rescaling:
                         divisor = divisors[label]
-                        loss_ma = np.divide(loss_ma, divisor)
+                        loss_ma = np.divide(loss_ma, divisor) * 1000
                     plt.plot(loss_ma, label=f"{label} (moving average, {ma_window_width})", linewidth=1, alpha=0.5)
 
     vals_per_epoch = round(loss_vals_count / total_epochs)
@@ -129,10 +132,11 @@ def plot_loss(loss_vals, ma_loss_vals, label, total_epochs, experiment_path,
             if rescaling:
                 last_epoch_steps = int(len(loss_vals) / total_epochs)
                 last_epoch_vals = loss_vals[-last_epoch_steps:]
-                divisor = max(last_epoch_vals) / 1000 if max(last_epoch_vals) != 0 else 1
-                loss_vals = np.divide(loss_vals, divisor)
+                last_epoch_mean = sum(last_epoch_vals) / len(last_epoch_vals)
+                divisor = last_epoch_mean if last_epoch_mean != 0 else 1
+                loss_vals = np.divide(loss_vals, divisor) * 1000
                 if show_moving_averages:
-                    ma_loss_vals = np.divide(ma_loss_vals, divisor)
+                    ma_loss_vals = np.divide(ma_loss_vals, divisor) * 1000
             
             plt.figure(figsize=(18, 8))
             plt.plot(loss_vals, label=label, linewidth=0.25, alpha=0.75)
