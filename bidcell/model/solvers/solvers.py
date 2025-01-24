@@ -5,6 +5,7 @@ from .solver_utils import (
     track_losses, 
     filter_non_contributing, 
     filter_unnecessary,
+    filter_losses,
 )
 from .procrustes_solver import ProcrustesSolver
 from .stch_solver import STCHSolver
@@ -12,24 +13,14 @@ from ...config import load_config, Config
 
 def default_solver(optimizer, tracked_losses, loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_mu = None, 
                    loss_pn = None, loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None, non_contributing_losses=()):
-    loss_ne = loss_ne.squeeze() if loss_ne is not None else None
-    loss_os = loss_os.squeeze() if loss_os is not None else None
-    loss_cc = loss_cc.squeeze() if loss_cc is not None else None
-    loss_ov = loss_ov.squeeze() if loss_ov is not None else None
-    loss_mu = loss_mu.squeeze() if loss_mu is not None else None
-    loss_pn = loss_pn.squeeze() if loss_pn is not None else None
-    
-    loss_ne_ov = loss_ne_ov.squeeze() if loss_ne_ov is not None else None
-    loss_os_ov = loss_os_ov.squeeze() if loss_os_ov is not None else None
-    loss_cc_pn = loss_cc_pn.squeeze() if loss_cc_pn is not None else None
+    # Default solver for summed losses
+
+    # Filter the losses based on whether they contribute to the summed loss
+    filtered_losses = filter_losses(optimizer, loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, 
+                                    loss_ne_ov, loss_os_ov, loss_cc_pn, non_contributing_losses, squeeze=True)
+    contributing_losses, unnecessary_losses, blank_losses, spectator_losses = filtered_losses
 
     # Sum the contributing losses
-    args = filter_non_contributing(loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, 
-                                   loss_ne_ov, loss_os_ov, loss_cc_pn, 
-                                   non_contributing_losses, assign_none=False)
-    contributing_terms, blank_terms, spectator_terms = args
-    contributing_terms, unnecessary_terms = filter_unnecessary(contributing_terms)
-
     loss = sum(list(contributing_terms.values()))
 
     # Optimisation
