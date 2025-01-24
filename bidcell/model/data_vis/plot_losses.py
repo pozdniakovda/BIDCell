@@ -55,7 +55,9 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
     plt.figure(figsize=(18, 8))
 
     if rescaling:
-        divisor = max(total_loss_vals) / 1000 if max(total_loss_vals) != 0 else 1
+        last_epoch_steps = int(len(total_loss_vals) / total_epochs)
+        last_epoch_vals = total_epoch_vals[-last_epoch_steps:]
+        divisor = max(last_epoch_vals) / 1000 if max(last_epoch_vals) != 0 else 1
         total_loss_vals = np.divide(total_loss_vals, divisor)
     plt.plot(total_loss_vals, label="Total Loss", linewidth=1)
 
@@ -65,7 +67,9 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
         if loss_vals is not None:
             loss_vals_count = max(len(loss_vals), loss_vals_count)
             if len(loss_vals) > 0:
-                divisor = max(loss_vals) / 1000 if max(loss_vals) != 0 else 1
+                last_epoch_steps = int(len(loss_vals) / total_epochs)
+                last_epoch_vals = loss_vals[-last_epoch_steps:]
+                divisor = max(last_epoch_vals) / 1000 if max(last_epoch_vals) != 0 else 1
                 if rescaling:
                     divisors[label] = divisor
                     loss_vals = np.divide(loss_vals, divisor)
@@ -74,7 +78,9 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
     if show_moving_averages:
         ma_loss_vals, ma_window_width = total_loss_ma
         if rescaling:
-            divisor = max(ma_loss_vals) / 1000 if max(ma_loss_vals) != 0 else 1
+            last_epoch_steps = int(len(ma_loss_vals) / total_epochs)
+            last_epoch_ma_vals = ma_loss_vals[-last_epoch_steps:]
+            divisor = max(last_epoch_ma_vals) / 1000 if max(last_epoch_ma_vals) != 0 else 1
             ma_loss_vals = np.divide(ma_loss_vals, divisor)
         plt.plot(ma_loss_vals, label=f"Total Loss (moving average, {ma_window_width})", linewidth=2)
 
@@ -121,7 +127,9 @@ def plot_loss(loss_vals, ma_loss_vals, label, total_epochs, experiment_path,
 
             ma_loss_vals, ma_window_width = ma_loss_vals
             if rescaling:
-                divisor = max(loss_vals) / 1000 if max(loss_vals) != 0 else 1
+                last_epoch_steps = int(len(loss_vals) / total_epochs)
+                last_epoch_vals = loss_vals[-last_epoch_steps:]
+                divisor = max(last_epoch_vals) / 1000 if max(last_epoch_vals) != 0 else 1
                 loss_vals = np.divide(loss_vals, divisor)
                 if show_moving_averages:
                     ma_loss_vals = np.divide(ma_loss_vals, divisor)
