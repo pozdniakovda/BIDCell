@@ -3,8 +3,6 @@ from .solver_utils import (
     to_scalar, 
     track_loss, 
     track_losses, 
-    filter_non_contributing, 
-    filter_unnecessary,
     filter_losses,
 )
 from .procrustes_solver import ProcrustesSolver
@@ -69,16 +67,14 @@ def summed_solver(optimizer, device, tracked_losses, loss_ne = None, loss_os = N
 
 def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_mu = None, 
                       loss_pn = None, loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None, scale_mode = "min", non_contributing_losses=()): 
-    # Remove non-contributing losses
-    args = filter_non_contributing(loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, 
-                                   loss_ne_ov, loss_os_ov, loss_cc_pn, 
-                                   non_contributing_losses, assign_none=False)
-    contributing_terms, blank_terms, spectator_terms = args
-    contributing_terms, unnecessary_terms = filter_unnecessary(contributing_terms)
-                          
+    # Filter the losses based on whether they contribute to the summed loss
+    filtered_losses = filter_losses(optimizer, loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, 
+                                    loss_ne_ov, loss_os_ov, loss_cc_pn, non_contributing_losses, squeeze=False)
+    contributing_losses, unnecessary_losses, blank_losses, spectator_losses = filtered_losses
+    
     # Backward pass
     grads = []
-    for key, loss in contributing_terms.items():
+    for key, loss in contributing_losses.items():
         optimizer.zero_grad()  # Clear previous gradients
         try:
             loss.backward(retain_graph=True)  # Retain graph for backpropagation
@@ -90,7 +86,7 @@ def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os 
     grads = torch.stack(grads, dim=0)  # Stack gradients
 
     # Perform backward pass on spectator losses
-    for loss in spectator_terms.values():
+    for loss in spectator_losses.values():
         optimizer.zero_grad()
         try:
             loss.backward(retain_graph=True)
@@ -115,20 +111,20 @@ def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os 
     optimizer.step()
 
     # Calculate total loss with Procrustes-processed losses
-    total_loss = sum(list(contributing_terms.values()))
+    total_loss = sum(list(contributing_losses.values()))
 
     # Track the loss values for graphing purposes
     keys = ["ne", "os", "cc", "ov", "mu", "pn", "ne_ov", "os_ov", "cc_pn"]
     scalarized_losses = {}
     for key in keys:
-        if contributing_terms.get(key) is not None:
-            scalar_loss = to_scalar(contributing_terms[key])
-        elif spectator_terms.get(key) is not None:
-            scalar_loss = to_scalar(spectator_terms[key])
-        elif unnecessary_terms.get(key) is not None:
-            scalar_loss = to_scalar(unnecessary_terms[key])
-        elif blank_terms.get(key) is not None:
-            scalar_loss = to_scalar(blank_terms[key])
+        if contributing_losses.get(key) is not None:
+            scalar_loss = to_scalar(contributing_losses[key])
+        elif spectator_losses.get(key) is not None:
+            scalar_loss = to_scalar(spectator_losses[key])
+        elif unnecessary_losses.get(key) is not None:
+            scalar_loss = to_scalar(unnecessary_losses[key])
+        elif blank_losses.get(key) is not None:
+            scalar_loss = to_scalar(blank_losses[key])
         else:
             scalar_loss = 0
         scalarized_losses[key] = scalar_loss
