@@ -8,9 +8,9 @@ class SummedLoss(nn.Module):
     Performs a simple summation of input losses.
     """
 
-    def __init__(self, preference_weights, device) -> None:
+    def __init__(self, device) -> None:
         super(SummedLoss, self).__init__()
-        self.preference_weights = preference_weights
+        self.device = device
 
     def forward(self, losses):
         # Simple summation
@@ -32,6 +32,7 @@ class STCHLoss(nn.Module):
     def __init__(self, preference_weights, device) -> None:
         super(STCHLoss, self).__init__()
         self.preference_weights = preference_weights
+        self.device = device
 
     def forward(self, losses, preference_weights=None, ideal_vals=None, mu=1.0):
         # Preference weights are equivalent to loss weights in the config
