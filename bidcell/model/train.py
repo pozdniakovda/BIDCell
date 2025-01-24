@@ -14,7 +14,7 @@ import torch
 import torch.optim.lr_scheduler as lr_scheduler
 from torch.utils.data import DataLoader
 
-from .solvers.solvers import default_solver, procrustes_method, stch_method
+from .solvers.solvers import summed_solver, procrustes_method
 
 from .data_vis.plot_losses import (
     plot_overlaid_losses, 
@@ -499,18 +499,32 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
                                          current_epoch = stch_epoch,
                                          non_contributing_losses = non_contributing_losses)
             else: 
-                total_loss = default_solver(optimizer = optimizer, 
-                                            tracked_losses = losses, 
-                                            loss_ne = loss_ne, 
-                                            loss_os = loss_os, 
-                                            loss_cc = loss_cc, 
-                                            loss_ov = loss_ov, 
-                                            loss_mu = loss_mu,
-                                            loss_pn = loss_pn, 
-                                            loss_ne_ov = loss_ne_ov, 
-                                            loss_os_ov = loss_os_ov, 
-                                            loss_cc_pn = loss_cc_pn, 
-                                            non_contributing_losses = non_contributing_losses)
+                # Define summation mode; default is simple/arithmetic summation
+                if "stch" in current_solver.lower():
+                    sum_mode = "stch"
+                    stch_mu = config.training_params.stch_mu
+                    weighted_ideal_vals = None # Future warning: if not using the default of zero, these must be scaled with the respective loss weights
+                else: 
+                    sum_mode = "arithmetic"
+                    stch_mu, weighted_ideal_vals = None, None
+
+                # Run the solver
+                total_loss = summed_solver(optimizer = optimizer, 
+                                           device = device, 
+                                           tracked_losses = losses, 
+                                           loss_ne = loss_ne, 
+                                           loss_os = loss_os, 
+                                           loss_cc = loss_cc, 
+                                           loss_ov = loss_ov, 
+                                           loss_mu = loss_mu,
+                                           loss_pn = loss_pn, 
+                                           loss_ne_ov = loss_ne_ov, 
+                                           loss_os_ov = loss_os_ov, 
+                                           loss_cc_pn = loss_cc_pn, 
+                                           non_contributing_losses = non_contributing_losses, 
+                                           sum_mode = "arithmetic", 
+                                           ideal_vals = weighted_ideal_vals, 
+                                           stch_mu = stch_mu)
             
             if (global_step % config.training_params.sample_freq) == 0:
                 fig_outputs = detach_fig_outputs(coords_h1, coords_w1, seg_pred, 
