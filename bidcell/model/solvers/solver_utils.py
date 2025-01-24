@@ -39,31 +39,50 @@ def track_losses(tracked_losses, loss_ne = None, loss_os = None, loss_cc = None,
         track_loss(tracked_losses, "Total Loss", loss_total)
 
 def filter_non_contributing(loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_mu = None, loss_pn = None, 
-                            loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None, non_contributing_losses = (), assign_none=False): 
+                            loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None, non_contributing_losses = (), 
+                            assign_none = False, preference_weights = {}): 
     # Remove non-contributing losses
     terms = [loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, loss_ne_ov, loss_os_ov, loss_cc_pn]
     keys = ["ne", "os", "cc", "ov", "mu", "pn", "ne_ov", "os_ov", "cc_pn"]
+    
     contributing_terms = {}
+    contributing_weights = {}
+    
     blank_terms = {}
+    blank_weights = {}
+
     spectator_terms = {}
+    spectator_weights = {}
 
     for key, term in zip(keys, terms):
+        weight = preference_weights.get(key)
         if key in non_contributing_losses and term is not None:
             spectator_terms[key] = term
+            spectator_weights[key] = weight
         elif key not in non_contributing_losses and term is not None:
             contributing_terms[key] = term
+            contributing_weights[key] = weight
         else:
             blank_terms[key] = term
+            blank_weights[key] = weight
 
-    return (contributing_terms, blank_terms, spectator_terms)
+    output = (contributing_terms, contributing_weights, 
+              blank_terms, blank_weights, 
+              spectator_terms, spectator_weights)
 
-def filter_unnecessary(contributing_terms):
+    return output
+
+def filter_unnecessary(contributing_terms, preference_weights = {}):
     # Removes loss terms that are already covered by a combined loss term
     
     keys = list(contributing_terms.keys())
     unnecessary_keys = []
+    
     necessary_terms = {}
+    necessary_weights = {}
+    
     unnecessary_terms = {}
+    unnecessary_weights = {}
 
     for key in keys:
         if "_" in key:
@@ -71,9 +90,12 @@ def filter_unnecessary(contributing_terms):
     unnecessary_keys = list(tuple(unnecessary_keys))
 
     for key, term in contributing_terms.items():
+        weight = preference_weights.get(key)
         if key in unnecessary_keys:
             unnecessary_terms[key] = term
+            unnecessary_weights[key] = weight
         else:
             necessary_terms[key] = term
+            necessary_weights[key] = weight
 
-    return (necessary_terms, unnecessary_terms)
+    return (necessary_terms, necessary_weights, unnecessary_terms, unnecessary_weights)
