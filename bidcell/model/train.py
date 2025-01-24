@@ -481,23 +481,6 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
                                                loss_cc_pn = loss_cc_pn, 
                                                scale_mode = "min", 
                                                non_contributing_losses = non_contributing_losses)
-            elif "stch" in current_solver:
-                total_loss = stch_method(model = model,
-                                         optimizer = optimizer,
-                                         tracked_losses = losses,
-                                         loss_ne = loss_ne,
-                                         loss_os = loss_os,
-                                         loss_cc = loss_cc,
-                                         loss_ov = loss_ov,
-                                         loss_mu = loss_mu,
-                                         loss_pn = loss_pn,
-                                         loss_ne_ov = loss_ne_ov,
-                                         loss_os_ov = loss_os_ov,
-                                         loss_cc_pn = loss_cc_pn,
-                                         mu = config.training_params.stch_mu,  # Smooth Tchebycheff parameter
-                                         warmup_epoch = config.training_params.stch_warmup_epoch,  # Number of warmup epochs
-                                         current_epoch = stch_epoch,
-                                         non_contributing_losses = non_contributing_losses)
             else: 
                 # Define summation mode; default is simple/arithmetic summation
                 if "stch" in current_solver.lower():
