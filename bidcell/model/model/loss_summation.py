@@ -3,6 +3,27 @@ import torch
 import torch.nn as nn
 
 
+class SummedLoss(nn.Module):
+    """
+    Performs a simple summation of input losses.
+    """
+
+    def __init__(self, preference_weights, device) -> None:
+        super(SummedLoss, self).__init__()
+        self.preference_weights = preference_weights
+
+    def forward(self, losses, preference_weights=None):
+        # Preference weights are equivalent to loss weights in the config
+        if preference_weights is None:
+            preference_weights = self.preference_weights
+
+        # Simple summation
+        losses = torch.stack(losses)
+        loss = torch.sum(losses)
+
+        return loss
+
+
 class STCHLoss(nn.Module):
     """
     Performs smoothed Tchebycheff scalarization (STCH) to sum a set of losses.
