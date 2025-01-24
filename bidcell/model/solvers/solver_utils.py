@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 
 def to_scalar(value):
@@ -99,3 +100,48 @@ def filter_unnecessary(contributing_terms, preference_weights = {}):
             necessary_weights[key] = weight
 
     return (necessary_terms, necessary_weights, unnecessary_terms, unnecessary_weights)
+
+def filter_losses(optimizer, loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_mu = None, 
+                  loss_pn = None, loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None, 
+                  non_contributing_losses=(), preference_weights = None, squeeze = True):
+    # Separates losses based on whether they should contribute to the summed loss
+    
+    if preference_weights is None:
+        preference_weights = {key: 1.0 for key in ["ne", "os", "cc", "ov", "mu", "pn", "ne_ov", "os_ov", "cc_pn"]}
+
+    if squeeze:
+        loss_ne = loss_ne.squeeze() if loss_ne is not None else None
+        loss_os = loss_os.squeeze() if loss_os is not None else None
+        loss_cc = loss_cc.squeeze() if loss_cc is not None else None
+        loss_ov = loss_ov.squeeze() if loss_ov is not None else None
+        loss_mu = loss_mu.squeeze() if loss_mu is not None else None
+        loss_pn = loss_pn.squeeze() if loss_pn is not None else None
+        
+        loss_ne_ov = loss_ne_ov.squeeze() if loss_ne_ov is not None else None
+        loss_os_ov = loss_os_ov.squeeze() if loss_os_ov is not None else None
+        loss_cc_pn = loss_cc_pn.squeeze() if loss_cc_pn is not None else None
+
+    # Filter losses
+
+    # Filter based on whether a loss is designated as contributing
+    contribution_args = filter_non_contributing(loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, 
+                                                loss_ne_ov, loss_os_ov, loss_cc_pn, 
+                                                non_contributing_losses, assign_none=False, 
+                                                preference_weights=preference_weights)
+
+    # Filter out unnecessary losses that are covered by another combined loss
+    contributing_terms, contributing_weights = contribution_args[:2]
+    necessity_args = filter_unnecessary(contributing_terms, preference_weights)
+    contributing_terms, contributing_weights = necessity_args[:2]
+    unnecessary_terms, unnecessary_weights = necessity_args[2:]
+
+    # Assemble dicts of loss terms and preference weights
+    filtered_terms, filtered_weights = {}, {}
+    
+    filtered_terms["contributing"], filtered_weights["contributing"] = necessity_args[:2]
+    filtered_terms["unnecessary"], filtered_weights["unnecessary"] = necessity_args[2:4]
+    
+    filtered_terms["blank"], filtered_weights["blank"] = contribution_args[2:4]
+    filtered_terms["spectator"], filtered_weights["spectator"] = contribution_args[4:6]
+
+    return filtered_terms, filtered_weights
