@@ -12,11 +12,7 @@ class SummedLoss(nn.Module):
         super(SummedLoss, self).__init__()
         self.preference_weights = preference_weights
 
-    def forward(self, losses, preference_weights=None):
-        # Preference weights are equivalent to loss weights in the config
-        if preference_weights is None:
-            preference_weights = self.preference_weights
-
+    def forward(self, losses):
         # Simple summation
         losses = torch.stack(losses)
         loss = torch.sum(losses)
@@ -40,7 +36,10 @@ class STCHLoss(nn.Module):
     def forward(self, losses, preference_weights=None, ideal_vals=None, mu=1.0):
         # Preference weights are equivalent to loss weights in the config
         if preference_weights is None:
-            preference_weights = self.preference_weights
+            if self.preference_weights is not None:
+                preference_weights = self.preference_weights
+            else: 
+                preference_weights = np.ones(len(losses))
 
         # These are used to evaluate the  distance to an ideal loss value
         if ideal_vals is None:
