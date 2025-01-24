@@ -22,10 +22,10 @@ def summed_solver(optimizer, device, tracked_losses, loss_ne = None, loss_os = N
     # Sum the contributing losses
     if sum_mode in ["stch", "smooth_tchebycheff"]:
         criterion_stch = STCHLoss(preference_weights, device)
-        loss = criterion_stch(losses, preference_weights, ideal_vals, stch_mu)
+        loss = criterion_stch(list(contributing_losses.values()), preference_weights, ideal_vals, stch_mu)
     else:
         criterion_sum = SummedLoss(device)
-        loss = criterion_sum(contributing_losses)
+        loss = criterion_sum(list(contributing_losses.values()))
         if sum_mode not in ["arithmetic", "sum", "simple", "linear"]: 
             print(f"Unrecognized sum_mode ({sum_mode}); defaulting to simple summation.")
     
