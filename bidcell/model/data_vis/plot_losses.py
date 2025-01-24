@@ -95,6 +95,7 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
     if log_scale:
         plt.yscale("log")
 
+    plt.ylim(bottom=0)
     plt.xlabel("Training Step")
     plt.ylabel("Loss")
     title = f"Training Loss with {solver_title}"
@@ -138,6 +139,7 @@ def plot_loss(loss_vals, ma_loss_vals, label, total_epochs, experiment_path,
             
             plt.xlabel("Training Step")
             plt.ylabel("Loss")
+            plt.ylim(bottom=0)
 
             title = f"{label} During Training with {solver_title}"
         
