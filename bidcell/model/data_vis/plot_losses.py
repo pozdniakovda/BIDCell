@@ -56,7 +56,7 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
 
     if rescaling:
         last_epoch_steps = int(len(total_loss_vals) / total_epochs)
-        last_epoch_vals = total_epoch_vals[-last_epoch_steps:]
+        last_epoch_vals = total_loss_vals[-last_epoch_steps:]
         divisor = max(last_epoch_vals) / 1000 if max(last_epoch_vals) != 0 else 1
         total_loss_vals = np.divide(total_loss_vals, divisor)
     plt.plot(total_loss_vals, label="Total Loss", linewidth=1)
