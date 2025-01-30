@@ -60,10 +60,14 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
         last_epoch_mean = sum(last_epoch_vals) / len(last_epoch_vals)
         divisor = last_epoch_mean if last_epoch_mean != 0 else 1
         total_loss_vals = np.divide(total_loss_vals, divisor) * 1000
+    
+    total_loss_linewidth = 1 if show_moving_averages else 2
     plt.plot(total_loss_vals, label="Total Loss", linewidth=1)
 
     divisors = {}
     loss_vals_count = 0
+    loss_linewidth = 0.25 if show_moving_averages else 2
+    loss_alpha = 0.5 if show_moving_averages else 1.0
     for label, loss_vals in other_loss_vals.items():
         if loss_vals is not None:
             loss_vals_count = max(len(loss_vals), loss_vals_count)
@@ -75,7 +79,7 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
                 if rescaling:
                     divisors[label] = divisor
                     loss_vals = np.divide(loss_vals, divisor) * 1000
-                plt.plot(loss_vals, label=label, linewidth=0.25, alpha=0.5)
+                plt.plot(loss_vals, label=label, linewidth=loss_linewidth, alpha=loss_alpha)
     
     if show_moving_averages:
         ma_loss_vals, ma_window_width = total_loss_ma
@@ -97,9 +101,10 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
                     plt.plot(loss_ma, label=f"{label} (moving average, {ma_window_width})", linewidth=1, alpha=0.5)
 
     vals_per_epoch = round(loss_vals_count / total_epochs)
+    vline_width = 15 / total_epochs # 1.5 for 10 epochs
     for epoch in np.arange(0, total_epochs + 1):
         color = "r" if epoch == switch_after-1 else "black"
-        plt.axvline(x=epoch*vals_per_epoch - 1, color=color, linewidth=1.5, linestyle="--", alpha=0.5)
+        plt.axvline(x=epoch*vals_per_epoch - 1, color=color, linewidth=vline_width, linestyle="--", alpha=0.5)
 
     if log_scale:
         plt.yscale("log")
@@ -137,12 +142,14 @@ def plot_loss(loss_vals, ma_loss_vals, label, total_epochs, experiment_path,
                 loss_vals = np.divide(loss_vals, divisor) * 1000
                 if show_moving_averages:
                     ma_loss_vals = np.divide(ma_loss_vals, divisor) * 1000
-            
+
+            loss_linewidth = 0.5 if show_moving_averages else 1.0
             plt.figure(figsize=(18, 8))
-            plt.plot(loss_vals, label=label, linewidth=0.25, alpha=0.75)
+            plt.plot(loss_vals, label=label, linewidth=loss_linewidth, alpha=0.75)
             if show_moving_averages:
                 plt.plot(ma_loss_vals, label=f"{label} (moving average, {ma_window_width})", linewidth=2)
-            
+
+            vline_width = 15 / total_epochs # 1.5 for 10 epochs
             for epoch in np.arange(0, total_epochs + 1):
                 color = "r" if epoch == switch_after-1 else "black"
                 plt.axvline(x=epoch*vals_per_epoch - 1, color=color, linewidth=1.5, linestyle="--")
@@ -192,7 +199,7 @@ def get_ma_losses(losses, window_width=None):
     return ma_losses
 
 def plot_losses(losses, ma_losses, combine_ne_ov, combine_os_ov, combine_cc_pn, total_epochs, 
-                experiment_path, solver_title, epochs_before_switch=0, log_scale=False):
+                experiment_path, solver_title, epochs_before_switch=0, log_scale=False, show_moving_averages=True):
     # Plot losses
     print(f"Graphing overlaid losses...")
     switch_after = epochs_before_switch + 1
