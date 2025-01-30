@@ -287,6 +287,18 @@ def initialise_model(device, config: Config):
 
     return model
 
+def initialise_dataloader(config: Config):
+    # Generates the training DataLoader
+    train_dataset = DataProcessing(
+        config,
+        isTraining=True,
+        total_steps=config.training_params.total_steps,
+    )
+    train_loader = DataLoader(
+        dataset=train_dataset, batch_size=1, shuffle=True, num_workers=0, drop_last=True
+    )
+    return train_loader
+
 def train(config: Config, learning_rate = None, selected_solver = None, verbose=False):
     logging.basicConfig(
         format="%(asctime)s %(levelname)s %(message)s",
@@ -313,18 +325,8 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
 
     # Dataloader
     logging.info("Preparing data")
-
-    train_dataset = DataProcessing(
-        config,
-        isTraining=True,
-        total_steps=config.training_params.total_steps,
-    )
-    train_loader = DataLoader(
-        dataset=train_dataset, batch_size=1, shuffle=True, num_workers=0, drop_last=True
-    )
-
-    n_train_examples = len(train_loader)
-    logging.info("Total number of training examples: %d" % n_train_examples)
+    train_loader = initialise_dataloader(config)
+    logging.info(f"Total number of training examples: {len(train_loader)}")
 
     # Loss weights
     weights = {"ne": config.training_params.ne_weight, 
