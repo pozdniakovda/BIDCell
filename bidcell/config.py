@@ -217,6 +217,8 @@ class TrainingParams(BaseModel):
     model_freq: int = 1000
     # number of training steps per sample save
     sample_freq: int = 100
+    # whether to show moving averages on the training curves
+    show_moving_averages: bool = True
 
 
 class TestingParams(BaseModel):
