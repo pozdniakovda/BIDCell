@@ -71,6 +71,7 @@ training_params:
   combine_cc_pn: False # combines ne_loss+ov_loss to reduce the number of losses during multi-objective training
   non_contributing_losses: []
   log_scale: False # whether to use logarithmic scaling when graphing the loss values
+  show_moving_averages: True
 
 testing_params:
   test_epoch: 10 # epoch to test; default: 1
