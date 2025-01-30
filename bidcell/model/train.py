@@ -324,6 +324,26 @@ def parse_loss_weighting(config: Config):
 
     return (weights, combine_ne_ov, combine_os_ov, combine_cc_pn, non_contributing_losses)
 
+def get_solver_params(config: Config, selected_solver = None):
+    # Get solver params including the solver to use and the learning rate
+
+    starting_solver, ending_solver, epochs_before_switch = None, None, None
+    if selected_solver is None: 
+        selected_solver = config.training_params.solver
+        starting_solver = config.training_params.starting_solver
+        ending_solver = config.training_params.ending_solver
+        epochs_before_switch = config.training_params.epochs_before_switch
+        
+    dynamic_solvers = starting_solver != "" and ending_solver != "" and epochs_before_switch > 0
+    
+    if learning_rate is None:
+        learning_rate = config.training_params.learning_rate
+
+    solver_params = (selected_solver, starting_solver, ending_solver, 
+                     epochs_before_switch, dynamic_solvers, learning_rate)
+
+    return solver_params
+
 def train(config: Config, learning_rate = None, selected_solver = None, verbose=False):
     logging.basicConfig(
         format="%(asctime)s %(levelname)s %(message)s",
@@ -357,15 +377,9 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
     loss_weight_params = parse_loss_weighting(config)
     weights, combine_ne_ov, combine_os_ov, combine_cc_pn, non_contributing_losses
 
-    # Solver and learning rate
-    if selected_solver is None: 
-        selected_solver = config.training_params.solver
-        starting_solver = config.training_params.starting_solver
-        ending_solver = config.training_params.ending_solver
-        epochs_before_switch = config.training_params.epochs_before_switch
-    dynamic_solvers = starting_solver != "" and ending_solver != "" and epochs_before_switch > 0
-    if learning_rate is None:
-        learning_rate = config.training_params.learning_rate
+    # Get solver type and learning rate
+    solver_params = get_solver_params(config, selected_solver)
+    selected_solver, starting_solver, ending_solver, epochs_before_switch, dynamic_solvers, learning_rate = solver_params
 
     # Generate path for saving outputs
     experiment_path = generate_paths(config, make_new, learning_rate, dynamic_solvers, selected_solver, 
