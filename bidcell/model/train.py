@@ -266,6 +266,27 @@ def restore_saved_model(config, experiment_path, resume_epoch, resume_step, opti
 
     return model, optimizer, epoch
 
+def initialise_model(device, config: Config):
+    # Set up the model
+    
+    atlas_exprs = pd.read_csv(config.files.fp_ref, index_col=0)
+    n_genes = atlas_exprs.shape[1] - 3
+    print("Number of genes: %d" % n_genes)
+
+    if config.model_params.name != "custom":
+        model = smp.Unet(
+            encoder_name=config.model_params.name,
+            encoder_weights=None,
+            in_channels=n_genes,
+            classes=2,
+        )
+    else:
+        model = Network(n_channels=n_genes)
+
+    model = model.to(device)
+
+    return model
+
 def train(config: Config, learning_rate = None, selected_solver = None, verbose=False):
     logging.basicConfig(
         format="%(asctime)s %(levelname)s %(message)s",
@@ -288,22 +309,7 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
 
     # Set up the model
     logging.info("Initialising model")
-
-    atlas_exprs = pd.read_csv(config.files.fp_ref, index_col=0)
-    n_genes = atlas_exprs.shape[1] - 3
-    print("Number of genes: %d" % n_genes)
-
-    if config.model_params.name != "custom":
-        model = smp.Unet(
-            encoder_name=config.model_params.name,
-            encoder_weights=None,
-            in_channels=n_genes,
-            classes=2,
-        )
-    else:
-        model = Network(n_channels=n_genes)
-
-    model = model.to(device)
+    model = initialise_model(device, config)
 
     # Dataloader
     logging.info("Preparing data")
