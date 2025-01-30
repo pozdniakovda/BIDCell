@@ -299,6 +299,31 @@ def initialise_dataloader(config: Config):
     )
     return train_loader
 
+def parse_loss_weighting(config: Config): 
+    # Extracts loss weights and combination rules
+    
+    # Loss weights
+    weights = {"ne": config.training_params.ne_weight, 
+               "os": config.training_params.os_weight, 
+               "cc": config.training_params.cc_weight, 
+               "ov": config.training_params.ov_weight, 
+               "mu": config.training_params.mu_weight, 
+               "pos": config.training_params.pos_weight, 
+               "neg": config.training_params.neg_weight}
+    
+    # Combined loss functions if desired
+    combine_ne_ov = config.training_params.combine_ne_ov
+    combine_os_ov = config.training_params.combine_os_ov
+    combine_cc_pn = config.training_params.combine_cc_pn
+    if combine_ne_ov and combine_os_ov: 
+        raise Exception(f"combine_ne_ov and combine_os_ov were both set to True, but they are "
+                        "mutually exclusive because they both use OverlapLoss.")
+
+    # Non-contributing losses
+    non_contributing_losses = config.training_params.non_contributing_losses
+
+    return (weights, combine_ne_ov, combine_os_ov, combine_cc_pn, non_contributing_losses)
+
 def train(config: Config, learning_rate = None, selected_solver = None, verbose=False):
     logging.basicConfig(
         format="%(asctime)s %(levelname)s %(message)s",
@@ -328,25 +353,9 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
     train_loader = initialise_dataloader(config)
     logging.info(f"Total number of training examples: {len(train_loader)}")
 
-    # Loss weights
-    weights = {"ne": config.training_params.ne_weight, 
-               "os": config.training_params.os_weight, 
-               "cc": config.training_params.cc_weight, 
-               "ov": config.training_params.ov_weight, 
-               "mu": config.training_params.mu_weight, 
-               "pos": config.training_params.pos_weight, 
-               "neg": config.training_params.neg_weight}
-    
-    # Combined loss functions if desired
-    combine_ne_ov = config.training_params.combine_ne_ov
-    combine_os_ov = config.training_params.combine_os_ov
-    combine_cc_pn = config.training_params.combine_cc_pn
-    if combine_ne_ov and combine_os_ov: 
-        raise Exception(f"combine_ne_ov and combine_os_ov were both set to True, but they are "
-                        "mutually exclusive because they both use OverlapLoss.")
-
-    # Non-contributing losses
-    non_contributing_losses = config.training_params.non_contributing_losses
+    # Extract loss weights and combination rules
+    loss_weight_params = parse_loss_weighting(config)
+    weights, combine_ne_ov, combine_os_ov, combine_cc_pn, non_contributing_losses
 
     # Solver and learning rate
     if selected_solver is None: 
