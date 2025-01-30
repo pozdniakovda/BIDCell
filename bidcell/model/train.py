@@ -344,6 +344,28 @@ def get_solver_params(config: Config, selected_solver = None):
 
     return solver_params
 
+def permute_channels(batch_ess, batch_x313, batch_n, batch_sa, batch_pos, batch_neg, 
+                     nucl_aug, batch_expr_sum, device=None): 
+    # Permute channels axis to batch axis
+    
+    batch_ess = batch_ess.permute(3, 0, 1, 2)                  # new shape: [n_cells, 1, H, W]
+    batch_x313 = batch_x313[0, :, :, :, :].permute(3, 2, 0, 1) # new shape: [n_cells, n_channels, H, W]
+    batch_n = batch_n.permute(3, 0, 1, 2)                      # new shape: [n_cells, 1, H, W]
+    batch_sa = batch_sa.permute(3, 0, 1, 2)                    # new shape: [n_cells, 1, H, W]
+    batch_pos = batch_pos.permute(3, 0, 1, 2)                  # new shape: [n_cells, 1, H, W]
+    batch_neg = batch_neg.permute(3, 0, 1, 2)                  # new shape: [n_cells, 1, H, W]
+    nucl_aug = batch_neg.permute(3, 0, 1, 2)                   # new shape: [n_cells, 1, H, W]; not currently used for anything
+    batch_expr_sum = batch_expr_sum.unsqueeze(0)               # new shape: [1, 1, H, W]
+
+    permuted_data = [batch_ess, batch_x313, batch_n, batch_sa, batch_pos, batch_neg, nucl_aug, batch_expr_sum]
+
+    # Transfer to device if device is given
+    if device is not None:
+        for data in permuted_data: 
+            data.to(device)
+
+    return permuted_data
+
 def train(config: Config, learning_rate = None, selected_solver = None, verbose=False):
     logging.basicConfig(
         format="%(asctime)s %(levelname)s %(message)s",
@@ -443,14 +465,10 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
             nucl_aug,        # shape: [H, W]
             batch_expr_sum,  # shape: [H, W]
         ) in enumerate(train_loader): 
-            # Permute channels axis to batch axis
-            batch_ess = batch_ess.permute(3, 0, 1, 2)                  # new shape: [n_cells, 1, H, W]
-            batch_x313 = batch_x313[0, :, :, :, :].permute(3, 2, 0, 1) # new shape: [n_cells, n_channels, H, W]
-            batch_n = batch_n.permute(3, 0, 1, 2)                      # new shape: [n_cells, 1, H, W]
-            batch_sa = batch_sa.permute(3, 0, 1, 2)                    # new shape: [n_cells, 1, H, W]
-            batch_pos = batch_pos.permute(3, 0, 1, 2)                  # new shape: [n_cells, 1, H, W]
-            batch_neg = batch_neg.permute(3, 0, 1, 2)                  # new shape: [n_cells, 1, H, W]
-            batch_expr_sum = batch_expr_sum.unsqueeze(0)               # new shape: [1, 1, H, W]
+            # Permute channels axis to batch axis, then move tensors to GPU
+            permuted_data = permute_channels(batch_ess, batch_x313, batch_n, batch_sa, batch_pos, batch_neg, 
+                                             nucl_aug, batch_expr_sum, device)
+            batch_ess, batch_x313, batch_n, batch_sa, batch_pos, batch_neg, nucl_aug, batch_expr_sum = permuted_data
 
             if batch_x313.shape[0] == 0:
                 # Save the model periodically
@@ -475,15 +493,6 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
                       f"\tbatch_neg shape: {batch_neg.shape}\n"
                       f"\texpr_aug_sum (batch_expr_sum) shape: {batch_expr_sum.shape}")
             
-            # Transfer to GPU
-            batch_ess = batch_ess.to(device)
-            batch_x313 = batch_x313.to(device)
-            batch_sa = batch_sa.to(device)
-            batch_pos = batch_pos.to(device)
-            batch_neg = batch_neg.to(device)
-            batch_n = batch_n.to(device)
-            batch_expr_sum = batch_expr_sum.to(device)
-
             optimizer.zero_grad()
 
             seg_pred = model(batch_x313) # binary prediction of cell or not; shape: [n_cells, 2, H, W]
