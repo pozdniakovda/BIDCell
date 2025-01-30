@@ -173,6 +173,9 @@ class ModelParams(BaseModel):
 
 class TrainingParams(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
+    # If training repeats is >1, averaged training curves are generated
+    training_repeats: int = 1
+    # Epoch & step count
     total_epochs: int = 1
     total_steps: int = 4000
     # learning rate of DL model
