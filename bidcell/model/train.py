@@ -561,16 +561,17 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
                     fig_outputs = detach_fig_outputs(coords_h1, coords_w1, seg_pred, 
                                                      nucl_aug, batch_sa, batch_expr_sum)
                     coords_h1, coords_w1, sample_seg, sample_n, sample_sa, sample_expr = fig_outputs
-                    patch_fp = os.path.join(experiment_path, f"repeat_{training_repeat}") if training_repeat > 1 else experiment_path
-                    patch_fp = os.path.join(f"{patch_fp}/{config.experiment_dirs.samples_dir}", 
+                    patch_fp = os.path.join(experiment_path, f"repeat_{training_repeat}") if training_repeats > 1 else experiment_path
+                    patch_fp = os.path.join(patch_fp, config.experiment_dirs.samples_dir, 
                                             f"epoch_{epoch+1}_{step_epoch}_{coords_h1}_{coords_w1}.png")
+                    print(f"patch_fp: {patch_fp}")
                     save_fig_outputs(sample_seg, sample_n, sample_sa, sample_expr, patch_fp)
                     
                     print(f"Epoch[{epoch+1}/{total_epochs}], Step[{step_epoch}], Total Loss:{total_loss:.4f}")
     
                 # Save model
                 if (step_epoch % model_freq) == 0:
-                    model_fp = os.path.join(experiment_path, f"repeat_{training_repeat}") if training_repeat > 1 else experiment_path
+                    model_fp = os.path.join(experiment_path, f"repeat_{training_repeat}") if training_repeats > 1 else experiment_path
                     save_model(config, model_fp, epoch, step_epoch, model, optimizer)
     
                 global_step += 1
