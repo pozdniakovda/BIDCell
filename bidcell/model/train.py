@@ -616,8 +616,18 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
             averaged_loss_vals = loss_vals_repeats.mean(axis=0)
             averaged_losses[loss_name] = averaged_loss_vals
 
-        # Add graphing code here
-
+        # Graph the averaged losses
+        show_moving_averages = False
+        # show_moving_averages = config.training_params.show_moving_averages
+        log_scale = config.training_params.log_scale
+        plot_fp = os.path.join(experiment_path, "averaged")
+        make_dir(plot_fp)
+        ma_averaged_losses = get_ma_losses(averaged_losses) if show_moving_averages else None
+        solver_title = get_solver_title(selected_solver, starting_solver, ending_solver, 
+                                        epochs_before_switch, dynamic_solvers)
+        plot_losses(averaged_losses, ma_averaged_losses, combine_ne_ov, combine_os_ov, combine_cc_pn, total_epochs, 
+                    plot_fp, solver_title, epochs_before_switch, log_scale, show_moving_averages)
+    
     return losses, ma_losses, experiment_path
 
 
