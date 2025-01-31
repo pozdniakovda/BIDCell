@@ -415,6 +415,7 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
                                      starting_solver, ending_solver, epochs_before_switch, training_repeats)
 
     # Begin the training loop
+    repeat_losses = {}
     for training_repeat in np.arange(1, training_repeats+1): 
         initial_epoch = resume_epoch if resume_epoch is not None else 0
         global_step = 0
@@ -588,8 +589,18 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
                                         epochs_before_switch, dynamic_solvers)
         plot_losses(losses, ma_losses, combine_ne_ov, combine_os_ov, combine_cc_pn, total_epochs, 
                     plot_fp, solver_title, epochs_before_switch, log_scale, show_moving_averages)
-    
-        logging.info("Training finished")
+
+        # Save losses from this repeat so that they can be averaged, if training_repeats>1
+        repeat_losses[training_repeat] = losses
+
+        if training_repeats > 1: 
+            logging.info(f"Repeat #{training_repeat} training finished")
+        else: 
+            logging.info("Training finished")
+
+    if training_repeats > 1:
+        logging.info("Training finished for all repeats.")
+        # Add code for averaging
 
     return losses, ma_losses, experiment_path
 
