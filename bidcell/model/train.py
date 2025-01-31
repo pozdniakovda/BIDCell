@@ -600,7 +600,23 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
 
     if training_repeats > 1:
         logging.info("Training finished for all repeats.")
-        # Add code for averaging
+        
+        # Collect losses from each repeat
+        averaged_losses = {}
+        for training_repeat, losses in repeat_losses.items():
+            for loss_name, loss_vals in losses.items():
+                if loss_name in averaged_losses.keys():
+                    averaged_losses[loss_name].append(loss_vals)
+                else: 
+                    averaged_losses[loss_name] = [loss_vals]
+
+        # Calculate averaged losses
+        for loss_name, loss_vals_repeats in averaged_losses.items():
+            loss_vals_repeats = np.array(loss_vals_repeats)
+            averaged_loss_vals = loss_vals_repeats.mean(axis=0)
+            averaged_losses[loss_name] = averaged_loss_vals
+
+        # Add graphing code here
 
     return losses, ma_losses, experiment_path
 
