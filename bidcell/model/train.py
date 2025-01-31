@@ -397,7 +397,7 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
 
     # Extract loss weights and combination rules
     loss_weight_params = parse_loss_weighting(config)
-    weights, combine_ne_ov, combine_os_ov, combine_cc_pn, non_contributing_losses
+    weights, combine_ne_ov, combine_os_ov, combine_cc_pn, non_contributing_losses = loss_weight_params
 
     # Get solver type and learning rate
     solver_params = get_solver_params(config, selected_solver)
