@@ -91,14 +91,15 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
             ma_loss_vals = np.divide(ma_loss_vals, divisor) * 1000
         plt.plot(ma_loss_vals, label=f"Total Loss (moving average, {ma_window_width})", linewidth=2)
 
-        for label, loss_ma_tuple in other_loss_ma.items():
-            loss_ma, ma_window_width = loss_ma_tuple
-            if loss_ma is not None:
-                if len(loss_ma) > 0:
-                    if rescaling:
-                        divisor = divisors[label]
-                        loss_ma = np.divide(loss_ma, divisor) * 1000
-                    plt.plot(loss_ma, label=f"{label} (moving average, {ma_window_width})", linewidth=1, alpha=0.5)
+        if other_loss_ma is not None:
+            for label, loss_ma_tuple in other_loss_ma.items():
+                loss_ma, ma_window_width = loss_ma_tuple
+                if loss_ma is not None:
+                    if len(loss_ma) > 0:
+                        if rescaling:
+                            divisor = divisors[label]
+                            loss_ma = np.divide(loss_ma, divisor) * 1000
+                        plt.plot(loss_ma, label=f"{label} (moving average, {ma_window_width})", linewidth=1, alpha=0.5)
     
     elif show_moving_averages:
         raise Exception(f"Could not show moving averages because total_loss_ma is {total_loss_ma}")
@@ -231,7 +232,7 @@ def plot_losses(losses, ma_losses, combine_ne_ov, combine_os_ov, combine_cc_pn, 
         keys.extend(["Cell Calling Loss", "Pos-Neg Marker Loss"])
     
     other_loss_vals = {key:losses[key] for key in keys}
-    other_loss_ma = {key:ma_losses[key] for key in keys}
+    other_loss_ma = {key:ma_losses[key] for key in keys} if ma_losses is not None else None
 
     plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_loss_ma, total_epochs, 
                          experiment_path, solver_title, switch_after, log_scale, rescaling=False)
