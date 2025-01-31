@@ -429,14 +429,14 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
         # Restore saved model
         if resume_epoch is not None:
             model, optimizer, epoch = restore_saved_model(config, experiment_path, resume_epoch, resume_step, optimizer, training_repeat)
-    
+
+        begin_training_message = f"Repeat #{training_repeat} | " if training_repeats > 1 else ""
+        begin_training_message += f"Beginning training with solver: "
         if dynamic_solvers:
-            logging.info(f"Begin training using {starting_solver} for {epochs_before_switch} epochs, followed by {ending_solver} thereafter")
-        elif "procrustes" in selected_solver:
-            logging.info("Begin training using Procrustes method")
-            scale_mode = "median" if "median" in selected_solver else "rmse" if "rmse" in selected_solver else "min"        
-        else:
-            logging.info("Begin training using default method")
+            begin_training_message += f"{starting_solver} ({epochs_before_switch} epochs) --> {ending_solver} (remainder)"
+        else: 
+            begin_training_message += selected_solver
+        logging.info(begin_training_message)
     
         model = model.train()
     
