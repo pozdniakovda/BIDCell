@@ -175,7 +175,7 @@ def compute_losses(seg_pred, batch_n, batch_sa, batch_pos, batch_neg, batch_expr
     return (loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, loss_ne_ov, loss_os_ov, loss_cc_pn, weights)
 
 def generate_paths(config, make_new, learning_rate, dynamic_solvers, selected_solver=None, 
-                   starting_solver=None, ending_solver=None, epochs_before_switch=0):
+                   starting_solver=None, ending_solver=None, epochs_before_switch=0, training_repeats=1):
     # Generate path for saving outputs
     
     timestamp = get_experiment_id(
@@ -187,8 +187,16 @@ def generate_paths(config, make_new, learning_rate, dynamic_solvers, selected_so
         experiment_path = os.path.join(config.files.data_dir, "model_outputs", f"{timestamp}_{selected_solver}_lr-{learning_rate}")
     else:
         experiment_path = os.path.join(config.files.data_dir, "model_outputs", f"{timestamp}_{starting_solver}-to-{ending_solver}_switched-after-{epochs_before_switch}-epochs_lr-{learning_rate}")
-    make_dir(experiment_path + "/" + config.experiment_dirs.model_dir)
-    make_dir(experiment_path + "/" + config.experiment_dirs.samples_dir)
+    
+    if training_repeats > 1: 
+        for i in np.arange(1, training_repeats+1): 
+            repeat_path = experiment_path + f"/repeat_{i}"
+            make_dir(repeat_path)
+            make_dir(repeat_path + "/" + config.experiment_dirs.model_dir)
+            make_dir(repeat_path + "/" + config.experiment_dirs.samples_dir)
+    else:
+        make_dir(experiment_path + "/" + config.experiment_dirs.model_dir)
+        make_dir(experiment_path + "/" + config.experiment_dirs.samples_dir)
     
     return experiment_path
 
@@ -399,12 +407,10 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
     solver_params = get_solver_params(config, selected_solver)
     selected_solver, starting_solver, ending_solver, epochs_before_switch, dynamic_solvers, learning_rate = solver_params
 
-    # Generate path for saving outputs
-    experiment_path = generate_paths(config, make_new, learning_rate, dynamic_solvers, selected_solver, 
-                                     starting_solver, ending_solver, epochs_before_switch)
-
     # Begin a specified number of repeats of the training loop; >1 repeats generates separate folders
     training_repeats = config.training_params.training_repeats
+    experiment_path = generate_paths(config, make_new, learning_rate, dynamic_solvers, selected_solver, 
+                                     starting_solver, ending_solver, epochs_before_switch, training_repeats)
     global_step = 0
     losses = {}
     
