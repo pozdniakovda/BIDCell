@@ -261,8 +261,10 @@ def save_model(config, experiment_path, epoch, step_epoch, model, optimizer):
     torch.save(output_dict, save_path)
     logging.info("Model saved: %s" % save_path)
 
-def restore_saved_model(config, experiment_path, resume_epoch, resume_step, optimizer):
+def restore_saved_model(config, experiment_path, resume_epoch, resume_step, optimizer, training_repeat):
     # Restore saved model
+    if training_repeat > 1:
+        experiment_path = os.path.join(experiment_path, f"repeat_{training_repeat}")
     load_path = os.path.join(experiment_path, config.experiment_dirs.model_dir, 
                              f"epoch_{resume_epoch}_step_{resume_step}.pth")
     checkpoint = torch.load(load_path)
@@ -426,7 +428,7 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
             
         # Restore saved model
         if resume_epoch is not None:
-            model, optimizer, epoch = restore_saved_model(config, experiment_path, resume_epoch, resume_step, optimizer)
+            model, optimizer, epoch = restore_saved_model(config, experiment_path, resume_epoch, resume_step, optimizer, training_repeat)
     
         if dynamic_solvers:
             logging.info(f"Begin training using {starting_solver} for {epochs_before_switch} epochs, followed by {ending_solver} thereafter")
@@ -479,7 +481,8 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
                     # Save the model periodically
                     if (step_epoch % model_freq) == 0:
                         filename = f"epoch_{epoch+1}_step_{step_epoch}.pth"
-                        save_path = os.path.join(experiment_path, config.experiment_dirs.model_dir, filename)
+                        save_path = os.path.join(experiment_path, f"repeat_{training_repeat}") if training_repeat > 1 else experiment_path
+                        save_path = os.path.join(save_path, config.experiment_dirs.model_dir, filename)
                         output_dict = {"epoch": epoch + 1,
                                        "model_state_dict": model.state_dict(),
                                        "optimizer_state_dict": optimizer.state_dict()}
@@ -558,7 +561,8 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
                     fig_outputs = detach_fig_outputs(coords_h1, coords_w1, seg_pred, 
                                                      nucl_aug, batch_sa, batch_expr_sum)
                     coords_h1, coords_w1, sample_seg, sample_n, sample_sa, sample_expr = fig_outputs
-                    patch_fp = os.path.join(f"{experiment_path}/{config.experiment_dirs.samples_dir}", 
+                    patch_fp = os.path.join(experiment_path, f"repeat_{training_repeat}") if training_repeat > 1 else experiment_path
+                    patch_fp = os.path.join(f"{patch_fp}/{config.experiment_dirs.samples_dir}", 
                                             f"epoch_{epoch+1}_{step_epoch}_{coords_h1}_{coords_w1}.png")
                     save_fig_outputs(sample_seg, sample_n, sample_sa, sample_expr, patch_fp)
                     
@@ -566,7 +570,8 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
     
                 # Save model
                 if (step_epoch % model_freq) == 0:
-                    save_model(config, experiment_path, epoch, step_epoch, model, optimizer)
+                    model_fp = os.path.join(experiment_path, f"repeat_{training_repeat}") if training_repeat > 1 else experiment_path
+                    save_model(config, model_fp, epoch, step_epoch, model, optimizer)
     
                 global_step += 1
     
@@ -577,11 +582,12 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
         # Graph the losses
         show_moving_averages = config.training_params.show_moving_averages
         log_scale = config.training_params.log_scale
+        plot_fp = os.path.join(experiment_path, f"repeat_{training_repeat}") if training_repeat > 1 else experiment_path
         ma_losses = get_ma_losses(losses)
         solver_title = get_solver_title(selected_solver, starting_solver, ending_solver, 
                                         epochs_before_switch, dynamic_solvers)
         plot_losses(losses, ma_losses, combine_ne_ov, combine_os_ov, combine_cc_pn, total_epochs, 
-                    experiment_path, solver_title, epochs_before_switch, log_scale, show_moving_averages)
+                    plot_fp, solver_title, epochs_before_switch, log_scale, show_moving_averages)
     
         logging.info("Training finished")
 
