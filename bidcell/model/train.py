@@ -600,7 +600,8 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
 
     if training_repeats > 1:
         logging.info("Training finished for all repeats.")
-        
+        logging.info("Begin graphing averaged losses.")
+
         # Collect losses from each repeat
         averaged_losses = {}
         for training_repeat, losses in repeat_losses.items():
@@ -627,6 +628,8 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
                                         epochs_before_switch, dynamic_solvers)
         plot_losses(averaged_losses, ma_averaged_losses, combine_ne_ov, combine_os_ov, combine_cc_pn, total_epochs, 
                     plot_fp, solver_title, epochs_before_switch, log_scale, show_moving_averages)
+
+        logging.info("Finished graphing averaged losses.")
     
     return losses, ma_losses, experiment_path
 
