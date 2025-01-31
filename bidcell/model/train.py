@@ -371,8 +371,7 @@ def permute_channels(batch_ess, batch_x313, batch_n, batch_sa, batch_pos, batch_
 
     # Transfer to device if device is given
     if device is not None:
-        for data in permuted_data: 
-            data.to(device)
+        permuted_data = [data.to(device) for data in permuted_data]
 
     return permuted_data
 
