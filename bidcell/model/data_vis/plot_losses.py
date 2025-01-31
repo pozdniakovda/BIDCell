@@ -2,6 +2,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import warnings
 from ...config import load_config, Config
 
 def get_solver_title(selected_solver = None, starting_solver = None, ending_solver = None, epochs_before_switch = 0, dynamic_solvers = False):
@@ -102,7 +103,7 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
                         plt.plot(loss_ma, label=f"{label} (moving average, {ma_window_width})", linewidth=1, alpha=0.5)
     
     elif show_moving_averages:
-        raise Exception(f"Could not show moving averages because total_loss_ma is {total_loss_ma}")
+        warnings.warn(f"Could not show moving averages because total_loss_ma is {total_loss_ma}")
 
     vals_per_epoch = round(loss_vals_count / total_epochs)
     vline_width = 15 / total_epochs # 1.5 for 10 epochs
@@ -140,7 +141,7 @@ def plot_loss(loss_vals, ma_loss_vals, label, total_epochs, experiment_path,
             if show_moving_averages and ma_loss_vals is not None:
                 ma_loss_vals, ma_window_width = ma_loss_vals
             elif show_moving_averages:
-                raise Exception(f"Could not show moving averages because ma_loss_vals is {ma_loss_vals}")
+                warnings.warn(f"Could not show moving averages because ma_loss_vals is {ma_loss_vals}")
             else: 
                 ma_loss_vals, ma_window_width = None, None
             
