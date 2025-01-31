@@ -81,7 +81,7 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
                     loss_vals = np.divide(loss_vals, divisor) * 1000
                 plt.plot(loss_vals, label=label, linewidth=loss_linewidth, alpha=loss_alpha)
     
-    if show_moving_averages:
+    if show_moving_averages and total_loss_ma is not None:
         ma_loss_vals, ma_window_width = total_loss_ma
         if rescaling:
             last_epoch_steps = int(len(ma_loss_vals) / total_epochs)
@@ -99,6 +99,9 @@ def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_
                         divisor = divisors[label]
                         loss_ma = np.divide(loss_ma, divisor) * 1000
                     plt.plot(loss_ma, label=f"{label} (moving average, {ma_window_width})", linewidth=1, alpha=0.5)
+    
+    elif show_moving_averages:
+        raise Exception(f"Could not show moving averages because total_loss_ma is {total_loss_ma}")
 
     vals_per_epoch = round(loss_vals_count / total_epochs)
     vline_width = 15 / total_epochs # 1.5 for 10 epochs
@@ -133,20 +136,26 @@ def plot_loss(loss_vals, ma_loss_vals, label, total_epochs, experiment_path,
         if len(loss_vals) > 0:
             vals_per_epoch = round(loss_vals_count / total_epochs)
 
-            ma_loss_vals, ma_window_width = ma_loss_vals
+            if show_moving_averages and ma_loss_vals is not None:
+                ma_loss_vals, ma_window_width = ma_loss_vals
+            elif show_moving_averages:
+                raise Exception(f"Could not show moving averages because ma_loss_vals is {ma_loss_vals}")
+            else: 
+                ma_loss_vals, ma_window_width = None, None
+            
             if rescaling:
                 last_epoch_steps = int(len(loss_vals) / total_epochs)
                 last_epoch_vals = loss_vals[-last_epoch_steps:]
                 last_epoch_mean = sum(last_epoch_vals) / len(last_epoch_vals)
                 divisor = last_epoch_mean if last_epoch_mean != 0 else 1
                 loss_vals = np.divide(loss_vals, divisor) * 1000
-                if show_moving_averages:
+                if show_moving_averages and ma_loss_vals is not None:
                     ma_loss_vals = np.divide(ma_loss_vals, divisor) * 1000
 
             loss_linewidth = 0.5 if show_moving_averages else 1.0
             plt.figure(figsize=(18, 8))
             plt.plot(loss_vals, label=label, linewidth=loss_linewidth, alpha=0.75)
-            if show_moving_averages:
+            if show_moving_averages and ma_loss_vals is not None:
                 plt.plot(ma_loss_vals, label=f"{label} (moving average, {ma_window_width})", linewidth=2)
 
             vline_width = 15 / total_epochs # 1.5 for 10 epochs
@@ -206,7 +215,7 @@ def plot_losses(losses, ma_losses, combine_ne_ov, combine_os_ov, combine_cc_pn, 
 
     # Plot all losses on one graph
     total_loss_vals = losses["Total Loss"]
-    total_loss_ma = ma_losses["Total Loss"]
+    total_loss_ma = ma_losses["Total Loss"] if ma_losses is not None else None
     
     keys = ["Multiple Assignment Loss"]
     if combine_ne_ov:
@@ -229,11 +238,13 @@ def plot_losses(losses, ma_losses, combine_ne_ov, combine_os_ov, combine_cc_pn, 
 
     # Plot individual losses
     print(f"Graphing total loss...")
-    plot_loss(losses["Total Loss"], ma_losses["Total Loss"], "Total Loss", total_epochs, experiment_path, 
+    plot_loss(total_loss_vals, total_loss_ma, "Total Loss", total_epochs, experiment_path, 
               solver_title, switch_after, log_scale, rescaling=False)
     print(f"Graphing individual losses...")
     for key in keys:
-        plot_loss(losses[key], ma_losses[key], key, total_epochs, experiment_path, 
+        loss_vals = losses[key]
+        loss_ma = ma_losses[key] if ma_losses is not None else None
+        plot_loss(loss_vals, loss_ma, key, total_epochs, experiment_path, 
                   solver_title, switch_after, log_scale, rescaling=False)
 
     # Repeat for rescaled versions
@@ -241,10 +252,12 @@ def plot_losses(losses, ma_losses, combine_ne_ov, combine_os_ov, combine_cc_pn, 
     plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_loss_ma, total_epochs, 
                          experiment_path, solver_title, switch_after, log_scale, rescaling=True)
     print(f"Graphing rescaled total loss...")
-    plot_loss(losses["Total Loss"], ma_losses["Total Loss"], "Total Loss", total_epochs, experiment_path, 
+    plot_loss(total_loss_vals, total_loss_ma, "Total Loss", total_epochs, experiment_path, 
               solver_title, switch_after, log_scale, rescaling=True)
     print(f"Graphing rescaled individual losses...")
     for key in keys:
-        plot_loss(losses[key], ma_losses[key], key, total_epochs, experiment_path, 
+        loss_vals = losses[key]
+        loss_ma = ma_losses[key] if ma_losses is not None else None
+        plot_loss(loss_vals, loss_ma, key, total_epochs, experiment_path, 
                   solver_title, switch_after, log_scale, rescaling=True)
 
