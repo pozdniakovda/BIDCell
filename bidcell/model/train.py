@@ -411,178 +411,179 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
     training_repeats = config.training_params.training_repeats
     experiment_path = generate_paths(config, make_new, learning_rate, dynamic_solvers, selected_solver, 
                                      starting_solver, ending_solver, epochs_before_switch, training_repeats)
-    global_step = 0
-    losses = {}
+
+    # Begin the training loop
+    for training_repeat in np.arange(1, training_repeats+1): 
+        initial_epoch = resume_epoch if resume_epoch is not None else 0
+        global_step = 0
+        losses = {}
+        
+        # Set up the model, optimizer, and LR scheduler
+        logging.info("Initialising model")
+        model = initialise_model(device, config)
+        optimizer = get_optimizer(config, model, learning_rate)
+        scheduler = get_scheduler(config.training_params.total_epochs, optimizer, global_step) # https://arxiv.org/pdf/1812.01187.pdf
+            
+        # Restore saved model
+        if resume_epoch is not None:
+            model, optimizer, epoch = restore_saved_model(config, experiment_path, resume_epoch, resume_step, optimizer)
     
-    # Set up the model, optimizer, and LR scheduler
-    logging.info("Initialising model")
-    model = initialise_model(device, config)
-    optimizer = get_optimizer(config, model, learning_rate)
-    scheduler = get_scheduler(config.training_params.total_epochs, optimizer, global_step) # https://arxiv.org/pdf/1812.01187.pdf
-
-    # Starting epoch
-    initial_epoch = resume_epoch if resume_epoch is not None else 0
-
-    # Restore saved model
-    if resume_epoch is not None:
-        model, optimizer, epoch = restore_saved_model(config, experiment_path, resume_epoch, resume_step, optimizer)
-
-    if dynamic_solvers:
-        logging.info(f"Begin training using {starting_solver} for {epochs_before_switch} epochs, followed by {ending_solver} thereafter")
-    elif "procrustes" in selected_solver:
-        logging.info("Begin training using Procrustes method")
-        scale_mode = "median" if "median" in selected_solver else "rmse" if "rmse" in selected_solver else "min"        
-    else:
-        logging.info("Begin training using default method")
-
-    model = model.train()
-
-    lrs = []
-    scale_mode = ""
-
-    total_epochs = config.training_params.total_epochs
-    is_first_step = True
-    for epoch in range(initial_epoch, total_epochs):
-        # Define current solver
-        stch_epoch = epoch
         if dynamic_solvers:
-            if epoch < epochs_before_switch: 
-                current_solver = starting_solver
-                stch_epoch = epoch - epochs_before_switch
-            else:
-                current_solver = ending_solver
+            logging.info(f"Begin training using {starting_solver} for {epochs_before_switch} epochs, followed by {ending_solver} thereafter")
+        elif "procrustes" in selected_solver:
+            logging.info("Begin training using Procrustes method")
+            scale_mode = "median" if "median" in selected_solver else "rmse" if "rmse" in selected_solver else "min"        
         else:
-            current_solver = selected_solver
-
-        cur_lr = optimizer.param_groups[0]["lr"]
-        print("\nEpoch =", (epoch + 1), " lr =", cur_lr, " solver =", current_solver)
-
-        for step_epoch, (
-            batch_ess,       # shape: [H, W, n_cells]
-            batch_x313,      # shape: [H, W, n_channels, n_cells]
-            batch_n,         # shape: [H, W, n_cells]
-            batch_sa,        # shape: [H, W, n_cells]
-            batch_pos,       # shape: [H, W, n_cells]
-            batch_neg,       # shape: [H, W, n_cells]
-            coords_h1,
-            coords_w1,
-            nucl_aug,        # shape: [H, W]
-            batch_expr_sum,  # shape: [H, W]
-        ) in enumerate(train_loader): 
-            # Permute channels axis to batch axis, then move tensors to GPU
-            permuted_data = permute_channels(batch_ess, batch_x313, batch_n, batch_sa, batch_pos, batch_neg, 
-                                             nucl_aug, batch_expr_sum, device)
-            batch_ess, batch_x313, batch_n, batch_sa, batch_pos, batch_neg, nucl_aug, batch_expr_sum = permuted_data
-
-            if batch_x313.shape[0] == 0:
-                # Save the model periodically
-                if (step_epoch % model_freq) == 0:
-                    filename = f"epoch_{epoch+1}_step_{step_epoch}.pth"
-                    save_path = os.path.join(experiment_path, config.experiment_dirs.model_dir, filename)
-                    output_dict = {"epoch": epoch + 1,
-                                   "model_state_dict": model.state_dict(),
-                                   "optimizer_state_dict": optimizer.state_dict()}
-                    torch.save(output_dict, save_path)
-                    logging.info("Model saved: %s" % save_path)
+            logging.info("Begin training using default method")
+    
+        model = model.train()
+    
+        lrs = []
+        scale_mode = ""
+    
+        total_epochs = config.training_params.total_epochs
+        is_first_step = True
+        for epoch in range(initial_epoch, total_epochs):
+            # Define current solver
+            stch_epoch = epoch
+            if dynamic_solvers:
+                if epoch < epochs_before_switch: 
+                    current_solver = starting_solver
+                    stch_epoch = epoch - epochs_before_switch
+                else:
+                    current_solver = ending_solver
+            else:
+                current_solver = selected_solver
+    
+            cur_lr = optimizer.param_groups[0]["lr"]
+            print("\nEpoch =", (epoch + 1), " lr =", cur_lr, " solver =", current_solver)
+    
+            for step_epoch, (
+                batch_ess,       # shape: [H, W, n_cells]
+                batch_x313,      # shape: [H, W, n_channels, n_cells]
+                batch_n,         # shape: [H, W, n_cells]
+                batch_sa,        # shape: [H, W, n_cells]
+                batch_pos,       # shape: [H, W, n_cells]
+                batch_neg,       # shape: [H, W, n_cells]
+                coords_h1,
+                coords_w1,
+                nucl_aug,        # shape: [H, W]
+                batch_expr_sum,  # shape: [H, W]
+            ) in enumerate(train_loader): 
+                # Permute channels axis to batch axis, then move tensors to GPU
+                permuted_data = permute_channels(batch_ess, batch_x313, batch_n, batch_sa, batch_pos, batch_neg, 
+                                                 nucl_aug, batch_expr_sum, device)
+                batch_ess, batch_x313, batch_n, batch_sa, batch_pos, batch_neg, nucl_aug, batch_expr_sum = permuted_data
+    
+                if batch_x313.shape[0] == 0:
+                    # Save the model periodically
+                    if (step_epoch % model_freq) == 0:
+                        filename = f"epoch_{epoch+1}_step_{step_epoch}.pth"
+                        save_path = os.path.join(experiment_path, config.experiment_dirs.model_dir, filename)
+                        output_dict = {"epoch": epoch + 1,
+                                       "model_state_dict": model.state_dict(),
+                                       "optimizer_state_dict": optimizer.state_dict()}
+                        torch.save(output_dict, save_path)
+                        logging.info("Model saved: %s" % save_path)
+                    
+                    continue
+    
+                if verbose: 
+                    print(f"Shapes of tensors immediately before being transferred to GPU: \n"
+                          f"\tbatch_ess shape: {batch_ess.shape}\n"
+                          f"\tbatch_x313 shape: {batch_x313.shape}\n"
+                          f"\tbatch_n shape: {batch_n.shape}\n"
+                          f"\tbatch_sa shape: {batch_sa.shape}\n"
+                          f"\tbatch_pos shape: {batch_pos.shape}\n"
+                          f"\tbatch_neg shape: {batch_neg.shape}\n"
+                          f"\texpr_aug_sum (batch_expr_sum) shape: {batch_expr_sum.shape}")
                 
-                continue
-
-            if verbose: 
-                print(f"Shapes of tensors immediately before being transferred to GPU: \n"
-                      f"\tbatch_ess shape: {batch_ess.shape}\n"
-                      f"\tbatch_x313 shape: {batch_x313.shape}\n"
-                      f"\tbatch_n shape: {batch_n.shape}\n"
-                      f"\tbatch_sa shape: {batch_sa.shape}\n"
-                      f"\tbatch_pos shape: {batch_pos.shape}\n"
-                      f"\tbatch_neg shape: {batch_neg.shape}\n"
-                      f"\texpr_aug_sum (batch_expr_sum) shape: {batch_expr_sum.shape}")
-            
-            optimizer.zero_grad()
-
-            seg_pred = model(batch_x313) # binary prediction of cell or not; shape: [n_cells, 2, H, W]
-            if verbose: 
-                print(f"\tseg_pred shape: {seg_pred.shape}")
-
-            # Compute individual losses as appropriate
-            computed_losses = compute_losses(seg_pred, batch_n, batch_sa, batch_pos, batch_neg, batch_expr_sum, 
-                                             weights, device, combine_ne_ov, combine_os_ov, combine_cc_pn, is_first_step)
-            loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, loss_ne_ov, loss_os_ov, loss_cc_pn, weights = computed_losses
-            
-            # Apply the Procrustes method
-            if "procrustes" in current_solver:
-                scale_mode = "median" if "median" in current_solver else "rmse" if "rmse" in current_solver else "min"
-                total_loss = procrustes_method(model = model, 
-                                               optimizer = optimizer, 
+                optimizer.zero_grad()
+    
+                seg_pred = model(batch_x313) # binary prediction of cell or not; shape: [n_cells, 2, H, W]
+                if verbose: 
+                    print(f"\tseg_pred shape: {seg_pred.shape}")
+    
+                # Compute individual losses as appropriate
+                computed_losses = compute_losses(seg_pred, batch_n, batch_sa, batch_pos, batch_neg, batch_expr_sum, 
+                                                 weights, device, combine_ne_ov, combine_os_ov, combine_cc_pn, is_first_step)
+                loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, loss_ne_ov, loss_os_ov, loss_cc_pn, weights = computed_losses
+                
+                # Apply the Procrustes method
+                if "procrustes" in current_solver:
+                    scale_mode = "median" if "median" in current_solver else "rmse" if "rmse" in current_solver else "min"
+                    total_loss = procrustes_method(model = model, 
+                                                   optimizer = optimizer, 
+                                                   tracked_losses = losses, 
+                                                   loss_ne = loss_ne, 
+                                                   loss_os = loss_os, 
+                                                   loss_cc = loss_cc, 
+                                                   loss_ov = loss_ov, 
+                                                   loss_mu = loss_mu, 
+                                                   loss_pn = loss_pn, 
+                                                   loss_ne_ov = loss_ne_ov, 
+                                                   loss_os_ov = loss_os_ov, 
+                                                   loss_cc_pn = loss_cc_pn, 
+                                                   scale_mode = "min", 
+                                                   non_contributing_losses = non_contributing_losses)
+                else: 
+                    # Define summation mode; default is simple/arithmetic summation
+                    if "stch" in current_solver.lower():
+                        sum_mode = "stch"
+                        stch_mu = config.training_params.stch_mu
+                        weighted_ideal_vals = None # Future warning: if not using the default of zero, these must be scaled with the respective loss weights
+                    else: 
+                        sum_mode = "arithmetic"
+                        stch_mu, weighted_ideal_vals = None, None
+    
+                    # Run the solver
+                    total_loss = summed_solver(optimizer = optimizer, 
+                                               device = device, 
                                                tracked_losses = losses, 
                                                loss_ne = loss_ne, 
                                                loss_os = loss_os, 
                                                loss_cc = loss_cc, 
                                                loss_ov = loss_ov, 
-                                               loss_mu = loss_mu, 
+                                               loss_mu = loss_mu,
                                                loss_pn = loss_pn, 
                                                loss_ne_ov = loss_ne_ov, 
                                                loss_os_ov = loss_os_ov, 
                                                loss_cc_pn = loss_cc_pn, 
-                                               scale_mode = "min", 
-                                               non_contributing_losses = non_contributing_losses)
-            else: 
-                # Define summation mode; default is simple/arithmetic summation
-                if "stch" in current_solver.lower():
-                    sum_mode = "stch"
-                    stch_mu = config.training_params.stch_mu
-                    weighted_ideal_vals = None # Future warning: if not using the default of zero, these must be scaled with the respective loss weights
-                else: 
-                    sum_mode = "arithmetic"
-                    stch_mu, weighted_ideal_vals = None, None
-
-                # Run the solver
-                total_loss = summed_solver(optimizer = optimizer, 
-                                           device = device, 
-                                           tracked_losses = losses, 
-                                           loss_ne = loss_ne, 
-                                           loss_os = loss_os, 
-                                           loss_cc = loss_cc, 
-                                           loss_ov = loss_ov, 
-                                           loss_mu = loss_mu,
-                                           loss_pn = loss_pn, 
-                                           loss_ne_ov = loss_ne_ov, 
-                                           loss_os_ov = loss_os_ov, 
-                                           loss_cc_pn = loss_cc_pn, 
-                                           non_contributing_losses = non_contributing_losses, 
-                                           sum_mode = "arithmetic", 
-                                           ideal_vals = weighted_ideal_vals, 
-                                           stch_mu = stch_mu)
-            
-            if (global_step % config.training_params.sample_freq) == 0:
-                fig_outputs = detach_fig_outputs(coords_h1, coords_w1, seg_pred, 
-                                                 nucl_aug, batch_sa, batch_expr_sum)
-                coords_h1, coords_w1, sample_seg, sample_n, sample_sa, sample_expr = fig_outputs
-                patch_fp = os.path.join(f"{experiment_path}/{config.experiment_dirs.samples_dir}", 
-                                        f"epoch_{epoch+1}_{step_epoch}_{coords_h1}_{coords_w1}.png")
-                save_fig_outputs(sample_seg, sample_n, sample_sa, sample_expr, patch_fp)
+                                               non_contributing_losses = non_contributing_losses, 
+                                               sum_mode = "arithmetic", 
+                                               ideal_vals = weighted_ideal_vals, 
+                                               stch_mu = stch_mu)
                 
-                print(f"Epoch[{epoch+1}/{total_epochs}], Step[{step_epoch}], Total Loss:{total_loss:.4f}")
-
-            # Save model
-            if (step_epoch % model_freq) == 0:
-                save_model(config, experiment_path, epoch, step_epoch, model, optimizer)
-
-            global_step += 1
-
-        # Update and append current LR
-        scheduler.step()
-        lrs.append(cur_lr)
-
-    # Graph the losses
-    show_moving_averages = config.training_params.show_moving_averages
-    log_scale = config.training_params.log_scale
-    ma_losses = get_ma_losses(losses)
-    solver_title = get_solver_title(selected_solver, starting_solver, ending_solver, 
-                                    epochs_before_switch, dynamic_solvers)
-    plot_losses(losses, ma_losses, combine_ne_ov, combine_os_ov, combine_cc_pn, total_epochs, 
-                experiment_path, solver_title, epochs_before_switch, log_scale, show_moving_averages)
-
-    logging.info("Training finished")
+                if (global_step % config.training_params.sample_freq) == 0:
+                    fig_outputs = detach_fig_outputs(coords_h1, coords_w1, seg_pred, 
+                                                     nucl_aug, batch_sa, batch_expr_sum)
+                    coords_h1, coords_w1, sample_seg, sample_n, sample_sa, sample_expr = fig_outputs
+                    patch_fp = os.path.join(f"{experiment_path}/{config.experiment_dirs.samples_dir}", 
+                                            f"epoch_{epoch+1}_{step_epoch}_{coords_h1}_{coords_w1}.png")
+                    save_fig_outputs(sample_seg, sample_n, sample_sa, sample_expr, patch_fp)
+                    
+                    print(f"Epoch[{epoch+1}/{total_epochs}], Step[{step_epoch}], Total Loss:{total_loss:.4f}")
+    
+                # Save model
+                if (step_epoch % model_freq) == 0:
+                    save_model(config, experiment_path, epoch, step_epoch, model, optimizer)
+    
+                global_step += 1
+    
+            # Update and append current LR
+            scheduler.step()
+            lrs.append(cur_lr)
+    
+        # Graph the losses
+        show_moving_averages = config.training_params.show_moving_averages
+        log_scale = config.training_params.log_scale
+        ma_losses = get_ma_losses(losses)
+        solver_title = get_solver_title(selected_solver, starting_solver, ending_solver, 
+                                        epochs_before_switch, dynamic_solvers)
+        plot_losses(losses, ma_losses, combine_ne_ov, combine_os_ov, combine_cc_pn, total_epochs, 
+                    experiment_path, solver_title, epochs_before_switch, log_scale, show_moving_averages)
+    
+        logging.info("Training finished")
 
     return losses, ma_losses, experiment_path
 
