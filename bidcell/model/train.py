@@ -386,10 +386,6 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
     else:
         model_freq = config.testing_params.test_step
 
-    # Set up the model
-    logging.info("Initialising model")
-    model = initialise_model(device, config)
-
     # Dataloader
     logging.info("Preparing data")
     train_loader = initialise_dataloader(config)
@@ -407,14 +403,16 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
     experiment_path = generate_paths(config, make_new, learning_rate, dynamic_solvers, selected_solver, 
                                      starting_solver, ending_solver, epochs_before_switch)
 
-    # Optimiser
-    optimizer = get_optimizer(config, model, learning_rate)
-
+    # Begin a specified number of repeats of the training loop; >1 repeats generates separate folders
+    training_repeats = config.training_params.training_repeats
     global_step = 0
     losses = {}
-
-    # Scheduler https://arxiv.org/pdf/1812.01187.pdf
-    scheduler = get_scheduler(config.training_params.total_epochs, optimizer, global_step)
+    
+    # Set up the model, optimizer, and LR scheduler
+    logging.info("Initialising model")
+    model = initialise_model(device, config)
+    optimizer = get_optimizer(config, model, learning_rate)
+    scheduler = get_scheduler(config.training_params.total_epochs, optimizer, global_step) # https://arxiv.org/pdf/1812.01187.pdf
 
     # Starting epoch
     initial_epoch = resume_epoch if resume_epoch is not None else 0
