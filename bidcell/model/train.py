@@ -583,7 +583,7 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
         # Graph the losses
         show_moving_averages = config.training_params.show_moving_averages
         log_scale = config.training_params.log_scale
-        plot_fp = os.path.join(experiment_path, f"repeat_{training_repeat}") if training_repeat > 1 else experiment_path
+        plot_fp = os.path.join(experiment_path, f"repeat_{training_repeat}") if training_repeats > 1 else experiment_path
         ma_losses = get_ma_losses(losses)
         solver_title = get_solver_title(selected_solver, starting_solver, ending_solver, 
                                         epochs_before_switch, dynamic_solvers)
