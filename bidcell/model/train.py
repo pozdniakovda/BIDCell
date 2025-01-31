@@ -364,7 +364,7 @@ def permute_channels(batch_ess, batch_x313, batch_n, batch_sa, batch_pos, batch_
     batch_sa = batch_sa.permute(3, 0, 1, 2)                    # new shape: [n_cells, 1, H, W]
     batch_pos = batch_pos.permute(3, 0, 1, 2)                  # new shape: [n_cells, 1, H, W]
     batch_neg = batch_neg.permute(3, 0, 1, 2)                  # new shape: [n_cells, 1, H, W]
-    nucl_aug = batch_neg.permute(3, 0, 1, 2)                   # new shape: [n_cells, 1, H, W]; not currently used for anything
+    nucl_aug = nucl_aug.permute(3, 0, 1, 2)                    # new shape: [n_cells, 1, H, W]; not currently used for anything
     batch_expr_sum = batch_expr_sum.unsqueeze(0)               # new shape: [1, 1, H, W]
 
     permuted_data = [batch_ess, batch_x313, batch_n, batch_sa, batch_pos, batch_neg, nucl_aug, batch_expr_sum]
