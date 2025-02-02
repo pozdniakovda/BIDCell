@@ -375,6 +375,29 @@ def permute_channels(batch_ess, batch_x313, batch_n, batch_sa, batch_pos, batch_
 
     return permuted_data
 
+def save_loss_vals(csv_path, losses, ma_losses=None, col_prefix=None, col_suffix=None): 
+    # Saves loss values so they can be plotted elsewhere
+    
+    loss_data = {}
+    for key in losses.keys():
+        loss_col = f"{key}_values"
+        ma_loss_col = f"{key}_moving_average"
+        if col_prefix:
+            loss_col = f"{col_prefix}_{loss_col}"
+            ma_loss_col = f"{col_prefix}_{ma_loss_col}"
+        if col_suffix:
+            loss_col = f"{loss_col}_{col_suffix}"
+            ma_loss_col = f"{ma_loss_col}_{col_suffix}"
+        
+        loss_data[loss_col] = losses[key]
+        if ma_losses is not None:
+            loss_data[ma_loss_col] = ma_losses[key]
+    
+    loss_df = pd.DataFrame(loss_data)
+    loss_df.to_csv(csv_path)
+
+    return loss_df
+
 def train(config: Config, learning_rate = None, selected_solver = None, verbose=False):
     logging.basicConfig(
         format="%(asctime)s %(levelname)s %(message)s",
@@ -580,7 +603,7 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
             scheduler.step()
             lrs.append(cur_lr)
     
-        # Graph the losses
+        # Graph the losses and save the data
         show_moving_averages = config.training_params.show_moving_averages
         log_scale = config.training_params.log_scale
         plot_fp = os.path.join(experiment_path, f"repeat_{training_repeat}") if training_repeats > 1 else experiment_path
