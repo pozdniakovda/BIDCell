@@ -603,13 +603,19 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
             scheduler.step()
             lrs.append(cur_lr)
     
-        # Graph the losses and save the data
+        # Get args for generating plots and saving loss curve data
         show_moving_averages = config.training_params.show_moving_averages
         log_scale = config.training_params.log_scale
         plot_fp = os.path.join(experiment_path, f"repeat_{training_repeat}") if training_repeats > 1 else experiment_path
-        ma_losses = get_ma_losses(losses)
         solver_title = get_solver_title(selected_solver, starting_solver, ending_solver, 
                                         epochs_before_switch, dynamic_solvers)
+
+        # Calculate moving averages
+        ma_losses = get_ma_losses(losses)
+
+        # Save the loss curve data, then graph it
+        csv_path = os.path.join(plot_fp, f"{solver_title}_loss_curves.csv")
+        loss_df = save_loss_vals(csv_path, losses, ma_losses)
         plot_losses(losses, ma_losses, combine_ne_ov, combine_os_ov, combine_cc_pn, total_epochs, 
                     plot_fp, solver_title, epochs_before_switch, log_scale, show_moving_averages)
 
@@ -626,29 +632,43 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
         logging.info("Begin graphing averaged losses.")
 
         # Collect losses from each repeat
-        averaged_losses = {}
+        collected_losses = {}
+        repeat_loss_data = {}
         for training_repeat, losses in repeat_losses.items():
             for loss_name, loss_vals in losses.items():
-                if loss_name in averaged_losses.keys():
-                    averaged_losses[loss_name].append(loss_vals)
+                repeat_loss_data[f"{loss_name}_repeat-{training_repeat}"] = loss_vals
+                if loss_name in collected_losses.keys():
+                    collected_losses[loss_name].append(loss_vals)
                 else: 
-                    averaged_losses[loss_name] = [loss_vals]
+                    collected_losses[loss_name] = [loss_vals]
 
         # Calculate averaged losses
-        for loss_name, loss_vals_repeats in averaged_losses.items():
+        averaged_losses = {}
+        for repeat_num, (loss_name, loss_vals_repeats) in enumerate(collected_losses.items()):
             loss_vals_repeats = np.array(loss_vals_repeats)
             averaged_loss_vals = loss_vals_repeats.mean(axis=0)
             averaged_losses[loss_name] = averaged_loss_vals
 
         # Graph the averaged losses
-        show_moving_averages = False
-        # show_moving_averages = config.training_params.show_moving_averages
+        show_moving_averages = False # config.training_params.show_moving_averages
         log_scale = config.training_params.log_scale
         plot_fp = os.path.join(experiment_path, "averaged")
         make_dir(plot_fp)
-        ma_averaged_losses = get_ma_losses(averaged_losses) if show_moving_averages else None
         solver_title = get_solver_title(selected_solver, starting_solver, ending_solver, 
                                         epochs_before_switch, dynamic_solvers)
+
+        # Calculate moving averages
+        if show_moving_averages:
+            repeat_ma_loss_data = {}
+            ma_averaged_losses = get_ma_losses(averaged_losses)
+            for key, loss_vals in repeat_loss_data.items():
+                repeat_ma_loss_data[key] = get_ma_losses(loss_vals)
+        else: 
+            repeat_ma_loss_data, ma_averaged_losses = None, None
+
+        # Save loss curve data and then graph it
+        csv_path = os.path.join(plot_fp, f"loss_curves_all_repeats.csv")
+        loss_df = save_loss_vals(csv_path, repeat_loss_data, repeat_ma_loss_data)
         plot_losses(averaged_losses, ma_averaged_losses, combine_ne_ov, combine_os_ov, combine_cc_pn, total_epochs, 
                     plot_fp, solver_title, epochs_before_switch, log_scale, show_moving_averages)
 
