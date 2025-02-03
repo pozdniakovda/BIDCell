@@ -377,6 +377,7 @@ def permute_channels(batch_ess, batch_x313, batch_n, batch_sa, batch_pos, batch_
 
 def save_loss_vals(csv_path, losses, ma_losses=None, col_prefix=None, col_suffix=None): 
     # Saves loss values so they can be plotted elsewhere
+    print(f"Saving loss vals...")
     
     loss_data = {}
     for key in losses.keys():
@@ -392,6 +393,9 @@ def save_loss_vals(csv_path, losses, ma_losses=None, col_prefix=None, col_suffix
         loss_data[loss_col] = losses[key]
         if ma_losses is not None:
             loss_data[ma_loss_col] = ma_losses[key]
+
+    for key, vals in loss_data.items():
+        print(f"\t{key}: len(vals) = {len(vals)}")
     
     loss_df = pd.DataFrame(loss_data)
     loss_df.to_csv(csv_path)
