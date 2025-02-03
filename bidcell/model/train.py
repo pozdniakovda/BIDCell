@@ -619,7 +619,8 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
         ma_loss_vals = {key: val[0] for key, val in ma_losses.items()} # loss_name --> (moving_averages, window_width)
 
         # Save the loss curve data, then graph it
-        csv_path = os.path.join(plot_fp, f"{solver_title}_loss_curves.csv")
+        solver_title_underscored = "_".join(solver_title.lower().split(" "))
+        csv_path = os.path.join(plot_fp, f"{solver_title_underscored}_loss_curves.csv")
         loss_df = save_loss_vals(csv_path, losses, ma_loss_vals)
         plot_losses(losses, ma_losses, combine_ne_ov, combine_os_ov, combine_cc_pn, total_epochs, 
                     plot_fp, solver_title, epochs_before_switch, log_scale, show_moving_averages)
