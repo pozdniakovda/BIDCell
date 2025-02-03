@@ -616,10 +616,11 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
 
         # Calculate moving averages
         ma_losses = get_ma_losses(losses)
+        ma_loss_vals = ma_losses[0]
 
         # Save the loss curve data, then graph it
         csv_path = os.path.join(plot_fp, f"{solver_title}_loss_curves.csv")
-        loss_df = save_loss_vals(csv_path, losses, ma_losses)
+        loss_df = save_loss_vals(csv_path, losses, ma_loss_vals)
         plot_losses(losses, ma_losses, combine_ne_ov, combine_os_ov, combine_cc_pn, total_epochs, 
                     plot_fp, solver_title, epochs_before_switch, log_scale, show_moving_averages)
 
@@ -664,9 +665,9 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
         # Calculate moving averages
         if show_moving_averages:
             repeat_ma_loss_data = {}
-            ma_averaged_losses = get_ma_losses(averaged_losses)
+            ma_averaged_losses = get_ma_losses(averaged_losses) # tuple of (ma_loss_vals, window_width)
             for key, loss_vals in repeat_loss_data.items():
-                repeat_ma_loss_data[key] = get_ma_losses(loss_vals)
+                repeat_ma_loss_data[key] = get_ma_losses(loss_vals)[0] # ma_loss_vals only
         else: 
             repeat_ma_loss_data, ma_averaged_losses = None, None
 
