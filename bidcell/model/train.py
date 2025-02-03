@@ -616,7 +616,7 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
 
         # Calculate moving averages
         ma_losses = get_ma_losses(losses)
-        ma_loss_vals = ma_losses[0]
+        ma_loss_vals = {key: val[0] for key, val in ma_losses.items()} # loss_name --> (moving_averages, window_width)
 
         # Save the loss curve data, then graph it
         csv_path = os.path.join(plot_fp, f"{solver_title}_loss_curves.csv")
@@ -667,7 +667,9 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
             repeat_ma_loss_data = {}
             ma_averaged_losses = get_ma_losses(averaged_losses) # tuple of (ma_loss_vals, window_width)
             for key, loss_vals in repeat_loss_data.items():
-                repeat_ma_loss_data[key] = get_ma_losses(loss_vals)[0] # ma_loss_vals only
+                ma_losses = get_ma_losses(loss_vals)
+                ma_loss_vals = {key: val[0] for key, val in ma_losses.items()} # loss_name --> (moving_averages, window_width)
+                repeat_ma_loss_data[key] = ma_loss_vals
         else: 
             repeat_ma_loss_data, ma_averaged_losses = None, None
 
