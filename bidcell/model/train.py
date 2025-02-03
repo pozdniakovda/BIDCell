@@ -187,18 +187,38 @@ def generate_paths(config, make_new, learning_rate, dynamic_solvers, selected_so
         experiment_path = os.path.join(config.files.data_dir, "model_outputs", f"{timestamp}_{selected_solver}_lr-{learning_rate}")
     else:
         experiment_path = os.path.join(config.files.data_dir, "model_outputs", f"{timestamp}_{starting_solver}-to-{ending_solver}_switched-after-{epochs_before_switch}-epochs_lr-{learning_rate}")
-    
+
     if training_repeats > 1: 
+        # Paths for each repeat
+        repeat_paths = {}
         for i in np.arange(1, training_repeats+1): 
-            repeat_path = experiment_path + f"/repeat_{i}"
-            make_dir(repeat_path)
-            make_dir(repeat_path + "/" + config.experiment_dirs.model_dir)
-            make_dir(repeat_path + "/" + config.experiment_dirs.samples_dir)
-    else:
-        make_dir(experiment_path + "/" + config.experiment_dirs.model_dir)
-        make_dir(experiment_path + "/" + config.experiment_dirs.samples_dir)
+            repeat_paths[i] = {"repeat_path": os.path.join(experiment_path, f"repeat_{i}"), 
+                               "model_path": os.path.join(experiment_path, f"repeat_{i}", config.experiment_dirs.model_dir), 
+                               "samples_path": os.path.join(experiment_path, f"repeat_{i}", config.experiment_dirs.samples_dir)}
+            for path in repeat_paths[i].values():
+                make_dir(path)
+
+        # Save first repeat to main level
+        for key, path in repeat_paths[1].items():
+            repeat_paths[key] = path
+
+        # Path for averaged losses
+        repeat_paths["averaged"] = {"repeat_path": os.path.join(experiment_path, "averaged"), 
+                                    "model_path": os.path.join(experiment_path, "averaged", config.experiment_dirs.model_dir), 
+                                    "samples_path": os.path.join(experiment_path, "averaged", config.experiment_dirs.samples_dir)}
+        for path in repeat_paths["averaged"].values():
+            make_dir(path)
     
-    return experiment_path
+    else:
+        repeat_paths = {"experiment_path": experiment_path,
+                        "repeat_path": experiment_path, 
+                        "model_path": os.path.join(experiment_path, config.experiment_dirs.model_dir), 
+                        "samples_path": os.path.join(experiment_path, config.experiment_dirs.samples_dir)}
+        repeat_paths[1] = {key: path for key, path in repeat_paths.items()}
+        make_dir(repeat_paths["model_path"])
+        make_dir(repeat_paths["samples_path"])
+    
+    return experiment_path, repeat_paths
 
 def get_scheduler(total_epochs, optimizer, global_step):
     # Scheduler https://arxiv.org/pdf/1812.01187.pdf
@@ -250,14 +270,12 @@ def detach_fig_outputs(coords_h1, coords_w1, seg_pred, nucl_aug, batch_sa, expr_
 
     return (coords_h1, coords_w1, sample_seg, sample_n, sample_sa, sample_expr)
 
-def save_model(config, experiment_path, epoch, step_epoch, model, optimizer):
+def save_model(model_path, epoch, step_epoch, model, optimizer):
     # Save model
-    save_path = os.path.join(experiment_path, config.experiment_dirs.model_dir, 
-                             f"epoch_{epoch+1}_step_{step_epoch}.pth")
+    save_path = os.path.join(model_path, f"epoch_{epoch+1}_step_{step_epoch}.pth")
     output_dict = {"epoch": epoch + 1,
                    "model_state_dict": model.state_dict(),
                    "optimizer_state_dict": optimizer.state_dict()}
-    
     torch.save(output_dict, save_path)
     logging.info("Model saved: %s" % save_path)
 
@@ -432,8 +450,8 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
 
     # Begin a specified number of repeats of the training loop; >1 repeats generates separate folders
     training_repeats = config.training_params.training_repeats
-    experiment_path = generate_paths(config, make_new, learning_rate, dynamic_solvers, selected_solver, 
-                                     starting_solver, ending_solver, epochs_before_switch, training_repeats)
+    experiment_path, paths_dict = generate_paths(config, make_new, learning_rate, dynamic_solvers, selected_solver, 
+                                                 starting_solver, ending_solver, epochs_before_switch, training_repeats)
 
     # Begin the training loop
     repeat_losses = {}
@@ -503,13 +521,13 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
                     # Save the model periodically
                     if (step_epoch % model_freq) == 0:
                         filename = f"epoch_{epoch+1}_step_{step_epoch}.pth"
-                        save_path = os.path.join(experiment_path, f"repeat_{training_repeat}") if training_repeat > 1 else experiment_path
-                        save_path = os.path.join(save_path, config.experiment_dirs.model_dir, filename)
+                        model_path = paths_dict[training_repeat]["model_path"] if training_repeats > 1 else paths_dict["model_path"]
+                        save_path = os.path.join(model_path, filename)
                         output_dict = {"epoch": epoch + 1,
                                        "model_state_dict": model.state_dict(),
                                        "optimizer_state_dict": optimizer.state_dict()}
                         torch.save(output_dict, save_path)
-                        logging.info("Model saved: %s" % save_path)
+                        logging.info(f"Model saved: {save_path}")
                     
                     continue
     
@@ -583,18 +601,18 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
                     fig_outputs = detach_fig_outputs(coords_h1, coords_w1, seg_pred, 
                                                      nucl_aug, batch_sa, batch_expr_sum)
                     coords_h1, coords_w1, sample_seg, sample_n, sample_sa, sample_expr = fig_outputs
-                    patch_fp = os.path.join(experiment_path, f"repeat_{training_repeat}") if training_repeats > 1 else experiment_path
-                    patch_fp = os.path.join(patch_fp, config.experiment_dirs.samples_dir, 
-                                            f"epoch_{epoch+1}_{step_epoch}_{coords_h1}_{coords_w1}.png")
-                    print(f"patch_fp: {patch_fp}")
+
+                    patch_fp = paths_dict[training_repeat][samples_path] if training_repeats > 1 else paths_dict[samples_path]
+                    patch_fp = os.path.join(patch_fp, f"epoch_{epoch+1}_{step_epoch}_{coords_h1}_{coords_w1}.png")
                     save_fig_outputs(sample_seg, sample_n, sample_sa, sample_expr, patch_fp)
+                    logging.info(f"Saved sample outputs: {patch_fp}")
                     
                     print(f"Epoch[{epoch+1}/{total_epochs}], Step[{step_epoch}], Total Loss:{total_loss:.4f}")
     
                 # Save model
                 if (step_epoch % model_freq) == 0:
-                    model_fp = os.path.join(experiment_path, f"repeat_{training_repeat}") if training_repeats > 1 else experiment_path
-                    save_model(config, model_fp, epoch, step_epoch, model, optimizer)
+                    model_path = paths_dict[training_repeat]["model_path"] if training_repeats > 1 else paths_dict["model_path"]
+                    save_model(model_path, epoch, step_epoch, model, optimizer)
     
                 global_step += 1
     
@@ -605,7 +623,7 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
         # Get args for generating plots and saving loss curve data
         show_moving_averages = config.training_params.show_moving_averages
         log_scale = config.training_params.log_scale
-        plot_fp = os.path.join(experiment_path, f"repeat_{training_repeat}") if training_repeats > 1 else experiment_path
+        plot_fp = paths_dict[training_repeat]["repeat_path"] if training_repeats > 1 else paths_dict["repeat_path"]
         solver_title = get_solver_title(selected_solver, starting_solver, ending_solver, 
                                         epochs_before_switch, dynamic_solvers)
 
@@ -653,8 +671,7 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
         # Graph the averaged losses
         show_moving_averages = False # config.training_params.show_moving_averages
         log_scale = config.training_params.log_scale
-        plot_fp = os.path.join(experiment_path, "averaged")
-        make_dir(plot_fp)
+        plot_fp = paths_dict["averaged"]["repeat_path"]
         solver_title = get_solver_title(selected_solver, starting_solver, ending_solver, 
                                         epochs_before_switch, dynamic_solvers)
 
