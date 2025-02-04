@@ -236,30 +236,34 @@ def plot_losses(losses, ma_losses, combine_ne_ov, combine_os_ov, combine_cc_pn, 
     other_loss_ma = {key:ma_losses[key] for key in keys} if ma_losses is not None else None
 
     plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_loss_ma, total_epochs, 
-                         experiment_path, solver_title, switch_after, log_scale, rescaling=False)
+                         experiment_path, solver_title, switch_after, log_scale, rescaling=False, 
+                         show_moving_averages=show_moving_averages)
 
     # Plot individual losses
     print(f"Graphing total loss...")
     plot_loss(total_loss_vals, total_loss_ma, "Total Loss", total_epochs, experiment_path, 
-              solver_title, switch_after, log_scale, rescaling=False)
+              solver_title, switch_after, log_scale, rescaling=False, show_moving_averages=show_moving_averages)
     print(f"Graphing individual losses...")
     for key in keys:
         loss_vals = losses[key]
         loss_ma = ma_losses[key] if ma_losses is not None else None
         plot_loss(loss_vals, loss_ma, key, total_epochs, experiment_path, 
-                  solver_title, switch_after, log_scale, rescaling=False)
+                  solver_title, switch_after, log_scale, rescaling=False, 
+                  show_moving_averages=show_moving_averages)
 
     # Repeat for rescaled versions
     print(f"Graphing overlaid rescaled losses...")
     plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_loss_ma, total_epochs, 
-                         experiment_path, solver_title, switch_after, log_scale, rescaling=True)
+                         experiment_path, solver_title, switch_after, log_scale, rescaling=True, 
+                         show_moving_averages=show_moving_averages)
     print(f"Graphing rescaled total loss...")
     plot_loss(total_loss_vals, total_loss_ma, "Total Loss", total_epochs, experiment_path, 
-              solver_title, switch_after, log_scale, rescaling=True)
+              solver_title, switch_after, log_scale, rescaling=True, show_moving_averages=show_moving_averages)
     print(f"Graphing rescaled individual losses...")
     for key in keys:
         loss_vals = losses[key]
         loss_ma = ma_losses[key] if ma_losses is not None else None
         plot_loss(loss_vals, loss_ma, key, total_epochs, experiment_path, 
-                  solver_title, switch_after, log_scale, rescaling=True)
+                  solver_title, switch_after, log_scale, rescaling=True, 
+                  show_moving_averages=show_moving_averages)
 
