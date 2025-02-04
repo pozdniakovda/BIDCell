@@ -602,7 +602,7 @@ def train(config: Config, learning_rate = None, selected_solver = None, verbose=
                                                      nucl_aug, batch_sa, batch_expr_sum)
                     coords_h1, coords_w1, sample_seg, sample_n, sample_sa, sample_expr = fig_outputs
 
-                    patch_fp = paths_dict[training_repeat][samples_path] if training_repeats > 1 else paths_dict[samples_path]
+                    patch_fp = paths_dict[training_repeat]["samples_path"] if training_repeats > 1 else paths_dict["samples_path"]
                     patch_fp = os.path.join(patch_fp, f"epoch_{epoch+1}_{step_epoch}_{coords_h1}_{coords_w1}.png")
                     save_fig_outputs(sample_seg, sample_n, sample_sa, sample_expr, patch_fp)
                     logging.info(f"Saved sample outputs: {patch_fp}")
