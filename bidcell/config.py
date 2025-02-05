@@ -263,22 +263,22 @@ def evaluate_pref_weights(config):
         config.training_params.ne_weight = eval(config.training_params.ne_weight)
 
     if isinstance(config.training_params.os_weight, str): 
-        config.training_params.os_weight = eval(config.training_params.ne_weight)
+        config.training_params.os_weight = eval(config.training_params.os_weight)
     
     if isinstance(config.training_params.cc_weight, str): 
-        config.training_params.cc_weight = eval(config.training_params.ne_weight)
+        config.training_params.cc_weight = eval(config.training_params.cc_weight)
     
     if isinstance(config.training_params.ov_weight, str): 
-        config.training_params.ov_weight = eval(config.training_params.ne_weight)
+        config.training_params.ov_weight = eval(config.training_params.ov_weight)
     
     if isinstance(config.training_params.mu_weight, str): 
-        config.training_params.mu_weight = eval(config.training_params.ne_weight)
+        config.training_params.mu_weight = eval(config.training_params.mu_weight)
     
     if isinstance(config.training_params.pos_weight, str): 
-        config.training_params.pos_weight = eval(config.training_params.ne_weight)
+        config.training_params.pos_weight = eval(config.training_params.pos_weight)
     
     if isinstance(config.training_params.neg_weight, str): 
-        config.training_params.neg_weight = eval(config.training_params.ne_weight)
+        config.training_params.neg_weight = eval(config.training_params.neg_weight)
 
     return config
 
