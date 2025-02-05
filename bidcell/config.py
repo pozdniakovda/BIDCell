@@ -198,13 +198,13 @@ class TrainingParams(BaseModel):
     # optimiser
     optimizer: Literal["adam", "rmsprop"] = "adam"
     # static weights
-    ne_weight: float = 1.0
-    os_weight: float = 1.0
-    cc_weight: float = 1.0
-    ov_weight: float = 1.0
-    mu_weight: float = 1.0
-    pos_weight: float = 1.0
-    neg_weight: float = 1.0
+    ne_weight: float | str = 1.0
+    os_weight: float | str = 1.0
+    cc_weight: float | str = 1.0
+    ov_weight: float | str = 1.0
+    mu_weight: float | str = 1.0
+    pos_weight: float | str = 1.0
+    neg_weight: float | str = 1.0
     # loss combination
     combine_ne_ov: bool = False
     combine_os_ov: bool = False
@@ -256,6 +256,32 @@ class Config(BaseModel):
     cgm_params: CellGeneMatParams = CellGeneMatParams()
 
 
+def evaluate_pref_weights(config):
+    # Evaluates math expressions given in the preference weights
+    
+    if isinstance(config.training_params.ne_weight, str): 
+        config.training_params.ne_weight = eval(config.training_params.ne_weight)
+
+    if isinstance(config.training_params.os_weight, str): 
+        config.training_params.os_weight = eval(config.training_params.ne_weight)
+    
+    if isinstance(config.training_params.cc_weight, str): 
+        config.training_params.cc_weight = eval(config.training_params.ne_weight)
+    
+    if isinstance(config.training_params.ov_weight, str): 
+        config.training_params.ov_weight = eval(config.training_params.ne_weight)
+    
+    if isinstance(config.training_params.mu_weight, str): 
+        config.training_params.mu_weight = eval(config.training_params.ne_weight)
+    
+    if isinstance(config.training_params.pos_weight, str): 
+        config.training_params.pos_weight = eval(config.training_params.ne_weight)
+    
+    if isinstance(config.training_params.neg_weight, str): 
+        config.training_params.neg_weight = eval(config.training_params.ne_weight)
+
+    return config
+
 def load_config(path: str) -> Config:
     if not os.path.exists(path):
         FileNotFoundError(
@@ -277,4 +303,8 @@ def load_config(path: str) -> Config:
 
     # validate the configuration schema
     config = Config(**config)
+
+    # evaluate math in preference weights
+    config = evaluate_pref_weights(config)
+    
     return config
