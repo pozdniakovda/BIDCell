@@ -21,8 +21,6 @@ from .processing.transcripts import generate_expression_maps
 class BIDCellModel:
     """The BIDCellModel class, which provides an interface for preprocessing, training and predicting all the cell types for a datset."""
 
-        def train(config: Config, learning_rate = None, selected_solver = None, device_idx = None, verbose=False):
-
     def __init__(self, config_file: str, lr_override = None, solver_override = None, 
                  device_idx = None, verbose = False) -> None:
         """Constructs a BIDCellModel instance using the user-supplied config file.\n
