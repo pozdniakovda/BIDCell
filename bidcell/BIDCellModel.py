@@ -21,7 +21,10 @@ from .processing.transcripts import generate_expression_maps
 class BIDCellModel:
     """The BIDCellModel class, which provides an interface for preprocessing, training and predicting all the cell types for a datset."""
 
-    def __init__(self, config_file: str) -> None:
+        def train(config: Config, learning_rate = None, selected_solver = None, device_idx = None, verbose=False):
+
+    def __init__(self, config_file: str, lr_override = None, solver_override = None, 
+                 device_idx = None, verbose = False) -> None:
         """Constructs a BIDCellModel instance using the user-supplied config file.\n
         The configuration is validated during construction.
 
@@ -31,6 +34,10 @@ class BIDCellModel:
             Path to the YAML configuration file.
         """
         self.config = load_config(config_file)
+        self.lr_override = lr_override
+        self.solver_override = solver_override
+        self.device_idx = None
+        self.verbose = False
 
     def run_pipeline(self):
         """Runs the entire BIDCell pipeline using the settings defined in the configuration.
@@ -111,7 +118,10 @@ class BIDCellModel:
     def train(self) -> None:
         """Train the model.
         """
-        self.loss_histories, self.ma_loss_histories, self.experiment_path = train(self.config)
+        self.loss_histories, self.ma_loss_histories, self.experiment_path = train(self.config, 
+                                                                                  self.lr_override, 
+                                                                                  self.solver_override, 
+                                                                                  self.device_idx, self.verbose)
 
     def predict(self) -> None:
         """Segment and annotate the cells.
