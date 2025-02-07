@@ -415,15 +415,24 @@ def save_loss_vals(csv_path, losses, ma_losses=None, col_prefix=None, col_suffix
 
     return loss_df
 
-def train(config: Config, learning_rate = None, selected_solver = None, verbose=False):
+def train(config: Config, learning_rate = None, selected_solver = None, device_idx = None, verbose=False):
     logging.basicConfig(
         format="%(asctime)s %(levelname)s %(message)s",
         level=logging.INFO,
         stream=sys.stdout,
     )
 
+    # Specify the device (GPU or CPU) for training
     use_cuda = torch.cuda.is_available()
-    device = torch.device("cuda" if use_cuda else "cpu")
+    if use_cuda and isinstance(device_idx, int):
+        logging.info(f"Using CUDA on GPU #{device_idx}")
+        device = torch.device(f"cuda:{device_idx}")
+    elif use_cuda: 
+        logging.info(f"Using CUDA")
+        device = torch.device("cuda")
+    else:
+        logging.info(f"Could not find available GPU; using CPU instead.")
+        device = torch.device("cpu")
 
     # Create experiment directories
     resume_epoch = None  # could be added
