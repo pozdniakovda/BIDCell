@@ -139,49 +139,52 @@ def get_seg_mask(sample_seg, sample_n):
     return final_seg_orig
 
 
-def save_fig_outputs(sample_seg, sample_n, sample_sa, sample_expr, patch_fp):
+def save_fig_outputs(sample_seg, sample_n, sample_sa, sample_expr, patch_fp, random_seed=42, fig_count=1):
     """
-    Generate figure of inputs and outputs
+    Generate and save one or more figures of inputs and outputs with deterministic randomization.
     """
     sample_n = np.squeeze(sample_n)
-
     sample_expr = np.squeeze(sample_expr)
     sample_expr[sample_expr > 0] = 1
-
     sample_sa = np.squeeze(np.sum(sample_sa, 0))
-
     final_seg_orig = get_seg_mask(sample_seg, sample_n)
 
-    # Randomise colours for plot
+    # Get unique cell IDs
     cells_ids_orig = np.unique(final_seg_orig)
-    n_cells_ids = len(cells_ids_orig)
-    cell_ids_rand = np.arange(1, n_cells_ids + 1)
-    random.shuffle(cell_ids_rand)
-    dictionary = dict(zip(cells_ids_orig, cell_ids_rand))
-    dictionary[0] = 0
-    final_seg_mapped = np.copy(final_seg_orig)
-    final_seg_mapped = np.vectorize(dictionary.get)(final_seg_orig)
-    nuclei_mapped = np.copy(sample_n)
-    nuclei_mapped = np.vectorize(dictionary.get)(sample_n)
 
-    # Plot
-    fig, axes = plt.subplots(ncols=3, figsize=(9, 3), sharex=True, sharey=True)
-    ax = axes.ravel()
+    for i in range(fig_count):
+        # Set a different seed for each figure to generate varied results
+        np.random.seed(random_seed + i)  
 
-    ax[0].imshow(nuclei_mapped, cmap=plt.cm.nipy_spectral)
-    ax[0].set_title("Nuclei")
-    ax[1].imshow(final_seg_mapped, cmap=plt.cm.nipy_spectral)
-    ax[1].set_title("Cells")
-    ax[2].imshow(sample_expr, cmap=plt.cm.gray)
-    ax[2].set_title("Expressions")
-    # ax[3].imshow(sample_sa, cmap=plt.cm.gray)
-    # ax[3].set_title("Eligible")
+        # Randomize colors for plot in a deterministic way
+        n_cells_ids = len(cells_ids_orig)
+        cell_ids_rand = np.arange(1, n_cells_ids + 1)
+        np.random.shuffle(cell_ids_rand)
 
-    for a in ax:
-        a.set_axis_off()
+        dictionary = dict(zip(cells_ids_orig, cell_ids_rand))
+        dictionary[0] = 0
+        final_seg_mapped = np.vectorize(dictionary.get)(final_seg_orig)
+        nuclei_mapped = np.vectorize(dictionary.get)(sample_n)
 
-    fig.tight_layout()
-    # plt.show()
+        # Plot
+        fig, axes = plt.subplots(ncols=3, figsize=(9, 3), sharex=True, sharey=True)
+        ax = axes.ravel()
 
-    fig.savefig(patch_fp)
-    plt.close(fig)
+        ax[0].imshow(nuclei_mapped, cmap=plt.cm.nipy_spectral)
+        ax[0].set_title("Nuclei")
+        ax[1].imshow(final_seg_mapped, cmap=plt.cm.nipy_spectral)
+        ax[1].set_title("Cells")
+        ax[2].imshow(sample_expr, cmap=plt.cm.gray)
+        ax[2].set_title("Expressions")
+
+        for a in ax:
+            a.set_axis_off()
+
+        fig.tight_layout()
+
+        # Modify the file path to save multiple images
+        base, ext = os.path.splitext(patch_fp)
+        save_path = f"{base}_{i+1}{ext}"
+
+        fig.savefig(save_path)
+        plt.close(fig)
