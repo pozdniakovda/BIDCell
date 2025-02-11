@@ -215,6 +215,8 @@ class TrainingParams(BaseModel):
     log_scale: bool = True
     # number of training steps per model save
     model_freq: int = 1000
+    # number of sample saves per epoch
+    samples_per_epoch: int = 5
     # number of training steps per sample save
     sample_freq: int = 100
     # whether to show moving averages on the training curves
