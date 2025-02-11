@@ -21,7 +21,7 @@ from .processing.transcripts import generate_expression_maps
 class BIDCellModel:
     """The BIDCellModel class, which provides an interface for preprocessing, training and predicting all the cell types for a datset."""
 
-    def __init__(self, config_file: str, lr_override = None, solver_override = None, 
+    def __init__(self, config_file: str, config_files = None, lr_override = None, solver_override = None, 
                  device_idx = None, verbose = False) -> None:
         """Constructs a BIDCellModel instance using the user-supplied config file.\n
         The configuration is validated during construction.
@@ -32,6 +32,7 @@ class BIDCellModel:
             Path to the YAML configuration file.
         """
         self.config = load_config(config_file)
+        self.config_files = config_files
         self.config_history = [config_file]
         self.lr_override = lr_override
         self.solver_override = solver_override
@@ -62,6 +63,35 @@ class BIDCellModel:
         print()
         self.predict()
         print()
+        print("### Done ###")
+        
+    def run_multiple(self, config_files = None):
+        """Runs the entire BIDCell pipeline using the settings defined in the configuration.
+        """
+        if config_files is None and self.config_files is not None:
+            config_files = self.config_files
+        elif config_files is None:
+            raise Exception(f"model.run_multiple() requires self.config_files to exist or for "
+                            "config_files to be passed as an argument, but both were None.")
+        else:
+            self.config_files = config_files
+        
+        print("### Preprocessing ###")
+        print()
+        self.replace_config(config_files[0])
+        self.preprocess()
+        print()
+        
+        for config_file in config_files:
+            print("### Training config: {config_file} ###")
+            self.replace_config(config_file)
+            self.train()
+            print()
+            
+        # print("### Predict ###")
+        # print()
+        # self.predict()
+        # print()
         print("### Done ###")
 
     def preprocess(self) -> None:
