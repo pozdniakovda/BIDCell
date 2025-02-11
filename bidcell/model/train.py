@@ -621,7 +621,7 @@ def train(config: Config, learning_rate = None, selected_solver = None, device_i
                     patch_fp = paths_dict[training_repeat]["samples_path"] if training_repeats > 1 else paths_dict["samples_path"]
                     patch_fp = os.path.join(patch_fp, f"epoch_{epoch+1}_{step_epoch}_{coords_h1}_{coords_w1}.png")
                     
-                    save_fig_outputs(sample_seg, sample_n, sample_sa, sample_expr, patch_fp, random_seed=42, fig_count=10)
+                    save_fig_outputs(sample_seg, sample_n, sample_sa, sample_expr, patch_fp, random_seed=42)
                     logging.info(f"Saved sample outputs at epoch {epoch}, step {step_epoch}: {patch_fp}")
                     
                     print(f"Epoch[{epoch+1}/{total_epochs}], Step[{step_epoch}], Total Loss:{total_loss:.4f}")
