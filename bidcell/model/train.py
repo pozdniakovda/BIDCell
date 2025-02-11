@@ -509,8 +509,12 @@ def train(config: Config, learning_rate = None, selected_solver = None, device_i
             cur_lr = optimizer.param_groups[0]["lr"]
             print("\nEpoch =", (epoch + 1), " lr =", cur_lr, " solver =", current_solver)
 
-            step_save_indices = np.linspace(0, len(train_loader), 
-                                            num=config.training_params.samples_per_epoch+1, dtype=int)[:-1].tolist()
+            samples_per_epoch = config.training_params.samples_per_epoch
+            if samples_per_epoch <= len(train_loader):
+                step_save_indices = np.arange(len(train_loader))
+            else: 
+                step_save_indices = np.linspace(0, len(train_loader), 
+                                                num=samples_per_epoch+1, dtype=int)[:-1].tolist()
     
             for step_epoch, (
                 batch_ess,       # shape: [H, W, n_cells]
