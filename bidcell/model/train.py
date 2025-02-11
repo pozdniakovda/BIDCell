@@ -508,6 +508,9 @@ def train(config: Config, learning_rate = None, selected_solver = None, device_i
     
             cur_lr = optimizer.param_groups[0]["lr"]
             print("\nEpoch =", (epoch + 1), " lr =", cur_lr, " solver =", current_solver)
+
+            step_save_indices = np.linspace(0, len(train_loader), 
+                                            num=config.training_params.samples_per_epoch+1, dtype=int)[:-1].tolist()
     
             for step_epoch, (
                 batch_ess,       # shape: [H, W, n_cells]
@@ -606,7 +609,7 @@ def train(config: Config, learning_rate = None, selected_solver = None, device_i
                                                ideal_vals = weighted_ideal_vals, 
                                                stch_mu = stch_mu)
                 
-                if (global_step % config.training_params.sample_freq) == 0:
+                if step_epoch in step_save_indices:
                     fig_outputs = detach_fig_outputs(coords_h1, coords_w1, seg_pred, 
                                                      nucl_aug, batch_sa, batch_expr_sum)
                     coords_h1, coords_w1, sample_seg, sample_n, sample_sa, sample_expr = fig_outputs
@@ -615,7 +618,7 @@ def train(config: Config, learning_rate = None, selected_solver = None, device_i
                     patch_fp = os.path.join(patch_fp, f"epoch_{epoch+1}_{step_epoch}_{coords_h1}_{coords_w1}.png")
                     
                     save_fig_outputs(sample_seg, sample_n, sample_sa, sample_expr, patch_fp, random_seed=42, fig_count=10)
-                    logging.info(f"Saved sample outputs: {patch_fp}")
+                    logging.info(f"Saved sample outputs at epoch {epoch}, step {epoch_step}: {patch_fp}")
                     
                     print(f"Epoch[{epoch+1}/{total_epochs}], Step[{step_epoch}], Total Loss:{total_loss:.4f}")
     
