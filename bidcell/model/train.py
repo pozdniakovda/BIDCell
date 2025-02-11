@@ -315,7 +315,7 @@ def initialise_model(device, config: Config):
 
     return model
 
-def initialise_dataloader(config: Config):
+def initialise_dataloader(config: Config, shuffle=False):
     # Generates the training DataLoader
     train_dataset = DataProcessing(
         config,
@@ -323,7 +323,7 @@ def initialise_dataloader(config: Config):
         total_steps=config.training_params.total_steps,
     )
     train_loader = DataLoader(
-        dataset=train_dataset, batch_size=1, shuffle=True, num_workers=0, drop_last=True
+        dataset=train_dataset, batch_size=1, shuffle=shuffle, num_workers=0, drop_last=True
     )
     return train_loader
 
@@ -446,7 +446,7 @@ def train(config: Config, learning_rate = None, selected_solver = None, device_i
 
     # Dataloader
     logging.info("Preparing data")
-    train_loader = initialise_dataloader(config)
+    train_loader = initialise_dataloader(config, shuffle=False)
     logging.info(f"Total number of training examples: {len(train_loader)}")
 
     # Extract loss weights and combination rules
