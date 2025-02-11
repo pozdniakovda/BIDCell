@@ -21,7 +21,7 @@ from .processing.transcripts import generate_expression_maps
 class BIDCellModel:
     """The BIDCellModel class, which provides an interface for preprocessing, training and predicting all the cell types for a datset."""
 
-    def __init__(self, config_file: str, config_files = None, lr_override = None, solver_override = None, 
+    def __init__(self, config_file = None, config_files = None, lr_override = None, solver_override = None, 
                  device_idx = None, verbose = False) -> None:
         """Constructs a BIDCellModel instance using the user-supplied config file.\n
         The configuration is validated during construction.
@@ -31,7 +31,7 @@ class BIDCellModel:
         config_file : str
             Path to the YAML configuration file.
         """
-        self.config = load_config(config_file)
+        self.config = load_config(config_file) if config_file is not None else None
         self.config_files = config_files
         self.config_history = [config_file]
         self.lr_override = lr_override
