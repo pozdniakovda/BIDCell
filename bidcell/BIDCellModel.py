@@ -32,10 +32,20 @@ class BIDCellModel:
             Path to the YAML configuration file.
         """
         self.config = load_config(config_file)
+        self.config_history = [config_file]
         self.lr_override = lr_override
         self.solver_override = solver_override
         self.device_idx = None
         self.verbose = False
+
+    def replace_config(self, config_file: str, remove_overrides=True):
+        """Replaces the config with a new one; useful for retraining loops. 
+        """
+        self.config = load_config(config_file)
+        self.config_history.append(config_file)
+        if remove_overrides:
+            self.lr_override = None
+            self.solver_override = None
 
     def run_pipeline(self):
         """Runs the entire BIDCell pipeline using the settings defined in the configuration.
