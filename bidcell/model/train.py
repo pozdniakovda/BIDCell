@@ -510,7 +510,7 @@ def train(config: Config, learning_rate = None, selected_solver = None, device_i
             print("\nEpoch =", (epoch + 1), " lr =", cur_lr, " solver =", current_solver)
 
             samples_per_epoch = config.training_params.samples_per_epoch
-            if samples_per_epoch <= len(train_loader):
+            if samples_per_epoch >= len(train_loader):
                 step_save_indices = np.arange(len(train_loader))
             else: 
                 step_save_indices = np.linspace(0, len(train_loader), 
