@@ -64,3 +64,44 @@ class STCHLoss(nn.Module):
         stch_loss = stch_loss * mu
 
         return stch_loss
+
+
+class DBMTLLoss(nn.Module):
+    """
+    Dual-Balancing Multi-Task Learning (DB-MTL) loss with loss-scale balancing.
+    This loss function applies a logarithmic transformation to task losses to balance their scales.
+    Based on Lin et al. (2022) "Dual-Balancing Multi-Task Learning"
+    """
+    
+    def __init__(self, preference_weights=None, device='cpu') -> None:
+        super(DBMTLLoss, self).__init__()
+        self.preference_weights = preference_weights
+        self.device = device
+    
+    def forward(self, losses, preference_weights=None, epsilon=1e-8):
+        """
+        Computes the DB-MTL loss with logarithmic transformation.
+        
+        Args:
+            losses (list of tensors): The individual task losses.
+            preference_weights (list or tensor, optional): The task weights. Defaults to equal weights.
+            epsilon (float, optional): A small value to prevent log(0). Defaults to 1e-8.
+        
+        Returns:
+            total_loss: The total DB-MTL loss.
+        """
+        
+        # Set preference weights
+        if preference_weights is None:
+            if self.preference_weights is not None:
+                preference_weights = self.preference_weights
+            else:
+                preference_weights = torch.ones(len(losses), device=self.device)
+        
+        # Apply the logarithmic transformation to balance loss scales
+        log_transformed_losses = [torch.log(loss + epsilon) * weight for loss, weight in zip(losses, preference_weights)]
+        
+        # Sum the transformed losses
+        total_loss = torch.sum(torch.stack(log_transformed_losses))
+        
+        return total_loss
