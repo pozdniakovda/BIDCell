@@ -68,22 +68,24 @@ class STCHLoss(nn.Module):
 
 class DBMTLLoss(nn.Module):
     """
-    Dual-Balancing Multi-Task Learning (DB-MTL) loss with loss-scale balancing.
-    This loss function applies a logarithmic transformation to task losses to balance their scales.
+    Dual-Balancing Multi-Task Learning (DB-MTL) loss with loss-scale and gradient-magnitude balancing.
+    This loss function applies a logarithmic transformation to task losses and normalizes task gradients.
     Based on Lin et al. (2022) "Dual-Balancing Multi-Task Learning"
     """
     
-    def __init__(self, preference_weights=None, device='cpu') -> None:
+    def __init__(self, preference_weights=None, device="cpu") -> None:
         super(DBMTLLoss, self).__init__()
         self.preference_weights = preference_weights
         self.device = device
     
-    def forward(self, losses, preference_weights=None, epsilon=1e-8):
+    def forward(self, losses, model, optimizer, preference_weights=None, epsilon=1e-8):
         """
-        Computes the DB-MTL loss with logarithmic transformation.
+        Computes the DB-MTL loss with logarithmic transformation and gradient-magnitude balancing.
         
         Args:
             losses (list of tensors): The individual task losses.
+            model (torch.nn.Module): The neural network model.
+            optimizer (torch.optim.Optimizer): The optimizer used for training.
             preference_weights (list or tensor, optional): The task weights. Defaults to equal weights.
             epsilon (float, optional): A small value to prevent log(0). Defaults to 1e-8.
         
@@ -101,7 +103,33 @@ class DBMTLLoss(nn.Module):
         # Apply the logarithmic transformation to balance loss scales
         log_transformed_losses = [torch.log(loss + epsilon) * weight for loss, weight in zip(losses, preference_weights)]
         
-        # Sum the transformed losses
+        # Compute total loss
         total_loss = torch.sum(torch.stack(log_transformed_losses))
+        
+        # Compute gradients for each task
+        grads = []
+        optimizer.zero_grad()
+        for loss in losses:
+            optimizer.zero_grad()
+            loss.backward(retain_graph=True)
+            grad = torch.cat([p.grad.flatten() if p.grad is not None else torch.zeros_like(p).flatten() for p in model.parameters()])
+            grads.append(grad)
+        grads = torch.stack(grads, dim=0)  # Stack gradients
+
+        # Normalize gradients to match the maximum gradient norm
+        max_grad_norm = grads.norm(dim=1).max()
+        normalized_grads = grads / grads.norm(dim=1, keepdim=True).clamp(min=epsilon) * max_grad_norm
+
+        # Apply normalized gradients back to model parameters
+        grad = normalized_grads.sum(dim=0)
+        offset = 0
+        for p in model.parameters():
+            if p.grad is None:
+                continue
+            _offset = offset + p.grad.numel()
+            p.grad.data = grad[offset:_offset].view_as(p.grad)
+            offset = _offset
+        
+        optimizer.step()
         
         return total_loss
