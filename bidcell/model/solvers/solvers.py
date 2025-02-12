@@ -6,12 +6,13 @@ from .solver_utils import (
     filter_losses,
 )
 from .procrustes_solver import ProcrustesSolver
-from ..model.loss_summation import SummedLoss, STCHLoss
+from ..model.loss_summation import SummedLoss, STCHLoss, DBMTLLoss
 from ...config import load_config, Config
 
-def summed_solver(optimizer, device, tracked_losses, loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_mu = None, 
-                  loss_pn = None, loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None, non_contributing_losses=(), 
-                  sum_mode = "arithmetic", preference_weights = None, ideal_vals = None, stch_mu = 1.0):
+def summed_solver(optimizer, device, tracked_losses, model = None, 
+                  loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_mu = None, loss_pn = None, 
+                  loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None, non_contributing_losses=(), 
+                  sum_mode = "arithmetic", preference_weights = None, ideal_vals = None, stch_mu = 1.0, dbmtl_epsilon = None):
     # Default solver for summed losses
 
     # Filter the losses based on whether they contribute to the summed loss
@@ -20,18 +21,30 @@ def summed_solver(optimizer, device, tracked_losses, loss_ne = None, loss_os = N
     contributing_losses, unnecessary_losses, blank_losses, spectator_losses = filtered_losses
 
     # Sum the contributing losses
-    if sum_mode in ["stch", "smooth_tchebycheff"]:
+    if sum_mode in ["stch", "smooth_tchebycheff", "smoothed_tchebycheff"]:
         criterion_stch = STCHLoss(preference_weights, device)
         loss = criterion_stch(list(contributing_losses.values()), preference_weights, ideal_vals, stch_mu)
+        # Optimisation
+        loss.backward()
+        optimizer.step()
+        
+    elif sum_mode in ["dbmtl", "db-mtl", "dual_balancing"]:
+        criterion_dbmtl = DBMTLLoss(preference_weights, device)
+        if dbmtl_epsilon is None:
+            raise Exception(f"sum_mode was set to {sum_mode}, but dbmtl_epsilon was not given (None)")
+        if model is None:
+            raise Exception(f"sum_mode was set to {sum_mode}, but model is not given, despite being required")
+        loss = criterion_dbmtl(list(contributing_losses.values()), model, optimizer, preference_weights, dbmtl_epsilon)
+        # Backward pass and optimization are performed inside DB-MTL loss object
+        
     else:
         criterion_sum = SummedLoss(device)
         loss = criterion_sum(list(contributing_losses.values()))
         if sum_mode not in ["arithmetic", "sum", "simple", "linear"]: 
             print(f"Unrecognized sum_mode ({sum_mode}); defaulting to simple summation.")
-    
-    # Optimisation
-    loss.backward()
-    optimizer.step()
+        # Optimisation
+        loss.backward()
+        optimizer.step()
 
     # Track individual losses
     keys = ["ne", "os", "cc", "ov", "mu", "pn", "ne_ov", "os_ov", "cc_pn"]
