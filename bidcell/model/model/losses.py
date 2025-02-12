@@ -21,6 +21,10 @@ class NucleiEncapsulationLoss(nn.Module):
         if weight is not None:
             self.weight = weight
 
+        # If weight is zero, return a zero tensor with the correct shape
+        if self.weight == 0:
+            return torch.zeros((), device=self.device)
+
         criterion_ce = torch.nn.CrossEntropyLoss(reduction="mean")
         loss = criterion_ce(seg_pred, batch_n[:, 0, :, :])
 
@@ -42,7 +46,11 @@ class OversegmentationLoss(nn.Module):
         # Overwrite self.weight if new weight is given; original is preserved as self.init_weight
         if weight is not None:
             self.weight = weight
-    
+
+        # If weight is zero, return a zero tensor with the correct shape
+        if self.weight == 0:
+            return torch.zeros((), device=self.device)
+        
         # Use the ground truth nuclei mask
         batch_n = batch_n[:, 0, :, :]
     
@@ -89,6 +97,10 @@ class CellCallingLoss(nn.Module):
         # Overwrite self.weight if new weight is given; original is preserved as self.init_weight
         if weight is not None:
             self.weight = weight
+
+        # If weight is zero, return a zero tensor with the correct shape
+        if self.weight == 0:
+            return torch.zeros((), device=self.device)
         
         # Limit to searchable area where there is detected expression
         penalisable = batch_sa * 1
@@ -116,6 +128,10 @@ class OverlapLoss(nn.Module):
         # Overwrite self.weight if new weight is given; original is preserved as self.init_weight
         if weight is not None:
             self.weight = weight
+
+        # If weight is zero, return a zero tensor with the correct shape
+        if self.weight == 0:
+            return torch.zeros((), device=self.device)
 
         batch_n = batch_n[:, 0, :, :]  # Extract nuclei segmentation
         seg_probs = F.softmax(seg_pred, dim=1)
@@ -160,6 +176,10 @@ class PosNegMarkerLoss(nn.Module):
             self.weight_pos = weight_pos
         if weight_neg is not None:
             self.weight_neg = weight_neg
+
+        # If weight is zero, return a zero tensor with the correct shape
+        if self.weight_pos == 0 and self.weight_neg == 0:
+            return torch.zeros((), device=self.device)
         
         batch_pos = batch_pos[:, 0, :, :]
         batch_neg = batch_neg[:, 0, :, :]
@@ -211,6 +231,10 @@ class MultipleAssignmentLoss(nn.Module):
         # Overwrite self.weight if new weight is given; original is preserved as self.init_weight
         if weight is not None:
             self.weight = weight
+
+        # If weight is zero, return a zero tensor with the correct shape
+        if self.weight == 0:
+            return torch.zeros((), device=self.device)
 
         # Compute softmax probabilities
         seg_probs = F.softmax(seg_pred, dim=1)
