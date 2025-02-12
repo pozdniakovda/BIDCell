@@ -195,6 +195,8 @@ class TrainingParams(BaseModel):
     # smooth tchebycheff scalarization params for use if solver is stch
     stch_mu: float = 1.0
     stch_warmup_epoch: int = 4
+    # DB-MTL params for use if this is the selected solver
+    dbmtl_epsilon: float = 0.00000001
     # optimiser
     optimizer: Literal["adam", "rmsprop"] = "adam"
     # static weights
