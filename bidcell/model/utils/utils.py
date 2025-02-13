@@ -140,16 +140,20 @@ def get_seg_mask(sample_seg, sample_n):
 
 
 def save_fig_outputs(sample_seg, sample_n, sample_sa, sample_expr, patch_fp, 
-                     random_seed=42, binary_expr_map=True):
+                     random_seed=42, binary_expr_map=True, log_expr_map=True):
     """
     Generate and save one or more figures of inputs and outputs with deterministic randomization.
     """
     sample_n = np.squeeze(sample_n)
+    sample_sa = np.squeeze(np.sum(sample_sa, 0))
+    final_seg_orig = get_seg_mask(sample_seg, sample_n)
+
     sample_expr = np.squeeze(sample_expr)
     if binary_expr_map: 
         sample_expr[sample_expr > 0] = 1
-    sample_sa = np.squeeze(np.sum(sample_sa, 0))
-    final_seg_orig = get_seg_mask(sample_seg, sample_n)
+    if log_expr_map: 
+        sample_expr = np.log10(sample_expr)
+        sample_expr[sample_expr < 0] = 0
 
     # Get unique cell IDs
     cells_ids_orig = np.unique(final_seg_orig)
