@@ -221,6 +221,9 @@ class TrainingParams(BaseModel):
     samples_per_epoch: int = 5
     # number of training steps per sample save
     sample_freq: int = 100
+    # sample image params
+    sample_expr_binary: bool = True
+    sample_expr_log: bool = False
     # whether to show moving averages on the training curves
     show_moving_averages: bool = True
 
