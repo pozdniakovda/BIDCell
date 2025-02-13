@@ -139,13 +139,15 @@ def get_seg_mask(sample_seg, sample_n):
     return final_seg_orig
 
 
-def save_fig_outputs(sample_seg, sample_n, sample_sa, sample_expr, patch_fp, random_seed=42):
+def save_fig_outputs(sample_seg, sample_n, sample_sa, sample_expr, patch_fp, 
+                     random_seed=42, binary_expr_map=True):
     """
     Generate and save one or more figures of inputs and outputs with deterministic randomization.
     """
     sample_n = np.squeeze(sample_n)
     sample_expr = np.squeeze(sample_expr)
-    sample_expr[sample_expr > 0] = 1
+    if binary_expr_map: 
+        sample_expr[sample_expr > 0] = 1
     sample_sa = np.squeeze(np.sum(sample_sa, 0))
     final_seg_orig = get_seg_mask(sample_seg, sample_n)
 
