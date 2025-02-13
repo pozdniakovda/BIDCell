@@ -152,8 +152,10 @@ def save_fig_outputs(sample_seg, sample_n, sample_sa, sample_expr, patch_fp,
     if binary_expr_map: 
         sample_expr[sample_expr > 0] = 1
     if log_expr_map: 
-        sample_expr = np.log10(sample_expr)
-        sample_expr[sample_expr < 0] = 0
+        sample_expr = np.log10(sample_expr + 0.00001) + 1
+        sample_expr[sample_expr < 1] = 0
+        if sample_expr.max() > 0:
+            sample_expr = sample_expr / sample_expr.max()
 
     # Get unique cell IDs
     cells_ids_orig = np.unique(final_seg_orig)
