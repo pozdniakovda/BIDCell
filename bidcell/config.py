@@ -187,10 +187,10 @@ class TrainingParams(BaseModel):
     # adam optimiser weight decay
     weight_decay: float = 0.0001
     # solver
-    solver: Literal["", "default", "procrustes", "procrustes-min", "procrustes-median", "procrustes-rmse", "stch", "stch-mtl"] = "default"
+    solver: Literal["", "default", "procrustes", "procrustes-min", "procrustes-median", "procrustes-rmse", "stch", "stch-mtl", "dbmtl", "db-mtl"] = "default"
     # dynamically switched solver
-    starting_solver: Literal["", "default", "procrustes", "procrustes-min", "procrustes-median", "procrustes-rmse", "stch", "stch-mtl"] = "default"
-    ending_solver: Literal["", "default", "procrustes", "procrustes-min", "procrustes-median", "procrustes-rmse", "stch", "stch-mtl"] = "default"
+    starting_solver: Literal["", "default", "procrustes", "procrustes-min", "procrustes-median", "procrustes-rmse", "stch", "stch-mtl", "dbmtl", "db-mtl"] = "default"
+    ending_solver: Literal["", "default", "procrustes", "procrustes-min", "procrustes-median", "procrustes-rmse", "stch", "stch-mtl", "dbmtl", "db-mtl"] = "default"
     epochs_before_switch: int = 0
     # smooth tchebycheff scalarization params for use if solver is stch
     stch_mu: float = 1.0
