@@ -157,6 +157,9 @@ def save_fig_outputs(sample_seg, sample_n, sample_sa, sample_expr, patch_fp,
         if sample_expr.max() > 0:
             sample_expr = sample_expr / sample_expr.max()
 
+    print(f"sample_expr has {np.unique(sample_expr)} unique values; "
+          f"min={sample_expr.min()}, max={sample_expr.max()}, mean={sample_expr.mean()}")
+
     # Get unique cell IDs
     cells_ids_orig = np.unique(final_seg_orig)
 
