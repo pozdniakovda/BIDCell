@@ -393,10 +393,10 @@ def permute_channels(batch_ess, batch_x313, batch_n, batch_sa, batch_pos, batch_
 
     return permuted_data
 
-def save_loss_vals(csv_path, losses, ma_losses=None, col_prefix=None, col_suffix=None): 
+def save_loss_vals(csv_path, tracked_losses, ma_losses=None, col_prefix=None, col_suffix=None): 
     # Saves loss values so they can be plotted elsewhere    
     loss_data = {}
-    for key in losses.keys():
+    for key in tracked_losses.keys():
         loss_col = f"{key}_values"
         ma_loss_col = f"{key}_moving_average"
         if col_prefix:
@@ -406,7 +406,7 @@ def save_loss_vals(csv_path, losses, ma_losses=None, col_prefix=None, col_suffix
             loss_col = f"{loss_col}_{col_suffix}"
             ma_loss_col = f"{ma_loss_col}_{col_suffix}"
         
-        loss_data[loss_col] = losses[key]
+        loss_data[loss_col] = tracked_losses[key]
         if ma_losses is not None:
             loss_data[ma_loss_col] = ma_losses[key]
 
@@ -467,7 +467,7 @@ def train(config: Config, learning_rate = None, selected_solver = None, device_i
     for training_repeat in np.arange(1, training_repeats+1): 
         initial_epoch = resume_epoch if resume_epoch is not None else 0
         global_step = 0
-        losses = {}
+        tracked_losses = {}
         
         # Set up the model, optimizer, and LR scheduler
         logging.info("Initialising model")
@@ -573,7 +573,7 @@ def train(config: Config, learning_rate = None, selected_solver = None, device_i
                     scale_mode = "median" if "median" in current_solver else "rmse" if "rmse" in current_solver else "min"
                     total_loss = procrustes_method(model = model, 
                                                    optimizer = optimizer, 
-                                                   tracked_losses = losses, 
+                                                   tracked_losses = tracked_losses, 
                                                    loss_ne = loss_ne, 
                                                    loss_os = loss_os, 
                                                    loss_cc = loss_cc, 
@@ -590,7 +590,7 @@ def train(config: Config, learning_rate = None, selected_solver = None, device_i
                     stch_mu = config.training_params.stch_mu
                     total_loss = stch_solver(optimizer = optimizer, 
                                              device = device, 
-                                             tracked_losses = losses, 
+                                             tracked_losses = tracked_losses, 
                                              loss_ne = loss_ne, 
                                              loss_os = loss_os, 
                                              loss_cc = loss_cc, 
@@ -608,7 +608,7 @@ def train(config: Config, learning_rate = None, selected_solver = None, device_i
                     dbmtl_epsilon = config.training_params.dbmtl_epsilon
                     total_loss = dbmtl_solver(optimizer = optimizer, 
                                               device = device, 
-                                              tracked_losses = losses, 
+                                              tracked_losses = tracked_losses, 
                                               model = model, 
                                               loss_ne = loss_ne, 
                                               loss_os = loss_os, 
@@ -626,7 +626,7 @@ def train(config: Config, learning_rate = None, selected_solver = None, device_i
                 else: 
                     total_loss = summed_solver(optimizer = optimizer, 
                                                device = device, 
-                                               tracked_losses = losses, 
+                                               tracked_losses = tracked_losses, 
                                                loss_ne = loss_ne, 
                                                loss_os = loss_os, 
                                                loss_cc = loss_cc, 
@@ -671,18 +671,18 @@ def train(config: Config, learning_rate = None, selected_solver = None, device_i
                                         epochs_before_switch, dynamic_solvers)
 
         # Calculate moving averages
-        ma_losses = get_ma_losses(losses)
+        ma_losses = get_ma_losses(tracked_losses)
         ma_loss_vals = {key: val[0] for key, val in ma_losses.items()} # loss_name --> (moving_averages, window_width)
 
         # Save the loss curve data, then graph it
         solver_title_underscored = "_".join(solver_title.lower().split(" "))
         csv_path = os.path.join(plot_fp, f"{solver_title_underscored}_loss_curves.csv")
-        loss_df = save_loss_vals(csv_path, losses, ma_loss_vals)
-        plot_losses(losses, ma_losses, combine_ne_ov, combine_os_ov, combine_cc_pn, total_epochs, 
+        loss_df = save_loss_vals(csv_path, tracked_losses, ma_loss_vals)
+        plot_losses(tracked_losses, ma_losses, combine_ne_ov, combine_os_ov, combine_cc_pn, total_epochs, 
                     plot_fp, solver_title, epochs_before_switch, log_scale, show_moving_averages)
 
         # Save losses from this repeat so that they can be averaged, if training_repeats>1
-        repeat_losses[training_repeat] = losses
+        repeat_losses[training_repeat] = tracked_losses
 
         if training_repeats > 1: 
             logging.info(f"Repeat #{training_repeat} training finished")
@@ -696,8 +696,8 @@ def train(config: Config, learning_rate = None, selected_solver = None, device_i
         # Collect losses from each repeat
         collected_losses = {}
         repeat_loss_data = {}
-        for training_repeat, losses in repeat_losses.items():
-            for loss_name, loss_vals in losses.items():
+        for training_repeat, tracked_losses in repeat_losses.items():
+            for loss_name, loss_vals in tracked_losses.items():
                 repeat_loss_data[f"{loss_name}_repeat-{training_repeat}"] = loss_vals
                 if loss_name in collected_losses.keys():
                     collected_losses[loss_name].append(loss_vals)
@@ -737,7 +737,7 @@ def train(config: Config, learning_rate = None, selected_solver = None, device_i
 
         logging.info("Finished graphing averaged losses.")
     
-    return losses, ma_losses, experiment_path
+    return tracked_losses, ma_losses, experiment_path
 
 
 if __name__ == "__main__":
