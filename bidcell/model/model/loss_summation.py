@@ -114,4 +114,4 @@ class DBMTLLoss(nn.Module):
         log_total_loss = torch.sum(torch.stack(log_transformed_losses))
         total_loss = torch.sum(torch.stack(losses))
         
-        return (log_total_loss, total_loss)
+        return (log_transformed_losses, log_total_loss, total_loss)
