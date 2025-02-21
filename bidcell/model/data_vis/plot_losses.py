@@ -39,15 +39,6 @@ def get_solver_title(selected_solver = None, starting_solver = None, ending_solv
 
     return solver_title
 
-def to_scalar(value):
-    # Helper function that converts one-item Torch tensors into Python scalars (e.g. float)
-    if isinstance(value, torch.Tensor):
-        if value.numel() == 1:
-            value = value.item()
-        else:
-            print("Cannot apply .item() to a tensor with more than one element.")
-    return value
-
 def plot_overlaid_losses(total_loss_vals, total_loss_ma, other_loss_vals, other_loss_ma, total_epochs, 
                          experiment_path, solver_title, switch_after=0, log_scale=False, 
                          rescaling=True, show_moving_averages=True):
