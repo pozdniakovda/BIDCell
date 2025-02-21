@@ -24,7 +24,7 @@ loss_key_conversion = {"ne": "Nuclei Encapsulation Loss",
 def assign_loss(tracked_losses, short_key, loss_val, loss_key_conversion = loss_key_conversion):
     long_key = loss_key_conversion[short_key]
     if loss_val is not None: 
-        if key not in tracked_losses.keys():
+        if long_key not in tracked_losses.keys():
             tracked_losses[long_key] = []
         tracked_losses[long_key].append(loss_val)
 
