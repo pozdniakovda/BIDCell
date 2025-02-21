@@ -1,57 +1,14 @@
 import torch
 from .solver_utils import (
     to_scalar, 
+    loss_key_conversion, 
+    assign_loss, 
+    assign_losses, 
     filter_losses,
 )
 from .procrustes_solver import ProcrustesSolver
 from ..model.loss_summation import SummedLoss, STCHLoss, DBMTLLoss
 from ...config import load_config, Config
-
-loss_key_conversion = {"ne": "Nuclei Encapsulation Loss", 
-                       "os": "Oversegmentation Loss", 
-                       "cc": "Cell Calling Loss", 
-                       "ov": "Overlap Loss", 
-                       "mu": "Multiple Assignment Loss", 
-                       "pn": "Pos-Neg Marker Loss", 
-                       "ne_ov": "Combined Nuclei Encapsulation and Overlap Loss", 
-                       "os_ov": "Combined Oversegmentation and Overlap Loss", 
-                       "cc_pn": "Combined Cell Calling and Marker Loss", 
-                       "total": "Total Loss"}
-
-def assign_loss(tracked_losses, short_key, loss_val, loss_key_conversion = loss_key_conversion):
-    long_key = loss_key_conversion[short_key]
-    if loss_val is not None: 
-        if key not in tracked_losses.keys():
-            tracked_losses[long_key] = []
-        tracked_losses[long_key].append(loss_val)
-
-def assign_losses(tracked_losses, contributing_losses, spectator_losses, unnecessary_losses, blank_losses, 
-                  total_loss, short_keys=None, detach=True):
-    # Track individual losses
-    if short_keys is None:
-        short_keys = ["ne", "os", "cc", "ov", "mu", "pn", "ne_ov", "os_ov", "cc_pn"]
-    
-    for key in short_keys:
-        if contributing_losses.get(key) is not None:
-            step_term_loss = contributing_losses[key]
-        elif spectator_losses.get(key) is not None:
-            step_term_loss = spectator_losses[key]
-        elif unnecessary_losses.get(key) is not None:
-            step_term_loss = unnecessary_losses[key]
-        elif blank_losses.get(key) is not None:
-            step_term_loss = blank_losses[key]
-        else:
-            step_term_loss = 0
-
-        if step_term_loss != 0: 
-            step_term_loss = step_term_loss.detach().cpu().numpy() if detach else to_scalar(step_term_loss)
-        
-        assign_loss(tracked_losses, key, step_term_loss)
-
-    step_total_loss = total_loss.detach().cpu().numpy() if detach else to_scalar(step_total_loss)
-    assign_loss(tracked_losses, "total", step_total_loss)
-
-    return step_total_loss
 
 def summed_solver(optimizer, device, tracked_losses, 
                   loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_mu = None, loss_pn = None, 
