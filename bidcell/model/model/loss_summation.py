@@ -101,13 +101,11 @@ class DBMTLLoss(nn.Module):
                 preference_weights = torch.ones(len(losses), device=self.device)
         
         # Apply the logarithmic transformation to balance loss scales
-        print(f"Performing log transformation of losses (epsilon = {epsilon}) ...")
         log_transformed_losses = []
         for loss, weight in zip(losses, preference_weights):
             loss_adj = loss + epsilon
             log_loss = torch.log(loss_adj)
             weighted_log_loss = log_loss * weight
-            print(f"\tloss: {loss} | log_loss: {weighted_log_loss} | weight: {weight}")
             log_transformed_losses.append(weighted_log_loss)
         
         # Compute total loss
