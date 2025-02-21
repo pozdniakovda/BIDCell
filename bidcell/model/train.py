@@ -599,7 +599,7 @@ def train(config: Config, learning_rate = None, selected_solver = None, device_i
                         sum_mode = "arithmetic"
     
                     # Run the solver
-                    total_loss = summed_solver(optimizer, device, tracked_losses, model,
+                    total_loss = summed_solver(optimizer, device, losses, model,
                                                loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, 
                                                loss_ne_ov, loss_os_ov, loss_cc_pn, non_contributing_losses, 
                                                sum_mode, weights, weighted_ideal_vals, stch_mu, dbmtl_epsilon)
