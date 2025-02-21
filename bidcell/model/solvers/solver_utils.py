@@ -6,8 +6,10 @@ def to_scalar(value):
     if isinstance(value, torch.Tensor):
         if value.numel() == 1:
             value = value.item()
+        elif value.numel() > 1: 
+            value = value.detach().cpu().numpy()
         else:
-            print("Cannot apply .item() to a tensor with more than one element.")
+            print("Cannot apply .item() to a tensor with zero elements.")
     return value
 
 loss_key_conversion = {"ne": "Nuclei Encapsulation Loss", 
@@ -29,7 +31,7 @@ def assign_loss(tracked_losses, short_key, loss_val, loss_key_conversion = loss_
         tracked_losses[long_key].append(loss_val)
 
 def assign_losses(tracked_losses, contributing_losses, spectator_losses, unnecessary_losses, blank_losses, 
-                  total_loss, short_keys=None, detach=True):
+                  total_loss, short_keys=None):
     # Track individual losses
     if short_keys is None:
         short_keys = ["ne", "os", "cc", "ov", "mu", "pn", "ne_ov", "os_ov", "cc_pn"]
@@ -47,11 +49,11 @@ def assign_losses(tracked_losses, contributing_losses, spectator_losses, unneces
             step_term_loss = 0
 
         if step_term_loss != 0: 
-            step_term_loss = step_term_loss.detach().cpu().numpy() if detach else to_scalar(step_term_loss)
+            step_term_loss = to_scalar(step_term_loss)
         
         assign_loss(tracked_losses, key, step_term_loss)
 
-    step_total_loss = total_loss.detach().cpu().numpy() if detach else to_scalar(total_loss)
+    step_total_loss = to_scalar(total_loss)
     assign_loss(tracked_losses, "total", step_total_loss)
 
     return step_total_loss
