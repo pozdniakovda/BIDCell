@@ -585,24 +585,48 @@ def train(config: Config, learning_rate = None, selected_solver = None, device_i
                                                    loss_cc_pn = loss_cc_pn, 
                                                    scale_mode = "min", 
                                                    non_contributing_losses = non_contributing_losses)
+                    
+                elif "stch" in current_solver.lower():
+                    stch_mu = config.training_params.stch_mu
+                    total_loss = stch_solver(optimizer = optimizer, 
+                                             device = device, 
+                                             tracked_losses = losses, 
+                                             loss_ne = loss_ne, 
+                                             loss_os = loss_os, 
+                                             loss_cc = loss_cc, 
+                                             loss_ov = loss_ov, 
+                                             loss_mu = loss_mu, 
+                                             loss_pn = loss_pn, 
+                                             loss_ne_ov = loss_ne_ov, 
+                                             loss_os_ov = loss_os_ov, 
+                                             loss_cc_pn = loss_cc_pn, 
+                                             non_contributing_losses = non_contributing_losses, 
+                                             preference_weights = list(weights.values()), 
+                                             stch_mu = stch_mu)
+                    
+                elif "dbmtl" in current_solver.lower() or "db-mtl" in current_solver.lower():
+                    dbmtl_epsilon = config.training_params.dbmtl_epsilon
+                    total_loss = dbmtl_solver(optimizer = optimizer, 
+                                              device = device, 
+                                              tracked_losses = losses, 
+                                              model = model, 
+                                              loss_ne = loss_ne, 
+                                              loss_os = loss_os, 
+                                              loss_cc = loss_cc, 
+                                              loss_ov = loss_ov, 
+                                              loss_mu = loss_mu, 
+                                              loss_pn = loss_pn, 
+                                              loss_ne_ov = loss_ne_ov, 
+                                              loss_os_ov = loss_os_ov, 
+                                              loss_cc_pn = loss_cc_pn, 
+                                              non_contributing_losses=(), 
+                                              preference_weights = list(weights.values()), 
+                                              dbmtl_epsilon = dbmtl_epsilon)
+                    
                 else: 
-                    # Define summation mode; default is simple/arithmetic summation
-                    stch_mu, weighted_ideal_vals, dbmtl_epsilon = None, None, None
-                    if "stch" in current_solver.lower():
-                        sum_mode = "stch"
-                        stch_mu = config.training_params.stch_mu
-                        weighted_ideal_vals = None # Future warning: if not using the default of zero, these must be scaled with the respective loss weights
-                    elif "dbmtl" in current_solver.lower() or "db-mtl" in current_solver.lower():
-                        sum_mode = "dbmtl"
-                        dbmtl_epsilon = config.training_params.dbmtl_epsilon
-                    else: 
-                        sum_mode = "arithmetic"
-    
-                    # Run the solver
                     total_loss = summed_solver(optimizer = optimizer, 
                                                device = device, 
                                                tracked_losses = losses, 
-                                               model = model, 
                                                loss_ne = loss_ne, 
                                                loss_os = loss_os, 
                                                loss_cc = loss_cc, 
@@ -613,11 +637,7 @@ def train(config: Config, learning_rate = None, selected_solver = None, device_i
                                                loss_os_ov = loss_os_ov, 
                                                loss_cc_pn = loss_cc_pn, 
                                                non_contributing_losses = non_contributing_losses, 
-                                               sum_mode = sum_mode, 
-                                               preference_weights = list(weights.values()), 
-                                               ideal_vals = weighted_ideal_vals, 
-                                               stch_mu = stch_mu, 
-                                               dbmtl_epsilon = dbmtl_epsilon)
+                                               preference_weights = list(weights.values()))
                 
                 if step_epoch in step_save_indices:
                     fig_outputs = detach_fig_outputs(coords_h1, coords_w1, seg_pred, 
