@@ -92,7 +92,7 @@ def dbmtl_solver(optimizer, device, tracked_losses, model = None,
 
     # Normalize gradients to match the maximum gradient norm
     max_grad_norm = grads.norm(dim=1).max()
-    normalized_grads = grads / grads.norm(dim=1, keepdim=True).clamp(min=epsilon) * max_grad_norm
+    normalized_grads = grads / grads.norm(dim=1, keepdim=True).clamp(min=dbmtl_epsilon) * max_grad_norm
 
     # Apply normalized gradients back to model parameters
     grad = normalized_grads.sum(dim=0)
