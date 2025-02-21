@@ -28,12 +28,15 @@ def summed_solver(optimizer, device, tracked_losses, model = None,
         loss.backward()
         optimizer.step()
         
-    elif sum_mode in ["dbmtl", "db-mtl", "dual_balancing"]:
+    elif sum_mode in ["dbmtl", "db-mtl"]:
+        print(f"preference_weights: {preference_weights}")
+        print(f"Constructing DBMTLLoss...")
         criterion_dbmtl = DBMTLLoss(preference_weights, device)
         if dbmtl_epsilon is None:
             raise Exception(f"sum_mode was set to {sum_mode}, but dbmtl_epsilon was not given (None)")
         if model is None:
             raise Exception(f"sum_mode was set to {sum_mode}, but model is not given, despite being required")
+        print(f"Running forward pass...")
         loss = criterion_dbmtl(list(contributing_losses.values()), model, optimizer, preference_weights, dbmtl_epsilon)
         # Backward pass and optimization are performed inside DB-MTL loss object
         
