@@ -52,9 +52,9 @@ training_params:
   training_repeats: 1 # number of times to run the training loop; if >1, averaged graphs are computed
   total_epochs: 10 # number of training epochs; default: 1
   total_steps: 1000 # number of training steps; default: 4000
-  solver: "" # if given, this is the solver that will be used for the entire training process
-  starting_solver: "default" # solver for only the first n epochs
-  ending_solver: "procrustes-min" # solver to use after the first n epochs
+  solver: "default" # if given, this is the solver that will be used for the entire training process
+  starting_solver: "" # solver for only the first n epochs
+  ending_solver: "" # solver to use after the first n epochs
   epochs_before_switch: 5 # number of epochs to run before switching from starting solver to ending solver
   stch_mu: 1.0 # Smooth Tchebycheff coefficient (controls the weight smoothing); only used for STCH-MTL
   stch_warmup_epoch: 4 # Number of epochs for warm-up if the STCH-MTL method is being used
@@ -72,8 +72,8 @@ training_params:
   combine_cc_pn: False # combines ne_loss+ov_loss to reduce the number of losses during multi-objective training
   non_contributing_losses: []
   log_scale: False # whether to use logarithmic scaling when graphing the loss values
-  sample_expr_binary: bool = False # whether to display expression maps as binary (presence/absence)
-  sample_expr_log: bool = True # whether to log-transform the expression maps before rendering them
+  sample_expr_binary: False # whether to display expression maps as binary (presence/absence)
+  sample_expr_log: True # whether to log-transform the expression maps before rendering them
   show_moving_averages: True
 
 testing_params:
