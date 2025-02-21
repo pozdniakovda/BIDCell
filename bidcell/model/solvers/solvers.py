@@ -72,16 +72,39 @@ def dbmtl_solver(optimizer, device, tracked_losses, model = None,
     contributing_losses, unnecessary_losses, blank_losses, spectator_losses = filtered_losses
 
     # Apply DB-MTL method
-    print(f"preference_weights: {preference_weights}")
-    print(f"Constructing DBMTLLoss...")
     criterion_dbmtl = DBMTLLoss(preference_weights, device)
     if dbmtl_epsilon is None:
         raise Exception(f"sum_mode was set to {sum_mode}, but dbmtl_epsilon was not given (None)")
     if model is None:
         raise Exception(f"sum_mode was set to {sum_mode}, but model is not given, despite being required")
-    print(f"Running forward pass...")
     loss = criterion_dbmtl(list(contributing_losses.values()), model, optimizer, preference_weights, dbmtl_epsilon)
-    # NOTE: backward pass and optimization are performed inside DB-MTL loss object
+
+    # Compute gradients for each task
+    grads = []
+    optimizer.zero_grad()
+    for loss in list(contributing_losses.values()):
+        optimizer.zero_grad()
+        loss.backward(retain_graph=True)
+        grad = torch.cat([p.grad.flatten() if p.grad is not None else torch.zeros_like(p).flatten() for p in model.parameters()])
+        grads.append(grad)
+    grads = torch.stack(grads, dim=0)  # Stack gradients
+
+    # Normalize gradients to match the maximum gradient norm
+    max_grad_norm = grads.norm(dim=1).max()
+    normalized_grads = grads / grads.norm(dim=1, keepdim=True).clamp(min=epsilon) * max_grad_norm
+
+    # Apply normalized gradients back to model parameters
+    grad = normalized_grads.sum(dim=0)
+    offset = 0
+    for p in model.parameters():
+        if p.grad is None:
+            continue
+        _offset = offset + p.grad.numel()
+        p.grad.data = grad[offset:_offset].view_as(p.grad)
+        offset = _offset
+
+    # Perform optimization step
+    optimizer.step()
 
     # Track individual losses
     step_total_loss = assign_losses(tracked_losses, contributing_losses, spectator_losses, unnecessary_losses, blank_losses, 
