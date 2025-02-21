@@ -77,7 +77,7 @@ def dbmtl_solver(optimizer, device, tracked_losses, model = None,
         raise Exception(f"sum_mode was set to {sum_mode}, but dbmtl_epsilon was not given (None)")
     if model is None:
         raise Exception(f"sum_mode was set to {sum_mode}, but model is not given, despite being required")
-    loss = criterion_dbmtl(list(contributing_losses.values()), model, optimizer, preference_weights, dbmtl_epsilon)
+    log_total_loss, total_loss = criterion_dbmtl(list(contributing_losses.values()), model, optimizer, preference_weights, dbmtl_epsilon)
 
     # Compute gradients for each task
     grads = []
@@ -106,9 +106,9 @@ def dbmtl_solver(optimizer, device, tracked_losses, model = None,
     # Perform optimization step
     optimizer.step()
 
-    # Track individual losses
+    # Track individual losses; log_total_loss is used as total loss
     step_total_loss = assign_losses(tracked_losses, contributing_losses, spectator_losses, unnecessary_losses, blank_losses, 
-                                    loss, detach=True)
+                                    log_total_loss, detach=True)
 
     return step_total_loss
 
