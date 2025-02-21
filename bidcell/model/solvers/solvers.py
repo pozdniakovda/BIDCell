@@ -20,6 +20,13 @@ loss_key_conversion = {"ne": "Nuclei Encapsulation Loss",
                        "cc_pn": "Combined Cell Calling and Marker Loss", 
                        "total": "Total Loss"}
 
+def assign_loss(tracked_losses, short_key, loss_val, loss_key_conversion = loss_key_conversion):
+    long_key = loss_key_conversion[short_key]
+    if loss_val is not None: 
+        if key not in tracked_losses.keys():
+            tracked_losses[long_key] = []
+        tracked_losses[long_key].append(loss_val)
+
 def summed_solver(optimizer, device, tracked_losses, model = None, 
                   loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_mu = None, loss_pn = None, 
                   loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None, non_contributing_losses=(), 
