@@ -9,6 +9,17 @@ from .procrustes_solver import ProcrustesSolver
 from ..model.loss_summation import SummedLoss, STCHLoss, DBMTLLoss
 from ...config import load_config, Config
 
+loss_key_conversion = {"ne": "Nuclei Encapsulation Loss", 
+                       "os": "Oversegmentation Loss", 
+                       "cc": "Cell Calling Loss", 
+                       "ov": "Overlap Loss", 
+                       "mu": "Multiple Assignment Loss", 
+                       "pn": "Pos-Neg Marker Loss", 
+                       "ne_ov": "Combined Nuclei Encapsulation and Overlap Loss", 
+                       "os_ov": "Combined Oversegmentation and Overlap Loss", 
+                       "cc_pn": "Combined Cell Calling and Marker Loss", 
+                       "total": "Total Loss"}
+
 def summed_solver(optimizer, device, tracked_losses, model = None, 
                   loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_mu = None, loss_pn = None, 
                   loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None, non_contributing_losses=(), 
