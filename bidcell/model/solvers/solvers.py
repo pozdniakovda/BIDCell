@@ -25,8 +25,8 @@ def assign_loss(tracked_losses, short_key, loss_val, loss_key_conversion = loss_
             tracked_losses[long_key] = []
         tracked_losses[long_key].append(loss_val)
 
-def assign_losses(contributing_losses, spectator_losses, unnecessary_losses, blank_losses, total_loss, 
-                  short_keys=None, detach=True):
+def assign_losses(tracked_losses, contributing_losses, spectator_losses, unnecessary_losses, blank_losses, 
+                  total_loss, short_keys=None, detach=True):
     # Track individual losses
     if short_keys is None:
         short_keys = ["ne", "os", "cc", "ov", "mu", "pn", "ne_ov", "os_ov", "cc_pn"]
@@ -53,10 +53,10 @@ def assign_losses(contributing_losses, spectator_losses, unnecessary_losses, bla
 
     return step_total_loss
 
-def summed_solver(optimizer, device, tracked_losses, model = None, 
+def summed_solver(optimizer, device, tracked_losses, 
                   loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_mu = None, loss_pn = None, 
                   loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None, non_contributing_losses=(), 
-                  sum_mode = "arithmetic", preference_weights = None, ideal_vals = None, stch_mu = 1.0, dbmtl_epsilon = None):
+                  preference_weights = None):
     # Default solver for summed losses
 
     # Filter the losses based on whether they contribute to the summed loss
@@ -65,36 +65,69 @@ def summed_solver(optimizer, device, tracked_losses, model = None,
     contributing_losses, unnecessary_losses, blank_losses, spectator_losses = filtered_losses
 
     # Sum the contributing losses
-    if sum_mode in ["stch", "smooth_tchebycheff", "smoothed_tchebycheff"]:
-        criterion_stch = STCHLoss(preference_weights, device)
-        loss = criterion_stch(list(contributing_losses.values()), preference_weights, ideal_vals, stch_mu)
-        # Optimisation
-        loss.backward()
-        optimizer.step()
-        
-    elif sum_mode in ["dbmtl", "db-mtl"]:
-        print(f"preference_weights: {preference_weights}")
-        print(f"Constructing DBMTLLoss...")
-        criterion_dbmtl = DBMTLLoss(preference_weights, device)
-        if dbmtl_epsilon is None:
-            raise Exception(f"sum_mode was set to {sum_mode}, but dbmtl_epsilon was not given (None)")
-        if model is None:
-            raise Exception(f"sum_mode was set to {sum_mode}, but model is not given, despite being required")
-        print(f"Running forward pass...")
-        loss = criterion_dbmtl(list(contributing_losses.values()), model, optimizer, preference_weights, dbmtl_epsilon)
-        # Backward pass and optimization are performed inside DB-MTL loss object
-        
-    else:
-        criterion_sum = SummedLoss(device)
-        loss = criterion_sum(list(contributing_losses.values()))
-        if sum_mode not in ["arithmetic", "sum", "simple", "linear"]: 
-            print(f"Unrecognized sum_mode ({sum_mode}); defaulting to simple summation.")
-        # Optimisation
-        loss.backward()
-        optimizer.step()
+    criterion_sum = SummedLoss(device)
+    loss = criterion_sum(list(contributing_losses.values()))
+    if sum_mode not in ["arithmetic", "sum", "simple", "linear"]: 
+        print(f"Unrecognized sum_mode ({sum_mode}); defaulting to simple summation.")
+
+    # Optimisation
+    loss.backward()
+    optimizer.step()
 
     # Track individual losses
-    step_total_loss = assign_losses(contributing_losses, spectator_losses, unnecessary_losses, blank_losses, 
+    step_total_loss = assign_losses(tracked_losses, contributing_losses, spectator_losses, unnecessary_losses, blank_losses, 
+                                    loss, detach=True)
+
+    return step_total_loss
+
+def stch_solver(optimizer, device, tracked_losses, 
+                loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_mu = None, loss_pn = None, 
+                loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None, non_contributing_losses=(), 
+                preference_weights = None, ideal_vals = None, stch_mu = 1.0):
+    # STCH Solver
+
+    # Filter the losses based on whether they contribute to the summed loss
+    filtered_losses = filter_losses(optimizer, loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, 
+                                    loss_ne_ov, loss_os_ov, loss_cc_pn, non_contributing_losses, squeeze=True)
+    contributing_losses, unnecessary_losses, blank_losses, spectator_losses = filtered_losses
+
+    # Combine the losses using STCH
+    criterion_stch = STCHLoss(preference_weights, device)
+    loss = criterion_stch(list(contributing_losses.values()), preference_weights, ideal_vals, stch_mu)
+    loss.backward()
+    optimizer.step()
+
+    # Track individual losses
+    step_total_loss = assign_losses(tracked_losses, contributing_losses, spectator_losses, unnecessary_losses, blank_losses, 
+                                    loss, detach=True)
+
+    return step_total_loss
+
+def dbmtl_solver(optimizer, device, tracked_losses, model = None, 
+                 loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_mu = None, loss_pn = None, 
+                 loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None, non_contributing_losses=(), 
+                 preference_weights = None, dbmtl_epsilon = None):
+    # DB-MTL Solver
+
+    # Filter the losses based on whether they contribute to the summed loss
+    filtered_losses = filter_losses(optimizer, loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, 
+                                    loss_ne_ov, loss_os_ov, loss_cc_pn, non_contributing_losses, squeeze=True)
+    contributing_losses, unnecessary_losses, blank_losses, spectator_losses = filtered_losses
+
+    # Apply DB-MTL method
+    print(f"preference_weights: {preference_weights}")
+    print(f"Constructing DBMTLLoss...")
+    criterion_dbmtl = DBMTLLoss(preference_weights, device)
+    if dbmtl_epsilon is None:
+        raise Exception(f"sum_mode was set to {sum_mode}, but dbmtl_epsilon was not given (None)")
+    if model is None:
+        raise Exception(f"sum_mode was set to {sum_mode}, but model is not given, despite being required")
+    print(f"Running forward pass...")
+    loss = criterion_dbmtl(list(contributing_losses.values()), model, optimizer, preference_weights, dbmtl_epsilon)
+    # NOTE: backward pass and optimization are performed inside DB-MTL loss object
+
+    # Track individual losses
+    step_total_loss = assign_losses(tracked_losses, contributing_losses, spectator_losses, unnecessary_losses, blank_losses, 
                                     loss, detach=True)
 
     return step_total_loss
