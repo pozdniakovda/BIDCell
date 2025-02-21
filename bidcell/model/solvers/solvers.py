@@ -163,21 +163,7 @@ def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os 
     total_loss = sum(list(contributing_losses.values()))
 
     # Track the loss values for graphing purposes
-    keys = ["ne", "os", "cc", "ov", "mu", "pn", "ne_ov", "os_ov", "cc_pn"]
-    for key in keys:
-        if contributing_losses.get(key) is not None:
-            scalar_loss = to_scalar(contributing_losses[key])
-        elif spectator_losses.get(key) is not None:
-            scalar_loss = to_scalar(spectator_losses[key])
-        elif unnecessary_losses.get(key) is not None:
-            scalar_loss = to_scalar(unnecessary_losses[key])
-        elif blank_losses.get(key) is not None:
-            scalar_loss = to_scalar(blank_losses[key])
-        else:
-            scalar_loss = 0
-        assign_loss(tracked_losses, key, scalar_loss)
-
-    total_loss_scalar = to_scalar(total_loss)
-    assign_loss(tracked_losses, "total", total_loss_scalar)
+    step_total_loss = assign_losses(tracked_losses, contributing_losses, spectator_losses, unnecessary_losses, blank_losses, 
+                                    total_loss, detach=False)
 
     return total_loss_scalar
