@@ -599,10 +599,25 @@ def train(config: Config, learning_rate = None, selected_solver = None, device_i
                         sum_mode = "arithmetic"
     
                     # Run the solver
-                    total_loss = summed_solver(optimizer, device, losses, model,
-                                               loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, 
-                                               loss_ne_ov, loss_os_ov, loss_cc_pn, non_contributing_losses, 
-                                               sum_mode, weights, weighted_ideal_vals, stch_mu, dbmtl_epsilon)
+                    total_loss = summed_solver(optimizer = optimizer, 
+                                               device = device, 
+                                               tracked_losses = losses, 
+                                               model = model, 
+                                               loss_ne = loss_ne, 
+                                               loss_os = loss_os, 
+                                               loss_cc = loss_cc, 
+                                               loss_ov = loss_ov, 
+                                               loss_mu = loss_mu, 
+                                               loss_pn = loss_pn, 
+                                               loss_ne_ov = loss_ne_ov, 
+                                               loss_os_ov = loss_os_ov, 
+                                               loss_cc_pn = loss_cc_pn, 
+                                               non_contributing_losses = non_contributing_losses, 
+                                               sum_mode = sum_mode, 
+                                               preference_weights = preference_weights, 
+                                               ideal_vals = weighted_ideal_vals, 
+                                               stch_mu = stch_mu, 
+                                               dbmtl_epsilon = dbmtl_epsilon)
                 
                 if step_epoch in step_save_indices:
                     fig_outputs = detach_fig_outputs(coords_h1, coords_w1, seg_pred, 
