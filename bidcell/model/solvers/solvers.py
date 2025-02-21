@@ -166,4 +166,4 @@ def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os 
     step_total_loss = assign_losses(tracked_losses, contributing_losses, spectator_losses, unnecessary_losses, blank_losses, 
                                     total_loss, detach=False)
 
-    return total_loss_scalar
+    return step_total_loss
