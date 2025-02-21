@@ -48,8 +48,7 @@ def assign_losses(tracked_losses, contributing_losses, spectator_losses, unneces
         else:
             step_term_loss = 0
 
-        if step_term_loss != 0: 
-            step_term_loss = to_scalar(step_term_loss)
+        step_term_loss = to_scalar(step_term_loss)
 
         print(f"{key} loss type: {type(step_term_loss)}")
         assign_loss(tracked_losses, key, step_term_loss)
