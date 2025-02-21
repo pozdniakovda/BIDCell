@@ -32,8 +32,8 @@ def summed_solver(optimizer, device, tracked_losses,
     optimizer.step()
 
     # Track individual losses
-    step_total_loss = assign_losses(tracked_losses, contributing_losses, spectator_losses, unnecessary_losses, blank_losses, 
-                                    loss, detach=True)
+    step_total_loss = assign_losses(tracked_losses, contributing_losses, spectator_losses, 
+                                    unnecessary_losses, blank_losses, loss)
 
     return step_total_loss
 
@@ -55,8 +55,8 @@ def stch_solver(optimizer, device, tracked_losses,
     optimizer.step()
 
     # Track individual losses
-    step_total_loss = assign_losses(tracked_losses, contributing_losses, spectator_losses, unnecessary_losses, blank_losses, 
-                                    loss, detach=True)
+    step_total_loss = assign_losses(tracked_losses, contributing_losses, spectator_losses, 
+                                    unnecessary_losses, blank_losses, loss)
 
     return step_total_loss
 
@@ -108,8 +108,8 @@ def dbmtl_solver(optimizer, device, tracked_losses, model = None,
     optimizer.step()
 
     # Track individual losses; log_total_loss is used as total loss
-    step_total_loss = assign_losses(tracked_losses, contributing_losses, spectator_losses, unnecessary_losses, blank_losses, 
-                                    log_total_loss, detach=True)
+    step_total_loss = assign_losses(tracked_losses, contributing_losses, spectator_losses, 
+                                    unnecessary_losses, blank_losses, log_total_loss)
 
     return step_total_loss
 
@@ -163,7 +163,7 @@ def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os 
     total_loss = sum(list(contributing_losses.values()))
 
     # Track the loss values for graphing purposes
-    step_total_loss = assign_losses(tracked_losses, contributing_losses, spectator_losses, unnecessary_losses, blank_losses, 
-                                    total_loss, detach=False)
+    step_total_loss = assign_losses(tracked_losses, contributing_losses, spectator_losses, 
+                                    unnecessary_losses, blank_losses, total_loss)
 
     return step_total_loss
