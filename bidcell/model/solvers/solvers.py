@@ -107,9 +107,9 @@ def dbmtl_solver(optimizer, device, tracked_losses, model = None,
     # Perform optimization step
     optimizer.step()
 
-    # Track individual losses; log_total_loss is used as total loss
+    # Track individual losses; untransformed total loss is used
     step_total_loss = assign_losses(tracked_losses, contributing_losses, spectator_losses, 
-                                    unnecessary_losses, blank_losses, log_total_loss)
+                                    unnecessary_losses, blank_losses, total_loss)
 
     return step_total_loss
 
