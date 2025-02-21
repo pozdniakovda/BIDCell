@@ -25,6 +25,34 @@ def assign_loss(tracked_losses, short_key, loss_val, loss_key_conversion = loss_
             tracked_losses[long_key] = []
         tracked_losses[long_key].append(loss_val)
 
+def assign_losses(contributing_losses, spectator_losses, unnecessary_losses, blank_losses, total_loss, 
+                  short_keys=None, detach=True):
+    # Track individual losses
+    if short_keys is None:
+        short_keys = ["ne", "os", "cc", "ov", "mu", "pn", "ne_ov", "os_ov", "cc_pn"]
+    
+    for key in short_keys:
+        if contributing_losses.get(key) is not None:
+            step_term_loss = contributing_losses[key]
+        elif spectator_losses.get(key) is not None:
+            step_term_loss = spectator_losses[key]
+        elif unnecessary_losses.get(key) is not None:
+            step_term_loss = unnecessary_losses[key]
+        elif blank_losses.get(key) is not None:
+            step_term_loss = blank_losses[key]
+        else:
+            step_term_loss = 0
+
+        if step_term_loss != 0: 
+            step_term_loss = step_term_loss.detach().cpu().numpy() if detach else to_scalar(step_term_loss)
+        
+        assign_loss(tracked_losses, key, step_term_loss)
+
+    step_total_loss = total_loss.detach().cpu().numpy() if detach else to_scalar(step_total_loss)
+    assign_loss(tracked_losses, "total", step_total_loss)
+
+    return step_total_loss
+
 def summed_solver(optimizer, device, tracked_losses, model = None, 
                   loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_mu = None, loss_pn = None, 
                   loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None, non_contributing_losses=(), 
@@ -66,22 +94,8 @@ def summed_solver(optimizer, device, tracked_losses, model = None,
         optimizer.step()
 
     # Track individual losses
-    keys = ["ne", "os", "cc", "ov", "mu", "pn", "ne_ov", "os_ov", "cc_pn"]
-    for key in keys:
-        if contributing_losses.get(key) is not None:
-            step_term_loss = contributing_losses[key].detach().cpu().numpy()
-        elif spectator_losses.get(key) is not None:
-            step_term_loss = spectator_losses[key].detach().cpu().numpy()
-        elif unnecessary_losses.get(key) is not None:
-            step_term_loss = unnecessary_losses[key].detach().cpu().numpy()
-        elif blank_losses.get(key) is not None:
-            step_term_loss = blank_losses[key].detach().cpu().numpy()
-        else:
-            step_term_loss = 0
-        assign_loss(tracked_losses, key, step_term_loss)
-
-    step_total_loss = loss.detach().cpu().numpy()
-    assign_loss(tracked_losses, "total", step_total_loss)
+    step_total_loss = assign_losses(contributing_losses, spectator_losses, unnecessary_losses, blank_losses, 
+                                    loss, detach=True)
 
     return step_total_loss
 
