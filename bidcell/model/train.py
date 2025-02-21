@@ -614,7 +614,7 @@ def train(config: Config, learning_rate = None, selected_solver = None, device_i
                                                loss_cc_pn = loss_cc_pn, 
                                                non_contributing_losses = non_contributing_losses, 
                                                sum_mode = sum_mode, 
-                                               preference_weights = preference_weights, 
+                                               preference_weights = list(weights.values()), 
                                                ideal_vals = weighted_ideal_vals, 
                                                stch_mu = stch_mu, 
                                                dbmtl_epsilon = dbmtl_epsilon)
