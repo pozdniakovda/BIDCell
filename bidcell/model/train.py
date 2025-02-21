@@ -568,8 +568,8 @@ def train(config: Config, learning_rate = None, selected_solver = None, device_i
                                                  weights, device, combine_ne_ov, combine_os_ov, combine_cc_pn, is_first_step)
                 loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, loss_ne_ov, loss_os_ov, loss_cc_pn, weights = computed_losses
                 
-                # Apply the Procrustes method
                 if "procrustes" in current_solver:
+                    # Apply the Procrustes method
                     scale_mode = "median" if "median" in current_solver else "rmse" if "rmse" in current_solver else "min"
                     total_loss = procrustes_method(model = model, 
                                                    optimizer = optimizer, 
