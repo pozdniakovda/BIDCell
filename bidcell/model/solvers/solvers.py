@@ -69,7 +69,6 @@ def summed_solver(optimizer, device, tracked_losses, model = None,
 
     # Track individual losses
     keys = ["ne", "os", "cc", "ov", "mu", "pn", "ne_ov", "os_ov", "cc_pn"]
-    detached_losses = {}
     for key in keys:
         if contributing_losses.get(key) is not None:
             step_term_loss = contributing_losses[key].detach().cpu().numpy()
@@ -81,23 +80,12 @@ def summed_solver(optimizer, device, tracked_losses, model = None,
             step_term_loss = blank_losses[key].detach().cpu().numpy()
         else:
             step_term_loss = 0
-        detached_losses[key] = step_term_loss
+        assign_loss(tracked_losses, key, step_term_loss)
 
-    step_train_loss = loss.detach().cpu().numpy()
+    step_total_loss = loss.detach().cpu().numpy()
+    assign_loss(tracked_losses, "total", step_total_loss)
 
-    track_losses(tracked_losses = tracked_losses, 
-                 loss_ne = detached_losses["ne"], 
-                 loss_os = detached_losses["os"], 
-                 loss_cc = detached_losses["cc"], 
-                 loss_ov = detached_losses["ov"], 
-                 loss_mu = detached_losses["mu"], 
-                 loss_pn = detached_losses["pn"], 
-                 loss_ne_ov = detached_losses["ne_ov"], 
-                 loss_os_ov = detached_losses["os_ov"], 
-                 loss_cc_pn = detached_losses["cc_pn"], 
-                 loss_total = step_train_loss)
-
-    return step_train_loss
+    return step_total_loss
 
 def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os = None, loss_cc = None, loss_ov = None, loss_mu = None, 
                       loss_pn = None, loss_ne_ov = None, loss_os_ov = None, loss_cc_pn = None, scale_mode = "min", non_contributing_losses=()): 
