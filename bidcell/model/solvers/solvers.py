@@ -1,8 +1,6 @@
 import torch
 from .solver_utils import (
     to_scalar, 
-    track_loss, 
-    track_losses, 
     filter_losses,
 )
 from .procrustes_solver import ProcrustesSolver
@@ -137,7 +135,6 @@ def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os 
 
     # Track the loss values for graphing purposes
     keys = ["ne", "os", "cc", "ov", "mu", "pn", "ne_ov", "os_ov", "cc_pn"]
-    scalarized_losses = {}
     for key in keys:
         if contributing_losses.get(key) is not None:
             scalar_loss = to_scalar(contributing_losses[key])
@@ -149,20 +146,9 @@ def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os 
             scalar_loss = to_scalar(blank_losses[key])
         else:
             scalar_loss = 0
-        scalarized_losses[key] = scalar_loss
+        assign_loss(tracked_losses, key, scalar_loss)
 
     total_loss_scalar = to_scalar(total_loss)
-    
-    track_losses(tracked_losses = tracked_losses, 
-                 loss_ne = scalarized_losses.get("ne"), 
-                 loss_os = scalarized_losses.get("os"), 
-                 loss_cc = scalarized_losses.get("cc"), 
-                 loss_ov = scalarized_losses.get("ov"), 
-                 loss_mu = scalarized_losses.get("mu"), 
-                 loss_pn = scalarized_losses.get("pn"), 
-                 loss_ne_ov = scalarized_losses.get("ne_ov"), 
-                 loss_os_ov = scalarized_losses.get("os_ov"), 
-                 loss_cc_pn = scalarized_losses.get("cc_pn"), 
-                 loss_total = total_loss_scalar)
+    assign_loss(tracked_losses, "total", total_loss_scalar)
 
     return total_loss_scalar
