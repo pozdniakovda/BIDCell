@@ -83,10 +83,11 @@ def dbmtl_solver(optimizer, device, tracked_losses, model = None,
     grads = []
     optimizer.zero_grad()
     for loss in log_losses:
-        optimizer.zero_grad()
-        loss.backward(retain_graph=True)
-        grad = torch.cat([p.grad.flatten() if p.grad is not None else torch.zeros_like(p).flatten() for p in model.parameters()])
-        grads.append(grad)
+        if loss.item() != 0: 
+            optimizer.zero_grad()
+            loss.backward(retain_graph=True)
+            grad = torch.cat([p.grad.flatten() if p.grad is not None else torch.zeros_like(p).flatten() for p in model.parameters()])
+            grads.append(grad)
     grads = torch.stack(grads, dim=0)  # Stack gradients
 
     # Normalize gradients to match the maximum gradient norm
@@ -122,24 +123,25 @@ def procrustes_method(model, optimizer, tracked_losses, loss_ne = None, loss_os 
     # Backward pass
     grads = []
     for key, loss in contributing_losses.items():
-        optimizer.zero_grad()  # Clear previous gradients
-        try:
-            loss.backward(retain_graph=True)  # Retain graph for backpropagation
-        except Exception as e:
-            raise Exception(f"Contributing loss {key} of type {type(loss)} produced the following exception during backpropagation: \n\t{e}")
-        grad = torch.cat([p.grad.flatten() if p.grad is not None else torch.zeros_like(p).flatten() for p in model.parameters()])
-        grads.append(grad)
+        if loss.item() != 0: 
+            optimizer.zero_grad()  # Clear previous gradients
+            try:
+                loss.backward(retain_graph=True)  # Retain graph for backpropagation
+            except Exception as e:
+                raise Exception(f"Contributing loss {key} of type {type(loss)} produced the following exception during backpropagation: \n\t{e}")
+            grad = torch.cat([p.grad.flatten() if p.grad is not None else torch.zeros_like(p).flatten() for p in model.parameters()])
+            grads.append(grad)
 
     grads = torch.stack(grads, dim=0)  # Stack gradients
 
     # Perform backward pass on spectator losses
     for loss in spectator_losses.values():
-        optimizer.zero_grad()
-        try:
-            loss.backward(retain_graph=True)
-        except Exception as e:
-            raise Exception(f"Spectator loss [{key}] of type [{type(loss)}] produced the following exception during backpropagation: \n\t{e}")
-
+        if loss.item() != 0: 
+            optimizer.zero_grad()
+            try:
+                loss.backward(retain_graph=True)
+            except Exception as e:
+                raise Exception(f"Spectator loss [{key}] of type [{type(loss)}] produced the following exception during backpropagation: \n\t{e}")
 
     # Apply Procrustes Solver
     grads, weights, singulars = ProcrustesSolver.apply(grads.T.unsqueeze(0), scale_mode)
