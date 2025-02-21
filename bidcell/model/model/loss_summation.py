@@ -111,32 +111,7 @@ class DBMTLLoss(nn.Module):
             log_transformed_losses.append(weighted_log_loss)
         
         # Compute total loss
-        total_loss = torch.sum(torch.stack(log_transformed_losses))
+        log_total_loss = torch.sum(torch.stack(log_transformed_losses))
+        total_loss = torch.sum(torch.stack(losses))
         
-        # Compute gradients for each task
-        grads = []
-        optimizer.zero_grad()
-        for loss in losses:
-            optimizer.zero_grad()
-            loss.backward(retain_graph=True)
-            grad = torch.cat([p.grad.flatten() if p.grad is not None else torch.zeros_like(p).flatten() for p in model.parameters()])
-            grads.append(grad)
-        grads = torch.stack(grads, dim=0)  # Stack gradients
-
-        # Normalize gradients to match the maximum gradient norm
-        max_grad_norm = grads.norm(dim=1).max()
-        normalized_grads = grads / grads.norm(dim=1, keepdim=True).clamp(min=epsilon) * max_grad_norm
-
-        # Apply normalized gradients back to model parameters
-        grad = normalized_grads.sum(dim=0)
-        offset = 0
-        for p in model.parameters():
-            if p.grad is None:
-                continue
-            _offset = offset + p.grad.numel()
-            p.grad.data = grad[offset:_offset].view_as(p.grad)
-            offset = _offset
-        
-        optimizer.step()
-        
-        return total_loss
+        return (log_total_loss, total_loss)
