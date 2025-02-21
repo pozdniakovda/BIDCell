@@ -77,12 +77,12 @@ def dbmtl_solver(optimizer, device, tracked_losses, model = None,
         raise Exception(f"sum_mode was set to {sum_mode}, but dbmtl_epsilon was not given (None)")
     if model is None:
         raise Exception(f"sum_mode was set to {sum_mode}, but model is not given, despite being required")
-    log_total_loss, total_loss = criterion_dbmtl(list(contributing_losses.values()), model, optimizer, preference_weights, dbmtl_epsilon)
+    log_losses, log_total_loss, total_loss = criterion_dbmtl(list(contributing_losses.values()), model, optimizer, preference_weights, dbmtl_epsilon)
 
-    # Compute gradients for each task
+    # Compute gradients for each task; use log-transformed losses
     grads = []
     optimizer.zero_grad()
-    for loss in list(contributing_losses.values()):
+    for loss in log_losses:
         optimizer.zero_grad()
         loss.backward(retain_graph=True)
         grad = torch.cat([p.grad.flatten() if p.grad is not None else torch.zeros_like(p).flatten() for p in model.parameters()])
