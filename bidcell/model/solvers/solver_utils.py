@@ -51,7 +51,7 @@ def assign_losses(tracked_losses, contributing_losses, spectator_losses, unneces
         
         assign_loss(tracked_losses, key, step_term_loss)
 
-    step_total_loss = total_loss.detach().cpu().numpy() if detach else to_scalar(step_total_loss)
+    step_total_loss = total_loss.detach().cpu().numpy() if detach else to_scalar(total_loss)
     assign_loss(tracked_losses, "total", step_total_loss)
 
     return step_total_loss
