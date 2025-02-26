@@ -24,8 +24,6 @@ def summed_solver(optimizer, device, tracked_losses,
     # Sum the contributing losses
     criterion_sum = SummedLoss(device)
     loss = criterion_sum(list(contributing_losses.values()))
-    if sum_mode not in ["arithmetic", "sum", "simple", "linear"]: 
-        print(f"Unrecognized sum_mode ({sum_mode}); defaulting to simple summation.")
 
     # Optimisation
     loss.backward()
@@ -74,9 +72,9 @@ def dbmtl_solver(optimizer, device, tracked_losses, model = None,
     # Apply DB-MTL method
     criterion_dbmtl = DBMTLLoss(preference_weights, device)
     if dbmtl_epsilon is None:
-        raise Exception(f"sum_mode was set to {sum_mode}, but dbmtl_epsilon was not given (None)")
+        raise Exception(f"DB-MTL requires dbmtl_epsilon, but it was not given (None)")
     if model is None:
-        raise Exception(f"sum_mode was set to {sum_mode}, but model is not given, despite being required")
+        raise Exception(f"DB-MTL requires model, but it was not given (None)")
     log_losses, log_total_loss, total_loss = criterion_dbmtl(list(contributing_losses.values()), model, optimizer, preference_weights, dbmtl_epsilon)
 
     # Compute gradients for each task; use log-transformed losses
