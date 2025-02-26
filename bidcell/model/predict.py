@@ -78,6 +78,11 @@ def predict(config: Config) -> str:
 
     # Begin a specified number of repeats of the prediction loop; >1 repeats generates separate folders
     training_repeats = config.training_params.training_repeats
+    learning_rate = config.training_params.learning_rate
+    selected_solver = config.training_params.solver
+    starting_solver = config.training_params.starting_solver
+    ending_solver = config.training_params.ending_solver
+    epochs_before_switch = config.training_params.epochs_before_switch
     make_new = False
     experiment_path, paths_dict = get_paths(config, make_new, learning_rate, dynamic_solvers, selected_solver, 
                                             starting_solver, ending_solver, epochs_before_switch, training_repeats)
