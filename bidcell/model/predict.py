@@ -83,6 +83,7 @@ def predict(config: Config) -> str:
     starting_solver = config.training_params.starting_solver
     ending_solver = config.training_params.ending_solver
     epochs_before_switch = config.training_params.epochs_before_switch
+    dynamic_solvers = starting_solver != "" and ending_solver != "" and epochs_before_switch > 0
     make_new = False
     experiment_path, paths_dict = get_paths(config, make_new, learning_rate, dynamic_solvers, selected_solver, 
                                             starting_solver, ending_solver, epochs_before_switch, training_repeats)
