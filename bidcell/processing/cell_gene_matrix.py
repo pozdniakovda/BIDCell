@@ -271,13 +271,9 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
 
         print("Obtained cell-gene matrix")
         
-        os.remove(fp_rescaled_seg)
-        print(f"Removed {fp_rescaled_seg}")
-        
+        os.remove(fp_rescaled_seg)        
         del seg_map
-        print("Deleted seg_map")
         del df_expr
-        print("Deleted df_expr")
 
     else:
         df_out = pd.read_csv(output_dir + "/" + config.files.fp_expr, index_col=0)
