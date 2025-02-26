@@ -39,6 +39,7 @@ def get_paths(config, make_new, learning_rate, dynamic_solvers, selected_solver=
     )
     
     print(f"config.files.data_dir = {config.files.data_dir}")
+    print(f"config.experiment_dirs.dir_id = {config.experiment_dirs.dir_id}")
     print(f"timestamp = {timestamp}")
     print(f"learning_rate = {learning_rate}")
     if not dynamic_solvers: 
