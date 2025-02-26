@@ -270,9 +270,14 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
                 os.remove(fpc)
 
         print("Obtained cell-gene matrix")
+        
         os.remove(fp_rescaled_seg)
+        print(f"Removed {fp_rescaled_seg}")
+        
         del seg_map
+        print("Deleted seg_map")
         del df_expr
+        print("Deleted df_expr")
 
     else:
         df_out = pd.read_csv(output_dir + "/" + config.files.fp_expr, index_col=0)
@@ -310,7 +315,7 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
     #     for p in processes:
     #         p.join()
 
-    print("Done")
+    print("Done making cell gene matrix.")
 
 
 if __name__ == "__main__":
