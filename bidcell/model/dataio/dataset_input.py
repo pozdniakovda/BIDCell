@@ -312,16 +312,12 @@ class DataProcessing(data.Dataset):
                         nucl_split[:, :, i_cell], kernel, iterations=1
                     )
 
-            if int(c_id) not in self.nuclei_types_ids:
-                nucl_aug_unique = np.unique(nucl_aug)
-                nuclei_unique = np.unique(self.nuclei)
-                print(f"ERROR: c_id {c_id} is missing from nuclei_types_ids!")
-                print(f"All available nuclei IDs (len={len(self.nuclei_types_ids)}): {self.nuclei_types_ids[:10]} ... {self.nuclei_types_ids[-10:]}")
-                print(f"Unique nuclei in current patch (len={len(nucl_aug_unique)}): {nucl_aug_unique}")
-                print(f"Unique nuclei in full dataset (len={len(nuclei_unique)}): {nuclei_unique}")
-            ct_idx = self.nuclei_types_ids.index(c_id)
-            ct_nucleus = int(self.nuclei_types_idx[ct_idx])
-            ct_nucleus_name = self.type_names[ct_nucleus]
+            if c_id in self.nuclei_types_ids:
+                ct_nucleus = int(self.nuclei_types_idx[self.nuclei_types_ids.index(c_id)])
+                ct_nucleus_name = self.type_names[ct_nucleus]
+            else:
+                print(f"Warning: c_id {c_id} is missing from nuclei_types_ids (len={len(nuclei_types_ids)}); it will be skipped.")
+                return None
 
             # Markers with dilation
             # ct_pos = np.expand_dims(np.expand_dims(self.pos_markers[ct_nucleus,:], 0),0)*expr_aug
