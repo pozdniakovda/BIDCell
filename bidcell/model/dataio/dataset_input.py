@@ -313,10 +313,12 @@ class DataProcessing(data.Dataset):
                     )
 
             if int(c_id) not in self.nuclei_types_ids:
+                nucl_aug_unique = np.unique(nucl_aug)
+                nuclei_unique = np.unique(self.nuclei)
                 print(f"ERROR: c_id {c_id} is missing from nuclei_types_ids!")
                 print(f"All available nuclei IDs (len={len(self.nuclei_types_ids)}): {self.nuclei_types_ids[:10]} ... {self.nuclei_types_ids[-10:]}")
-                print(f"Unique nuclei in current patch: {np.unique(nucl_aug)}")
-                print(f"Unique nuclei in full dataset: {np.unique(self.nuclei)}")
+                print(f"Unique nuclei in current patch (len={len(nucl_aug_unique)}): {nucl_aug_unique}")
+                print(f"Unique nuclei in full dataset (len={len(nuclei_unique)}): {nuclei_unique}")
             ct_idx = self.nuclei_types_ids.index(c_id)
             ct_nucleus = int(self.nuclei_types_idx[ct_idx])
             ct_nucleus_name = self.type_names[ct_nucleus]
