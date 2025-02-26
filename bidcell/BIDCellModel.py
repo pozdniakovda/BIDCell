@@ -164,6 +164,7 @@ class BIDCellModel:
     def predict(self) -> None:
         """Segment and annotate the cells.
         """
+        print(f"Beginning prediction...")
         predict(self.config)
 
         if self.config.experiment_dirs.dir_id == "last":
@@ -174,11 +175,16 @@ class BIDCellModel:
             timestamp = self.config.experiment_dirs.dir_id
             self.__check_valid_timestamp(timestamp)
 
+        print(f"Filling grid...")
         fill_grid(self.config, timestamp)
 
+        print(f"Postprocessing predictions...")
         postprocess_predictions(self.config, timestamp)
 
+        print(f"Making cell gene matrix...")
         make_cell_gene_mat(self.config, is_cell=True, timestamp=timestamp)
+
+        print(f"Done prediction.")
 
     @staticmethod
     def get_example_config(vendor: Literal["cosmx", "merscope", "stereoseq", "xenium"]) -> None:
