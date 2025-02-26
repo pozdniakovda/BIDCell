@@ -28,6 +28,38 @@ from .utils.utils import (
 from ..config import load_config, Config
 
 
+def get_paths(config, make_new, learning_rate, dynamic_solvers, selected_solver=None, 
+              starting_solver=None, ending_solver=None, epochs_before_switch=0, training_repeats=1):
+    # Get paths to models and outputs
+    
+    timestamp = get_experiment_id(
+        make_new,
+        config.experiment_dirs.dir_id,
+        config.files.data_dir,
+    )
+    if not dynamic_solvers: 
+        experiment_path = os.path.join(config.files.data_dir, "model_outputs", f"{timestamp}_{selected_solver}_lr-{learning_rate}")
+    else:
+        experiment_path = os.path.join(config.files.data_dir, "model_outputs", f"{timestamp}_{starting_solver}-to-{ending_solver}_switched-after-{epochs_before_switch}-epochs_lr-{learning_rate}")
+
+    if training_repeats > 1: 
+        # Paths for each repeat
+        repeat_paths = {}
+        for i in np.arange(1, training_repeats+1): 
+            repeat_paths[i] = {"repeat_path": os.path.join(experiment_path, f"repeat_{i}"), 
+                               "model_path": os.path.join(experiment_path, f"repeat_{i}", config.experiment_dirs.model_dir), 
+                               "samples_path": os.path.join(experiment_path, f"repeat_{i}", config.experiment_dirs.samples_dir)}
+
+    else:
+        repeat_paths = {"experiment_path": experiment_path,
+                        "repeat_path": experiment_path, 
+                        "model_path": os.path.join(experiment_path, config.experiment_dirs.model_dir), 
+                        "samples_path": os.path.join(experiment_path, config.experiment_dirs.samples_dir)}
+        repeat_paths[1] = {key: path for key, path in repeat_paths.items()}
+    
+    return experiment_path, repeat_paths
+
+
 def predict(config: Config) -> str:
     logging.basicConfig(
         format="%(asctime)s %(levelname)s %(message)s",
