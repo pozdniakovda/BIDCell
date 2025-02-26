@@ -312,14 +312,14 @@ class DataProcessing(data.Dataset):
                         nucl_split[:, :, i_cell], kernel, iterations=1
                     )
 
-            print("c_id =", c_id)
-            print("nuclei_types_ids =", self.nuclei_types_ids)
+            if int(c_id) not in self.nuclei_types_ids:
+                print(f"ERROR: c_id {c_id} is missing from nuclei_types_ids!")
+                print(f"All available nuclei IDs (len={len(self.nuclei_types_ids)}): {self.nuclei_types_ids[:10]} ... {self.nuclei_types_ids[-10:]}")
+                print(f"Unique nuclei in current patch: {np.unique(nucl_aug)}")
+                print(f"Unique nuclei in full dataset: {np.unique(self.nuclei)}")
             ct_idx = self.nuclei_types_ids.index(c_id)
-            print("ct_idx =", ct_idx)
             ct_nucleus = int(self.nuclei_types_idx[ct_idx])
-            print("ct_nucleus =", ct_nucleus)
             ct_nucleus_name = self.type_names[ct_nucleus]
-            print("ct_nucleus_name =", ct_nucleus_name)
 
             # Markers with dilation
             # ct_pos = np.expand_dims(np.expand_dims(self.pos_markers[ct_nucleus,:], 0),0)*expr_aug
