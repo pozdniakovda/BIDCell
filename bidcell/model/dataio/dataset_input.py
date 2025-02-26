@@ -312,7 +312,8 @@ class DataProcessing(data.Dataset):
                         nucl_split[:, :, i_cell], kernel, iterations=1
                     )
 
-            c_id = int(c_id)
+            print("c_id =", c_id)
+            print("nuclei_types_ids =", self.nuclei_types_ids)
             ct_nucleus = int(self.nuclei_types_idx[self.nuclei_types_ids.index(c_id)])
             ct_nucleus_name = self.type_names[ct_nucleus]
 
