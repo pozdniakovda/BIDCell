@@ -317,7 +317,7 @@ class DataProcessing(data.Dataset):
                 ct_nucleus_name = self.type_names[ct_nucleus]
             else:
                 print(f"Warning: c_id {c_id} is missing from nuclei_types_ids (len={len(nuclei_types_ids)}); it will be skipped.")
-                return None
+                continue
 
             # Markers with dilation
             # ct_pos = np.expand_dims(np.expand_dims(self.pos_markers[ct_nucleus,:], 0),0)*expr_aug
