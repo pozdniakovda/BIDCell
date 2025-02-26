@@ -37,10 +37,13 @@ def get_paths(config, make_new, learning_rate, dynamic_solvers, selected_solver=
         config.experiment_dirs.dir_id,
         config.files.data_dir,
     )
+    
+    print(f"config.files.data_dir = {config.files.data_dir}")
     if not dynamic_solvers: 
         experiment_path = os.path.join(config.files.data_dir, "model_outputs", f"{timestamp}_{selected_solver}_lr-{learning_rate}")
     else:
         experiment_path = os.path.join(config.files.data_dir, "model_outputs", f"{timestamp}_{starting_solver}-to-{ending_solver}_switched-after-{epochs_before_switch}-epochs_lr-{learning_rate}")
+    print(f"experiment_path (dynamic_solvers={dynamic_solvers}) = {experiment_path}")
 
     if training_repeats > 1: 
         # Paths for each repeat
