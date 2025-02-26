@@ -177,15 +177,16 @@ def predict(config: Config) -> str:
                 model = model.eval()
     
                 for batch_idx, (
-                    batch_x313,
-                    batch_n,
-                    batch_sa,
-                    batch_pos,
-                    batch_neg,
+                    batch_ess,       # shape: [H, W, n_cells]
+                    batch_x313,      # shape: [H, W, n_channels, n_cells]
+                    batch_n,         # shape: [H, W, n_cells]
+                    batch_sa,        # shape: [H, W, n_cells]
+                    batch_pos,       # shape: [H, W, n_cells]
+                    batch_neg,       # shape: [H, W, n_cells]
                     coords_h1,
                     coords_w1,
-                    nucl_aug,
-                    expr_aug_sum,
+                    nucl_aug,        # shape: [H, W]
+                    expr_aug_sum,    # shape: [H, W]
                     whole_h,
                     whole_w,
                     expr_fp,
