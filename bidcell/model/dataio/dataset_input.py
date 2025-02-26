@@ -314,8 +314,12 @@ class DataProcessing(data.Dataset):
 
             print("c_id =", c_id)
             print("nuclei_types_ids =", self.nuclei_types_ids)
-            ct_nucleus = int(self.nuclei_types_idx[self.nuclei_types_ids.index(c_id)])
+            ct_idx = self.nuclei_types_ids.index(c_id)
+            print("ct_idx =", ct_idx)
+            ct_nucleus = int(self.nuclei_types_idx[ct_idx])
+            print("ct_nucleus =", ct_nucleus)
             ct_nucleus_name = self.type_names[ct_nucleus]
+            print("ct_nucleus_name =", ct_nucleus_name)
 
             # Markers with dilation
             # ct_pos = np.expand_dims(np.expand_dims(self.pos_markers[ct_nucleus,:], 0),0)*expr_aug
