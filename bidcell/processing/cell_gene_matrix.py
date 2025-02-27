@@ -3,7 +3,7 @@ import glob
 import os
 import sys
 import multiprocessing as mp
-mp.set_start_method("spawn", force=True)
+# mp.set_start_method("spawn", force=True)
 
 import cv2
 import numpy as np
@@ -195,7 +195,7 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
         hw_coords = [(hs, he, ws, we) for (hs, he) in h_coords for (ws, we) in w_coords]
 
         print("Extracting cell expressions")
-        for hs, he, ws, we in tqdm(hw_coords):
+        for hs, he, ws, we in hw_coords:
             print(f"Patch H {hs}:{he}, W {ws}:{we}")
             seg_map = tifffile.imread(fp_rescaled_seg)[hs:he, ws:we]
             print(seg_map.shape)
