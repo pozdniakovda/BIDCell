@@ -1,8 +1,10 @@
 import argparse
 import glob
-import multiprocessing as mp
 import os
 import sys
+
+import multiprocessing as mp
+mp.set_start_method("spawn", force=True)
 
 import cv2
 import numpy as np
@@ -310,6 +312,11 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
     #         p.join()
 
     print("Done making cell gene matrix.")
+
+    print("Cleaning up...")
+    mp.active_children()
+    mp.pool = None
+    print("\tDone!")
 
 
 if __name__ == "__main__":
