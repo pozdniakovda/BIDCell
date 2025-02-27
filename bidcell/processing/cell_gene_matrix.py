@@ -238,6 +238,8 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
             processes = []
 
             print("Extracting cell-gene matrix chunks")
+
+            '''
             for chunk in df_expr_splits:
                 p = mp.Process(
                     target=process_chunk,
@@ -257,8 +259,8 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
 
             for p in processes:
                 p.join()
-
             '''
+            
             with mp.Pool(n_processes) as pool:
                 pool.starmap(
                     process_chunk,
@@ -276,7 +278,6 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
                         for chunk in df_expr_splits
                     ],
                 )
-            '''
 
             print("Combining cell-gene matrix chunks")
 
