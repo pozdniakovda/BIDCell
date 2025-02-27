@@ -2,8 +2,8 @@ import argparse
 import glob
 import os
 import sys
-# import multiprocessing as mp
-# mp.set_start_method("spawn", force=True)
+import multiprocessing as mp
+mp.set_start_method("spawn", force=True)
 
 import cv2
 import numpy as np
