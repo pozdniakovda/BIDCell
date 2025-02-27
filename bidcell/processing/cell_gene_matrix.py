@@ -2,9 +2,7 @@ import argparse
 import glob
 import os
 import sys
-
 import multiprocessing as mp
-mp.set_start_method("spawn", force=True)
 
 import cv2
 import numpy as np
@@ -93,6 +91,9 @@ def read_expr_csv(fp):
 
 
 def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = None):
+    if is_cell:
+        mp.set_start_method("spawn", force=True)
+    
     dir_dataset = config.files.data_dir
     dir_cgm = config.files.dir_cgm
 
