@@ -6,7 +6,8 @@ import time
 import multiprocessing as mp
 mp.set_start_method("spawn", force=True)
 
-import cv2
+# import cv2
+from skimage.transform import resize
 import numpy as np
 import pandas as pd
 import tifffile
@@ -193,12 +194,23 @@ def get_seg_map(fp_seg):
     return seg_map_mi, height, width, cell_ids_unique, n_cells
 
 
-def resize_seg_map(seg_map_mi, width_pix, height_pix, output_dir):
-    seg_map = cv2.resize(
-        seg_map_mi.astype(np.int32),
-        (width_pix, height_pix),
-        interpolation=cv2.INTER_NEAREST,
-    )
+def resize_seg_map(seg_map_mi, width_pix, height_pix, output_dir, use_cv2=False):
+    if use_cv2:
+        import cv2
+        seg_map = cv2.resize(
+            seg_map_mi.astype(np.int32),
+            (width_pix, height_pix),
+            interpolation=cv2.INTER_NEAREST,
+        )
+    else:
+        seg_map = resize(
+            seg_map_mi.astype(np.int32),
+            (height_pix, width_pix),
+            order=0,  # Nearest-neighbor interpolation
+            anti_aliasing=False, 
+            preserve_range=True
+        ).astype(np.int32)
+    
     print("Segmentation map pixel size: ", seg_map.shape)
     fp_rescaled_seg = output_dir + "/rescaled.tif"
     print("Saving temporary resized segmentation")
@@ -248,7 +260,7 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
         height_pix = np.round(height / config.affine.scale_pix_y).astype(int)
         width_pix = np.round(width / config.affine.scale_pix_x).astype(int)
 
-        seg_map = resize_seg_map(seg_map_mi, width_pix, height_pix, output_dir)
+        seg_map = resize_seg_map(seg_map_mi, width_pix, height_pix, output_dir, use_cv2=False)
 
         df_out = pd.DataFrame(0, index=cell_ids_unique, columns=col_names)
         df_out["cell_id"] = cell_ids_unique.copy()
