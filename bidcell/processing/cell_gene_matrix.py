@@ -2,6 +2,7 @@ import argparse
 import glob
 import os
 import sys
+import time
 import multiprocessing as mp
 mp.set_start_method("spawn", force=True)
 
@@ -22,6 +23,7 @@ def process_fast(
 ):
     """Fast extraction of cell expression profiles using NumPy-based indexing."""
 
+    t1=time.time()
     chunk_id = chunk.index[0]  # Get the chunk ID
 
     # Create a NumPy-based storage instead of DataFrame for efficiency
@@ -53,6 +55,10 @@ def process_fast(
     df_out_df["cell_id"] = cell_ids_unique
 
     df_out_df.to_csv(f"{output_dir}/chunk_{chunk_id}.csv")
+
+    t2=time.time()
+    t=t2-t1
+    print(f"Processed cell gene matrix df in {t:.3f} seconds.")
 
 
 def process_chunk(
