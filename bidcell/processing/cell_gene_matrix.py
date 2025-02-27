@@ -233,13 +233,12 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
 
             df_expr.reset_index(drop=True, inplace=True)
 
-            df_expr_splits = np.array_split(df_expr, n_processes)
+            print("Extracting cell-gene matrix chunks")
             processes = []
 
-            print("Extracting cell-gene matrix chunks")
-            
+            # Method #1: Pass the whole dataset instead of chunks
             process_chunk(
-                df_expr,  # Pass the whole dataset instead of chunks
+                df_expr,  
                 output_dir,
                 cell_ids_unique,
                 col_names,
@@ -250,6 +249,8 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
             )
 
             '''
+            # Method #2: Starmap and dedicated Pool
+            df_expr_splits = np.array_split(df_expr, n_processes)
             with mp.Pool(n_processes) as pool:
                 pool.starmap(
                     process_chunk,
@@ -268,6 +269,8 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
                     ],
                 )
 
+            # Method #3: Original
+            df_expr_splits = np.array_split(df_expr, n_processes)
             for chunk in df_expr_splits:
                 p = mp.Process(
                     target=process_chunk,
