@@ -180,6 +180,19 @@ def get_cgm_paths(config: Config, is_cell: bool, timestamp: str | None = None):
     return (output_dir, fp_transcripts_processed, fp_gene_names, fp_seg, fp_seg_name)
 
 
+def get_seg_map(fp_seg):
+    seg_map_mi = tifffile.imread(fp_seg)
+    height = seg_map_mi.shape[0]
+    width = seg_map_mi.shape[1]
+
+    cell_ids_unique = np.unique(seg_map_mi.reshape(-1))
+    cell_ids_unique = cell_ids_unique[1:]
+    n_cells = len(cell_ids_unique)
+    print("Number of cells " + str(n_cells))
+
+    return seg_map_mi, height, width, cell_ids_unique, n_cells
+
+
 def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = None):
     cgm_paths = get_cgm_paths(config, is_cell, timestamp)
     output_dir, fp_transcripts_processed, fp_gene_names, fp_seg, fp_seg_name = cgm_paths
@@ -189,14 +202,8 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
     y_col = config.transcripts.y_col
     gene_col = config.transcripts.gene_col
 
-    seg_map_mi = tifffile.imread(fp_seg)
-    height = seg_map_mi.shape[0]
-    width = seg_map_mi.shape[1]
-
-    cell_ids_unique = np.unique(seg_map_mi.reshape(-1))
-    cell_ids_unique = cell_ids_unique[1:]
-    n_cells = len(cell_ids_unique)
-    print("Number of cells " + str(n_cells))
+    # Get segmentation map and associated metrics
+    seg_map_mi, height, width, cell_ids_unique, n_cells = get_seg_map(fp_seg)
 
     with open(fp_gene_names) as file:
         gene_names = [line.rstrip() for line in file]
