@@ -140,7 +140,7 @@ def read_expr_csv(fp):
         sys.exit(f"Cannot read {fp}")
 
 
-def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = None):    
+def get_cgm_paths(config: Config, is_cell: bool, timestamp: str | None = None):    
     dir_dataset = config.files.data_dir
     dir_cgm = config.files.dir_cgm
 
@@ -157,6 +157,7 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
 
     if is_cell is False:
         fp_seg = os.path.join(dir_dataset, config.files.fp_nuclei)
+        fp_seg_name = None
     else:
         fp_seg_name = [
             "epoch_"
@@ -172,6 +173,13 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
             config.experiment_dirs.test_output_dir,
             "".join(fp_seg_name),
         )
+
+    return (output_dir, fp_transcripts_processed, fp_gene_names, fp_seg, fp_seg_name)
+
+
+def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = None):
+    cgm_paths = get_cgm_paths(config, is_cell, timestamp)
+    output_dir, fp_transcripts_processed, fp_gene_names, fp_seg, fp_seg_name = cgm_paths
 
     # Column names in the transcripts csv
     x_col = config.transcripts.x_col
