@@ -237,8 +237,37 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
             processes = []
 
             print("Extracting cell-gene matrix chunks")
+            
+            process_chunk(
+                df_expr,  # Pass the whole dataset instead of chunks
+                output_dir,
+                cell_ids_unique,
+                col_names,
+                seg_map,
+                x_col,
+                y_col,
+                gene_col,
+            )
 
             '''
+            with mp.Pool(n_processes) as pool:
+                pool.starmap(
+                    process_chunk,
+                    [
+                        (
+                            chunk,
+                            output_dir,
+                            cell_ids_unique,
+                            col_names,
+                            seg_map,
+                            x_col,
+                            y_col,
+                            gene_col,
+                        )
+                        for chunk in df_expr_splits
+                    ],
+                )
+
             for chunk in df_expr_splits:
                 p = mp.Process(
                     target=process_chunk,
@@ -259,24 +288,6 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
             for p in processes:
                 p.join()
             '''
-            
-            with mp.Pool(n_processes) as pool:
-                pool.starmap(
-                    process_chunk,
-                    [
-                        (
-                            chunk,
-                            output_dir,
-                            cell_ids_unique,
-                            col_names,
-                            seg_map,
-                            x_col,
-                            y_col,
-                            gene_col,
-                        )
-                        for chunk in df_expr_splits
-                    ],
-                )
 
             print("Combining cell-gene matrix chunks")
 
