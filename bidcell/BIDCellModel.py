@@ -64,6 +64,19 @@ class BIDCellModel:
         self.predict()
         print()
         print("### Done ###")
+    
+    def rerun_pipeline(self):
+        """Re-runs the entire BIDCell pipeline (except preprocessing) using the settings defined in the configuration.
+        """
+        print("### Training ###")
+        print()
+        self.train()
+        print()
+        print("### Predict ###")
+        print()
+        self.predict()
+        print()
+        print("### Done ###")
         
     def run_multiple(self, config_files = None):
         """Runs the entire BIDCell pipeline using the settings defined in the configuration.
