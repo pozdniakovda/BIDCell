@@ -17,6 +17,44 @@ from ..config import Config, load_config
 np.seterr(divide="ignore", invalid="ignore")
 
 
+def process_fast(
+    chunk, output_dir, cell_ids_unique, col_names, seg_map, x_col, y_col, gene_col
+):
+    """Fast extraction of cell expression profiles using NumPy-based indexing."""
+
+    chunk_id = chunk.index[0]  # Get the chunk ID
+
+    # Create a NumPy-based storage instead of DataFrame for efficiency
+    df_out = np.zeros((len(cell_ids_unique), len(col_names)), dtype=int)
+
+    # Mapping cell IDs to row indices in `df_out`
+    cell_id_to_index = {cell_id: i for i, cell_id in enumerate(cell_ids_unique)}
+
+    # Extract relevant columns as NumPy arrays (faster than Pandas operations)
+    genes = chunk[gene_col].values
+    w_locs = chunk[x_col].values
+    h_locs = chunk[y_col].values
+
+    # Vectorized mask to check valid segment locations
+    seg_vals = seg_map[h_locs, w_locs]
+
+    valid_mask = seg_vals > 0  # Boolean mask for valid assignments
+    valid_seg_vals = seg_vals[valid_mask]
+    valid_genes = genes[valid_mask]
+
+    # Convert segment values to indices in `df_out`
+    valid_indices = np.array([cell_id_to_index[seg] for seg in valid_seg_vals])
+
+    # Use NumPy's efficient advanced indexing for fast accumulation
+    np.add.at(df_out, (valid_indices, [col_names.index(gene) for gene in valid_genes]), 1)
+
+    # Convert back to Pandas DataFrame before saving
+    df_out_df = pd.DataFrame(df_out, index=cell_ids_unique, columns=col_names)
+    df_out_df["cell_id"] = cell_ids_unique
+
+    df_out_df.to_csv(f"{output_dir}/chunk_{chunk_id}.csv")
+
+
 def process_chunk(
     chunk, output_dir, cell_ids_unique, col_names, seg_map, x_col, y_col, gene_col
 ):
@@ -237,7 +275,7 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
             processes = []
 
             # Method #1: Pass the whole dataset instead of chunks
-            process_chunk(
+            process_fast(
                 df_expr,  
                 output_dir,
                 cell_ids_unique,
