@@ -193,6 +193,22 @@ def get_seg_map(fp_seg):
     return seg_map_mi, height, width, cell_ids_unique, n_cells
 
 
+def resize_seg_map(seg_map_mi, width_pix, height_pix, output_dir):
+    seg_map = cv2.resize(
+        seg_map_mi.astype(np.int32),
+        (width_pix, height_pix),
+        interpolation=cv2.INTER_NEAREST,
+    )
+    print("Segmentation map pixel size: ", seg_map.shape)
+    fp_rescaled_seg = output_dir + "/rescaled.tif"
+    print("Saving temporary resized segmentation")
+    tifffile.imwrite(
+        fp_rescaled_seg, seg_map.astype(np.uint32), photometric="minisblack"
+    )
+
+    return seg_map
+
+
 def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = None):
     cgm_paths = get_cgm_paths(config, is_cell, timestamp)
     output_dir, fp_transcripts_processed, fp_gene_names, fp_seg, fp_seg_name = cgm_paths
@@ -205,24 +221,25 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
     # Get segmentation map and associated metrics
     seg_map_mi, height, width, cell_ids_unique, n_cells = get_seg_map(fp_seg)
 
+    # Read gene names and get cols
     with open(fp_gene_names) as file:
         gene_names = [line.rstrip() for line in file]
-
     col_names = ["cell_id"] + gene_names
 
-    # Divide the dataframe into chunks for multiprocessing
     n_processes = get_n_processes(config.cpus)
     # print(f"Number of splits for multiprocessing: {n_processes}")
 
-    # Scale factor to pixel resolution of platform
-    # read in affine
-    # extract scale_x and scale_y
-    # divide by (scale_x*pixel resolution) (microns per pixel)
-    # affine = pd.read_csv(fp_affine, index_col=0, header=None, sep='\t')
-    # scale_x_tr = float(affine.loc["scale_x"].item())
-    # scale_y_tr = float(affine.loc["scale_y"].item())
-    # scale_pix_x = (scale_x_tr*config.affine.scale_pix_x)
-    # scale_pix_y = (scale_y_tr*config.affine.scale_pix_y)
+    '''
+    Scale factor to pixel resolution of platform
+    read in affine
+    extract scale_x and scale_y
+    divide by (scale_x*pixel resolution) (microns per pixel)
+    affine = pd.read_csv(fp_affine, index_col=0, header=None, sep='\t')
+    scale_x_tr = float(affine.loc["scale_x"].item())
+    scale_y_tr = float(affine.loc["scale_y"].item())
+    scale_pix_x = (scale_x_tr*config.affine.scale_pix_x)
+    scale_pix_y = (scale_y_tr*config.affine.scale_pix_y)
+    '''
     scale_pix_x = config.affine.scale_pix_x
     scale_pix_y = config.affine.scale_pix_y
 
@@ -231,17 +248,7 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
         height_pix = np.round(height / config.affine.scale_pix_y).astype(int)
         width_pix = np.round(width / config.affine.scale_pix_x).astype(int)
 
-        seg_map = cv2.resize(
-            seg_map_mi.astype(np.int32),
-            (width_pix, height_pix),
-            interpolation=cv2.INTER_NEAREST,
-        )
-        print("Segmentation map pixel size: ", seg_map.shape)
-        fp_rescaled_seg = output_dir + "/rescaled.tif"
-        print("Saving temporary resized segmentation")
-        tifffile.imwrite(
-            fp_rescaled_seg, seg_map.astype(np.uint32), photometric="minisblack"
-        )
+        seg_map = resize_seg_map(seg_map_mi, width_pix, height_pix, output_dir)
 
         df_out = pd.DataFrame(0, index=cell_ids_unique, columns=col_names)
         df_out["cell_id"] = cell_ids_unique.copy()
