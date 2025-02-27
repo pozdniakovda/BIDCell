@@ -186,7 +186,7 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
 
     # Divide the dataframe into chunks for multiprocessing
     n_processes = get_n_processes(config.cpus)
-    print(f"Number of splits for multiprocessing: {n_processes}")
+    # print(f"Number of splits for multiprocessing: {n_processes}")
 
     # Scale factor to pixel resolution of platform
     # read in affine
