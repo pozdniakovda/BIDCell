@@ -174,6 +174,9 @@ def get_cgm_paths(config: Config, is_cell: bool, timestamp: str | None = None):
             "".join(fp_seg_name),
         )
 
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
     return (output_dir, fp_transcripts_processed, fp_gene_names, fp_seg, fp_seg_name)
 
 
@@ -185,9 +188,6 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
     x_col = config.transcripts.x_col
     y_col = config.transcripts.y_col
     gene_col = config.transcripts.gene_col
-
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
 
     seg_map_mi = tifffile.imread(fp_seg)
     height = seg_map_mi.shape[0]
