@@ -322,6 +322,8 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
             processes = []
 
             # Method #1: Pass the whole dataset instead of chunks
+            t0 = time.time()
+            
             process_fast(
                 df_expr,  
                 output_dir,
@@ -332,6 +334,9 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
                 y_col,
                 gene_col,
             )
+            
+            t1 = time.time()
+            print(f"cgm process_fast took {t1-t0} seconds")
 
             '''
             # Method #2: Starmap and dedicated Pool
