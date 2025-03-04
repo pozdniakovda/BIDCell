@@ -259,10 +259,10 @@ class Config(BaseModel):
     model_params: ModelParams
     training_params: TrainingParams
     testing_params: TestingParams
+    cgm_params: CellGeneMatParams
     cpus: int
     postprocess: PostprocessParams = PostprocessParams()
     experiment_dirs: ExperimentDirs = ExperimentDirs()
-    cgm_params: CellGeneMatParams = CellGeneMatParams()
 
 
 def evaluate_pref_weights(config):
