@@ -163,6 +163,8 @@ class AffineParams(BaseModel):
 class CellGeneMatParams(BaseModel):
     # max h+w for resized segmentation to extract expressions from
     max_sum_hw: int = 30000
+    # whether to calculate spatial cell information
+    include_spatial: bool = True
 
 
 class ModelParams(BaseModel):
