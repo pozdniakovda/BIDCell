@@ -48,6 +48,10 @@ model_params:
   - Myofibroblasts
   - SMC
 
+cgm_params:
+  max_sum_hw: 30000 # max h+w for resized segmentation to extract expressions from; default is 30000
+  include_spatial: True # whether to calculate spatial cell information
+
 training_params:
   training_repeats: 1 # number of times to run the training loop; if >1, averaged graphs are computed
   total_epochs: 10 # number of training epochs; default: 1
