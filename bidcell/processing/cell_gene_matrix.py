@@ -225,6 +225,8 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
     cgm_paths = get_cgm_paths(config, is_cell, timestamp)
     output_dir, fp_transcripts_processed, fp_gene_names, fp_seg, fp_seg_name = cgm_paths
 
+    include_spatial = config.cgm_params.include_spatial
+
     # Column names in the transcripts csv
     x_col = config.transcripts.x_col
     y_col = config.transcripts.y_col
@@ -397,38 +399,39 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
     else:
         df_out = pd.read_csv(output_dir + "/" + config.files.fp_expr, index_col=0)
 
-    # if is_cell:
-    #     print("Computing cell locations and sizes")
-
-    #     matrix_all = df_out.to_numpy().astype(np.float32)
-    #     matrix_all_splits = np.array_split(matrix_all, n_processes)
-    #     processes = []
-
-    #     fp_output = output_dir + "/cell_outputs_"
-    #     col_names_coords = [
-    #         "cell_id",
-    #         "cell_centroid_x",
-    #         "cell_centroid_y",
-    #         "cell_size",
-    #     ] + gene_names
-
-    #     for chunk in matrix_all_splits:
-    #         p = mp.Process(
-    #             target=process_chunk_meta,
-    #             args=(
-    #                 chunk,
-    #                 fp_output,
-    #                 seg_map_mi,
-    #                 col_names_coords,
-    #                 scale_pix_x,
-    #                 scale_pix_y,
-    #             ),
-    #         )
-    #         processes.append(p)
-    #         p.start()
-
-    #     for p in processes:
-    #         p.join()
+    if include_spatial:
+        if is_cell:
+            print("Computing cell locations and sizes")
+    
+            matrix_all = df_out.to_numpy().astype(np.float32)
+            matrix_all_splits = np.array_split(matrix_all, n_processes)
+            processes = []
+    
+            fp_output = output_dir + "/cell_outputs_"
+            col_names_coords = [
+                "cell_id",
+                "cell_centroid_x",
+                "cell_centroid_y",
+                "cell_size",
+            ] + gene_names
+    
+            for chunk in matrix_all_splits:
+                p = mp.Process(
+                    target=process_chunk_meta,
+                    args=(
+                        chunk,
+                        fp_output,
+                        seg_map_mi,
+                        col_names_coords,
+                        scale_pix_x,
+                        scale_pix_y,
+                    ),
+                )
+                processes.append(p)
+                p.start()
+    
+            for p in processes:
+                p.join()
 
     print("Done making cell gene matrix.")
 
