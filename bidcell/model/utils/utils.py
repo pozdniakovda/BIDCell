@@ -150,8 +150,10 @@ def save_fig_outputs(sample_seg, sample_n, sample_sa, sample_expr, patch_fp,
 
     sample_expr = np.squeeze(sample_expr)
     if binary_expr_map: 
+        print(f"Setting all non-zero values in sample_expr to 1...")
         sample_expr[sample_expr > 0] = 1
     if log_expr_map: 
+        print(f"Applying logarithmic scale to sample expr...")
         sample_expr = np.log10(sample_expr + 0.00001) + 1
         sample_expr[sample_expr < 1] = 0
         if sample_expr.max() > 0:
