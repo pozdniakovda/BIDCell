@@ -4,7 +4,7 @@ import os
 import sys
 import time
 import multiprocessing as mp
-mp.set_start_method("forkserver", force=True)
+# mp.set_start_method("forkserver", force=True)
 
 # import cv2
 from skimage.measure import regionprops, label
