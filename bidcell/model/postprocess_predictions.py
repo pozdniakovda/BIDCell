@@ -389,7 +389,7 @@ def postprocess_predictions(config: Config, dir_id: str):
     for p in processes:
         p.join()
 
-    print("Combining results")
+    print("Combining results...")
     seg_final, to_check_ids = combine(config, dir_id, patch_size, nuclei_img)
     # print(len(np.unique(seg_final)), len(to_check_ids))
 
