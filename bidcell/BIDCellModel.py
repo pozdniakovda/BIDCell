@@ -209,7 +209,7 @@ class BIDCellModel:
         
         if os.path.exists(cell_gene_matrix_path):
             df_cell_gene = pd.read_csv(cell_gene_matrix_path)
-            preannotation_path = os.path.join(self.config.files.data_dir, "preannotations.csv")
+            preannotation_path = os.path.join(self.config.files.data_dir, "preannotations_merged.csv")
         
             if os.path.exists(preannotation_path):
                 df_preannot = pd.read_csv(preannotation_path)
