@@ -202,26 +202,25 @@ class BIDCellModel:
         preannotate(self.config, save_merged=True)
         
         print(f"Reloading cell gene matrix to include annotations...")
-        cell_gene_matrix_path = os.path.join(
-            self.config.files.data_dir, self.config.files.dir_cgm, timestamp, self.config.files.fp_expr
-        )
-        print(f"\tCell gene matrix path: {cell_gene_matrix_path}")
-        
-        if os.path.exists(cell_gene_matrix_path):
-            df_cell_gene = pd.read_csv(cell_gene_matrix_path)
-            preannotation_path = os.path.join(self.config.files.data_dir, "preannotations_merged.csv")
-        
-            if os.path.exists(preannotation_path):
-                df_preannot = pd.read_csv(preannotation_path)
-                df_merged = df_cell_gene.merge(df_preannot, on="cell_id", how="left")
-        
-                # Save updated cell gene matrix
-                df_merged.to_csv(cell_gene_matrix_path, index=False)
-                print(f"\tUpdated cell gene matrix saved with annotations.")
-            else:
-                print(f"\tWarning: Preannotation file {preannotation_path} not found.")
+        expr_mat_path = os.path.join(self.config.files.data_dir, self.config.files.dir_cgm, timestamp, self.config.files.fp_expr)
+        preannotations_path = os.path.join(self.config.files.data_dir, "preannotations_merged.csv")
+    
+        if os.path.exists(expr_mat_path) and os.path.exists(preannotations_path):
+            df_expr = pd.read_csv(expr_mat_path)
+            df_annotations = pd.read_csv(preannotations_path)
+    
+            # Merge on cell_id
+            df_merged = df_expr.merge(df_annotations, on="cell_id", how="left")
+    
+            # Save the updated expr_mat.csv
+            df_merged.to_csv(expr_mat_path, index=False)
+            print(f"Merged annotations into expr_mat.csv successfully! Save path: {expr_mat_path}")
+        elif os.path.exists(expr_mat_path) and not os.path.exists(preannotations_path):
+            print("Warning: preannotations_merged.csv not found, skipping merge.")
+        elif not os.path.exists(expr_mat_path) and os.path.exists(preannotations_path):
+            print("Warning: expr_mat.csv not found, skipping merge.")
         else:
-            print(f"\tWarning: Cell gene matrix file {cell_gene_matrix_path} not found.")
+            print("Warning: expr_mat.csv and preannotations_merged.csv not found, skipping merge.")
 
         print(f"Done prediction.")
 
