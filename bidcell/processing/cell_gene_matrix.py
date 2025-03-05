@@ -108,6 +108,29 @@ def process_parallel(chunk, output_dir, cell_ids_unique, col_names, seg_map,
         p.join()
 
 
+def process_starmap(chunk, output_dir, cell_ids_unique, col_names, seg_map, 
+                    x_col, y_col, gene_col, df_expr, n_processes):
+    # Method #2: Starmap and dedicated Pool
+    df_expr_splits = np.array_split(df_expr, n_processes)
+    with mp.Pool(n_processes) as pool:
+        pool.starmap(
+            process_chunk,
+            [
+                (
+                    chunk,
+                    output_dir,
+                    cell_ids_unique,
+                    col_names,
+                    seg_map,
+                    x_col,
+                    y_col,
+                    gene_col,
+                )
+                for chunk in df_expr_splits
+            ],
+        )
+
+
 def process_chunk_meta(
     matrix, fp_output, seg_map_mi, col_names_coords, scale_pix_x, scale_pix_y, cell_annotations=None
 ):
@@ -398,38 +421,13 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
             processes = []
 
             # Method #1: Pass the whole dataset instead of chunks
-            '''
-            process_fast(
-                df_expr,  
-                output_dir,
-                cell_ids_unique,
-                col_names,
-                seg_map,
-                x_col,
-                y_col,
-                gene_col,
-            )
-            '''
+            #process_fast(df_expr, output_dir, cell_ids_unique, col_names, seg_map,
+            #             x_col, y_col, gene_col)
             
             # Method #2: Starmap and dedicated Pool
-            df_expr_splits = np.array_split(df_expr, n_processes)
-            with mp.Pool(n_processes) as pool:
-                pool.starmap(
-                    process_chunk_meta,  # Use process_chunk_meta instead of process_chunk
-                    [
-                        (
-                            chunk,
-                            output_dir,
-                            seg_map_mi,  # Segmentation map
-                            col_names_coords,  # Updated column names
-                            scale_pix_x,
-                            scale_pix_y,
-                            cell_annotations,  # Pass cell annotations dictionary
-                        )
-                        for chunk in df_expr_splits
-                    ],
-                )
-
+            process_starmap(chunk, output_dir, cell_ids_unique, col_names, seg_map, 
+                            x_col, y_col, gene_col, df_expr, n_processes)
+            
             # Method #3: Original
             #process_parallel(chunk, output_dir, cell_ids_unique, col_names, seg_map, 
             #                 x_col, y_col, gene_col, df_expr, n_processes)
