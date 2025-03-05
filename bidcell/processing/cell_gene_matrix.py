@@ -442,19 +442,20 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
             print("Extracting cell-gene matrix chunks")
             processes = []
 
-            # Method #1: Pass the whole dataset instead of chunks
-            #process_fast(df_expr, output_dir, cell_ids_unique, col_names, seg_map,
-            #             x_col, y_col, gene_col)
-            
-            # Method #2: Starmap and dedicated Pool
-            process_starmap(chunk, output_dir, cell_ids_unique, col_names, seg_map, 
-                            x_col, y_col, gene_col, df_expr, n_processes)
-            
-            # Method #3: Original
-            #process_parallel(chunk, output_dir, cell_ids_unique, col_names, seg_map, 
-            #                 x_col, y_col, gene_col, df_expr, n_processes)
-
-            t9 = time.time()
+            for chunk in df_expr_splits:
+                # Method #1: Pass the whole dataset instead of chunks
+                #process_fast(df_expr, output_dir, cell_ids_unique, col_names, seg_map,
+                #             x_col, y_col, gene_col)
+                
+                # Method #2: Starmap and dedicated Pool
+                process_starmap(chunk, output_dir, cell_ids_unique, col_names, seg_map, 
+                                x_col, y_col, gene_col, df_expr, n_processes)
+                
+                # Method #3: Original
+                #process_parallel(chunk, output_dir, cell_ids_unique, col_names, seg_map, 
+                #                 x_col, y_col, gene_col, df_expr, n_processes)
+    
+                t9 = time.time()
             print(f"\Processing data: {t9-t8} seconds")
 
             #print("Combining cell-gene matrix chunks")
