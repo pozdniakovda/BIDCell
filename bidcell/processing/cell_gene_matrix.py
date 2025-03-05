@@ -401,7 +401,7 @@ def resize_seg_map(seg_map_mi, width_pix, height_pix, output_dir, use_cv2=False)
 
 
 def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = None):
-    # Generates the cell gene matrix
+    """Generates the cell-gene matrix but does NOT merge annotations (handled in predict())."""
 
     print(f"Making cell gene matrix...")
     t0 = time.time()
@@ -434,23 +434,11 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
         col_names = ["cell_id"] + gene_names
 
     n_processes = get_n_processes(config.cpus)
-    # print(f"Number of splits for multiprocessing: {n_processes}")
 
-    '''
-    Scale factor to pixel resolution of platform
-    read in affine
-    extract scale_x and scale_y
-    divide by (scale_x*pixel resolution) (microns per pixel)
-    affine = pd.read_csv(fp_affine, index_col=0, header=None, sep='\t')
-    scale_x_tr = float(affine.loc["scale_x"].item())
-    scale_y_tr = float(affine.loc["scale_y"].item())
-    scale_pix_x = (scale_x_tr*config.affine.scale_pix_x)
-    scale_pix_y = (scale_y_tr*config.affine.scale_pix_y)
-    '''
     scale_pix_x = config.affine.scale_pix_x
     scale_pix_y = config.affine.scale_pix_y
 
-    fp_expr = output_dir + "/" + config.files.fp_expr
+    fp_expr = os.path.join(output_dir, config.files.fp_expr)
     print(f"\tExpressions path: {fp_expr}")
 
     if not os.path.exists(fp_expr):
@@ -465,109 +453,52 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
         df_out["cell_id"] = cell_ids_unique.copy()
 
         # Divide into patches for large datasets that exceed memory capacity
-        if (height_pix + width_pix) > config.cgm_params.max_sum_hw:
-            patch_h = int(config.cgm_params.max_sum_hw / 2)
-            patch_w = config.cgm_params.max_sum_hw - patch_h
-        else:
-            patch_h = height_pix
-            patch_w = width_pix
-
-        h_coords, _ = get_patches_coords(height_pix, patch_h)
-        w_coords, _ = get_patches_coords(width_pix, patch_w)
+        h_coords, _ = get_patches_coords(height_pix, config.cgm_params.max_sum_hw // 2)
+        w_coords, _ = get_patches_coords(width_pix, config.cgm_params.max_sum_hw - (config.cgm_params.max_sum_hw // 2))
         hw_coords = [(hs, he, ws, we) for (hs, he) in h_coords for (ws, we) in w_coords]
 
-        #print("Extracting cell expressions")
         seg_map_full = tifffile.imread(fp_rescaled_seg)
 
-        # Time taken up to here is less than 0.1 seconds; majority comes from resizing
-        t5 = time.time()
-        
         for hs, he, ws, we in tqdm(hw_coords):
-            t6 = time.time()
-            # Prepare expression data and segmentation map subset for processing
             seg_map, df_expr = prepare_expr(seg_map_full, hs, he, ws, we, fp_transcripts_processed, 
                                             x_col, y_col, scale_pix_x, scale_pix_y, print_ranges=False)
-            t7 = time.time()
-            print(f"\Preparing data subset for processing: {t7-t6} seconds")
 
             df_expr.reset_index(drop=True, inplace=True)
 
             print("Extracting cell-gene matrix chunks")
-            processes = []
-
-            # Method #1: Pass the whole dataset instead of chunks
-            #process_fast(df_expr, output_dir, cell_ids_unique, col_names, seg_map,
-            #             x_col, y_col, gene_col)
-            
-            # Method #2: Starmap and dedicated Pool
             process_starmap(df_expr, n_processes, output_dir, cell_ids_unique, col_names, 
                             seg_map, x_col, y_col, gene_col)
-            
-            # Method #3: Original
-            #process_parallel(df_expr, n_processes, output_dir, cell_ids_unique, col_names, 
-            #                 seg_map, x_col, y_col, gene_col)
 
-            t8 = time.time()
-            print(f"\Processing data: {t8-t7} seconds")
-
-            #print("Combining cell-gene matrix chunks")
-
-            fp_chunks = glob.glob(output_dir + "/chunk_*.csv")
+            fp_chunks = glob.glob(os.path.join(output_dir, "chunk_*.csv"))
             for fpc in fp_chunks:
                 df_i = pd.read_csv(fpc, index_col=0)
                 df_out.iloc[:, 1:] = df_out.iloc[:, 1:].add(df_i.iloc[:, 1:])
 
             df_out.to_csv(fp_expr)
 
-            t9 = time.time()
-            print(f"\tCombining cell gene matrix chunks took {t9-t8} seconds")
-
-            # Clean up
+            # Clean up chunk files
             for fpc in fp_chunks:
                 os.remove(fpc)
 
         print("Obtained cell-gene matrix")
-        
         os.remove(fp_rescaled_seg)
-        del seg_map
-        del df_expr
+        del seg_map, df_expr
 
     else:
         print(f"\tFile exists; reloading...")
         df_out = pd.read_csv(fp_expr, index_col=0)
 
-    if include_spatial:
-        if is_cell:
-            print("Computing cell locations and sizes...")
-            t10 = time.time()
-            
-            # Original method
-            #process_parallel_meta(df_out, gene_names, n_processes, output_dir, seg_map_mi, 
-            #                      scale_pix_x, scale_pix_y, cell_annotations=None)
-            
-            # Load cell type annotations if available
-            annotations_path = os.path.join(output_dir, "preannotations.csv")
-            if os.path.exists(annotations_path):
-                df_annotations = pd.read_csv(annotations_path)
-                cell_annotations = {
-                    row["cell_id"]: {"cell_type": row["cell_type"], "spearman": row["spearman"], "cell_type_atlas": row["cell_type_atlas"]}
-                    for _, row in df_annotations.iterrows()
-                }
-            else:
-                cell_annotations = None
-            
-            process_starmap_meta(df_out, gene_names, n_processes, output_dir, seg_map_mi, 
-                                 scale_pix_x, scale_pix_y, cell_annotations=cell_annotations)
+    if include_spatial and is_cell:
+        print("Computing cell locations and sizes...")
+        t10 = time.time()
 
-            t11 = time.time()
-            print(f"Processing meta cell info took {t11-t10} seconds.")
+        process_starmap_meta(df_out, gene_names, n_processes, output_dir, seg_map_mi, 
+                             scale_pix_x, scale_pix_y, cell_annotations=None)
+
+        t11 = time.time()
+        print(f"Processing meta cell info took {t11-t10} seconds.")
 
     print("Done making cell gene matrix.")
-
-    # print("Cleaning up...")
-    # mp.active_children()
-    # mp.pool = None
-    # print("\tDone!")
 
 
 if __name__ == "__main__":
