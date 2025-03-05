@@ -153,7 +153,7 @@ def preannotate(config: Config):
 
     # Save merged dataframe
     preannotation_dfs = [pd.read_csv(file_path) for file_path in fp_chunks]
-    preannotation_df = pd.concat(df_list, ignore_index=True)
+    preannotation_df = pd.concat(preannotation_dfs, ignore_index=True)
     preannotation_df.to_csv(dir_dataset + "/preannotations_merged.csv")
     
     # Clean up
