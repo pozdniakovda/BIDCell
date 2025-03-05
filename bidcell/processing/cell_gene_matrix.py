@@ -447,9 +447,11 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
 
     t1 = time.time()
     print(f"\tInitialization: {t1-t0} seconds")
-    print(f"\tExpressions path: {output_dir + "/" + config.files.fp_expr}")
 
-    if not os.path.exists(output_dir + "/" + config.files.fp_expr):
+    fp_expr = output_dir + "/" + config.files.fp_expr
+    print(f"\tExpressions path: {fp_expr}")
+
+    if not os.path.exists(fp_expr):
         print(f"\tFile does not exist; generating...")
         # Rescale to pixel size
         height_pix = np.round(height / config.affine.scale_pix_y).astype(int)
@@ -522,7 +524,7 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
                 df_i = pd.read_csv(fpc, index_col=0)
                 df_out.iloc[:, 1:] = df_out.iloc[:, 1:].add(df_i.iloc[:, 1:])
 
-            df_out.to_csv(output_dir + "/" + config.files.fp_expr)
+            df_out.to_csv(fp_expr)
 
             t9 = time.time()
             print(f"\tCombining cell gene matrix chunks: {t9-t8} seconds")
@@ -542,7 +544,7 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
 
     else:
         print(f"\tFile exists; reloading...")
-        df_out = pd.read_csv(output_dir + "/" + config.files.fp_expr, index_col=0)
+        df_out = pd.read_csv(fp_expr, index_col=0)
 
     if include_spatial:
         if is_cell:
