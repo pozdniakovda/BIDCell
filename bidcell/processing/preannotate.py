@@ -151,6 +151,11 @@ def preannotate(config: Config):
     h5f.create_dataset("ids", data=cell_id_col)
     h5f.close()
 
+    # Save merged dataframe
+    preannotation_dfs = [pd.read_csv(file_path) for file_path in fp_chunks]
+    preannotation_df = pd.concat(df_list, ignore_index=True)
+    preannotation_df.to_csv(dir_dataset + "/preannotations_merged.csv")
+    
     # Clean up
     for fpc in fp_chunks:
         os.remove(fpc)
