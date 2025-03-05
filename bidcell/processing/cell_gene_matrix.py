@@ -369,7 +369,7 @@ def resize_seg_map(seg_map_mi, width_pix, height_pix, output_dir, use_cv2=False)
 
 
 def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = None):
-    """Generates the cell-gene matrix but does NOT merge annotations (handled in predict())."""
+    """Generates the cell-gene matrix and merges all metadata into a single expr_mat.csv file."""
 
     print(f"Making cell gene matrix...")
     t0 = time.time()
@@ -391,15 +391,11 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
     with open(fp_gene_names) as file:
         gene_names = [line.rstrip() for line in file]
 
+    col_names = ["cell_id"] + gene_names  # Start with cell IDs and gene expressions
+
+    # Add spatial metadata columns if enabled
     if is_cell and include_spatial:
-        col_names = [
-            "cell_id",
-            "cell_centroid_x",
-            "cell_centroid_y",
-            "cell_size",
-        ] + gene_names
-    else:
-        col_names = ["cell_id"] + gene_names
+        col_names += ["cell_centroid_x", "cell_centroid_y", "cell_size", "eccentricity"]
 
     n_processes = get_n_processes(config.cpus)
 
@@ -417,9 +413,6 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
 
         seg_map, fp_rescaled_seg = resize_seg_map(seg_map_mi, width_pix, height_pix, output_dir, use_cv2=False)
 
-        #df_out = pd.DataFrame(0, index=cell_ids_unique, columns=col_names)
-        #df_out["cell_id"] = cell_ids_unique.copy()
-
         # Divide into patches for large datasets that exceed memory capacity
         h_coords, _ = get_patches_coords(height_pix, config.cgm_params.max_sum_hw // 2)
         w_coords, _ = get_patches_coords(width_pix, config.cgm_params.max_sum_hw - (config.cgm_params.max_sum_hw // 2))
@@ -435,45 +428,29 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
             df_expr.reset_index(drop=True, inplace=True)
 
             print("Extracting cell-gene matrix chunks")
-            save_chunks = False
             df_out = process_starmap(df_expr, n_processes, output_dir, cell_ids_unique, col_names, 
-                                     seg_map, x_col, y_col, gene_col, save_chunks)
+                                     seg_map, x_col, y_col, gene_col, save_chunks=False)
 
-            fp_chunks = glob.glob(os.path.join(output_dir, "chunk_*.csv"))
-            #for fpc in fp_chunks:
-            #    df_i = pd.read_csv(fpc, index_col=0)
-            #    df_out.iloc[:, 1:] = df_out.iloc[:, 1:].add(df_i.iloc[:, 1:])
+            output_dfs.append(df_out)
 
-            #output_dfs.append(df_out)
-            df_out.to_csv(fp_expr)
-            print(f"Saved current cell-gene matrix to {fp_expr}")
+        df_expr_final = pd.concat(output_dfs, ignore_index=True)
 
-            # Clean up chunk files
-            if save_chunks:
-                for fpc in fp_chunks:
-                    os.remove(fpc)
+        # Compute and merge spatial metadata
+        if include_spatial and is_cell:
+            print("Computing cell locations and sizes...")
+            df_meta = process_starmap_meta(df_expr_final, gene_names, n_processes, output_dir, seg_map_mi, 
+                                           scale_pix_x, scale_pix_y, cell_annotations=None, save_chunks=False)
 
-        print("Obtained cell-gene matrix")
+            df_expr_final = df_expr_final.merge(df_meta, on="cell_id", how="left")
+
+        df_expr_final.to_csv(fp_expr, index=False)
+        print(f"Saved final cell-gene matrix with metadata to {fp_expr}")
+
         os.remove(fp_rescaled_seg)
-        del seg_map, df_expr
 
     else:
         print(f"\tFile exists; reloading...")
-        df_out = pd.read_csv(fp_expr, index_col=0)
-
-    if include_spatial and is_cell:
-        print("Computing cell locations and sizes...")
-        t10 = time.time()
-
-        df_merged = process_starmap_meta(df_out, gene_names, n_processes, output_dir, seg_map_mi, 
-                                         scale_pix_x, scale_pix_y, cell_annotations=None, save_chunks=False)
-
-        t11 = time.time()
-        print(f"Processing meta cell info took {t11-t10} seconds.")
-
-        fp_expr_meta = fp_expr.rsplit(".", 1)[0] + "_meta.csv"
-        df_merged.to_csv(fp_expr_meta)
-        print(f"Saved current cell-gene matrix meta information to {fp_expr_meta}")
+        df_expr_final = pd.read_csv(fp_expr)
 
     print("Done making cell gene matrix.")
 
