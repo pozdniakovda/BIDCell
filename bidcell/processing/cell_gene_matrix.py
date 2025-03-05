@@ -422,7 +422,13 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
     # Read gene names and get cols
     with open(fp_gene_names) as file:
         gene_names = [line.rstrip() for line in file]
-    col_names = ["cell_id"] + gene_names
+    
+    col_names = [
+        "cell_id",
+        "cell_centroid_x",
+        "cell_centroid_y",
+        "cell_size",
+    ] + gene_names
 
     n_processes = get_n_processes(config.cpus)
     # print(f"Number of splits for multiprocessing: {n_processes}")
@@ -533,8 +539,8 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
             t10 = time.time()
             
             # Original method
-            #col_names_coords = process_parallel_meta(df_out, gene_names, n_processes, output_dir, seg_map_mi, 
-            #                                         scale_pix_x, scale_pix_y, cell_annotations=None)
+            #process_parallel_meta(df_out, gene_names, n_processes, output_dir, seg_map_mi, 
+            #                      scale_pix_x, scale_pix_y, cell_annotations=None)
             
             # Load cell type annotations if available
             annotations_path = os.path.join(output_dir, "preannotations.csv")
@@ -547,8 +553,8 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
             else:
                 cell_annotations = None
             
-            col_names_coords = process_starmap_meta(df_out, gene_names, n_processes, output_dir, seg_map_mi, 
-                                                    scale_pix_x, scale_pix_y, cell_annotations=cell_annotations)
+            process_starmap_meta(df_out, gene_names, n_processes, output_dir, seg_map_mi, 
+                                 scale_pix_x, scale_pix_y, cell_annotations=cell_annotations)
 
             t11 = time.time()
             print(f"Processing meta cell info took {t11-t10} seconds.")
