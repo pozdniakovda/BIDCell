@@ -174,9 +174,10 @@ class BIDCellModel:
                                                                                   self.lr_override, 
                                                                                   self.solver_override, 
                                                                                   self.device_idx, self.verbose)
-
+    
     def predict(self) -> None:
-        """Segment and annotate the cells, then merge all metadata into expr_mat.csv."""
+        """Segment and annotate the cells, ensuring that all data (expression, metadata, annotations) is properly merged."""
+    
         print(f"Beginning prediction...")
         predict(self.config)
     
@@ -199,27 +200,36 @@ class BIDCellModel:
     
         print(f"Re-running preannotation...")
         preannotate(self.config, save_merged=True)
-        
-        print(f"Reloading cell gene matrix to include annotations...")
+    
+        print(f"Reloading and merging annotations with expression matrix...")
+    
+        # Define paths
         expr_mat_path = os.path.join(self.config.files.data_dir, self.config.files.dir_cgm, timestamp, self.config.files.fp_expr)
         preannotations_path = os.path.join(self.config.files.data_dir, "preannotations_merged.csv")
     
+        # Ensure both files exist before merging
         if os.path.exists(expr_mat_path) and os.path.exists(preannotations_path):
             df_expr = pd.read_csv(expr_mat_path)
             df_annotations = pd.read_csv(preannotations_path)
     
-            # Merge on cell_id
+            # Ensure unique `cell_id`s and remove duplicates by summing gene counts
+            df_expr = df_expr.groupby("cell_id", as_index=False).sum()
+    
+            # Merge annotations
             df_merged = df_expr.merge(df_annotations, on="cell_id", how="left")
     
-            # Save the updated expr_mat.csv
+            # Save the final merged file
             df_merged.to_csv(expr_mat_path, index=False)
-            print(f"Merged annotations into expr_mat.csv successfully! Save path: {expr_mat_path}")
+            print(f"Successfully merged annotations into expr_mat.csv. Save path: {expr_mat_path}")
+    
         elif os.path.exists(expr_mat_path) and not os.path.exists(preannotations_path):
-            print("Warning: preannotations_merged.csv not found, skipping merge.")
+            print("⚠ Warning: preannotations_merged.csv not found. Skipping annotation merge.")
+    
         elif not os.path.exists(expr_mat_path) and os.path.exists(preannotations_path):
-            print("Warning: expr_mat.csv not found, skipping merge.")
+            print("⚠ Warning: expr_mat.csv not found. Skipping annotation merge.")
+    
         else:
-            print("Warning: expr_mat.csv and preannotations_merged.csv not found, skipping merge.")
+            print("⚠ Warning: Both expr_mat.csv and preannotations_merged.csv are missing. Skipping merge.")
     
         print(f"Done prediction.")
 
