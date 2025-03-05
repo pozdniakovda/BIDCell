@@ -195,6 +195,28 @@ def process_chunk_meta(
     df_split.to_csv(fp_output + "%d.csv" % chunk_id, index=False)
 
 
+def process_starmap_meta(chunk, output_dir, seg_map_mi, col_names_coords, scale_pix_x, scale_pix_y, 
+                         df_expr, n_processes, cell_annotations):
+    # Method #2: Starmap and dedicated Pool for meta
+    df_expr_splits = np.array_split(df_expr, n_processes)
+    with mp.Pool(n_processes) as pool:
+        pool.starmap(
+            process_chunk_meta,  # Use process_chunk_meta instead of process_chunk
+            [
+                (
+                    chunk,
+                    output_dir,
+                    seg_map_mi,  # Segmentation map
+                    col_names_coords,  # Updated column names
+                    scale_pix_x,
+                    scale_pix_y,
+                    cell_annotations,  # Pass cell annotations dictionary
+                )
+                for chunk in df_expr_splits
+            ],
+        )
+
+
 def transform_locations(df_expr, col, scale, shift=0):
     """Scale transcripts to pixel resolution of the platform"""
     print(f"Transforming {col}")
@@ -466,6 +488,11 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
     if include_spatial:
         if is_cell:
             print("Computing cell locations and sizes...")
+
+            process_starmap_meta(chunk, output_dir, seg_map_mi, col_names_coords, 
+                                 scale_pix_x, scale_pix_y, df_expr, 
+                                 n_processes, cell_annotations)
+            
     
             matrix_all = df_out.to_numpy().astype(np.float32)
             matrix_all_splits = np.array_split(matrix_all, n_processes)
