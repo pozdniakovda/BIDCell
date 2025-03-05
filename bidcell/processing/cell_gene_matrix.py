@@ -4,10 +4,7 @@ import os
 import sys
 import time
 import multiprocessing as mp
-#mp.set_start_method("spawn", force=True)
-
-import ctypes
-ctypes.CDLL("libX11.so").XInitThreads()
+mp.set_start_method("forkserver", force=True)
 
 # import cv2
 from skimage.transform import resize
