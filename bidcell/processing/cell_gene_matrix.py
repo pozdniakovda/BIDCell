@@ -364,51 +364,35 @@ def resize_seg_map(seg_map_mi, width_pix, height_pix, output_dir, use_cv2=False)
 
 
 def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = None):
-    """Generates the cell-gene matrix and merges metadata, ensuring all necessary columns are correctly assigned."""
+    """Generates a cleaned and correctly formatted cell-gene matrix with metadata."""
 
     print(f"Making cell gene matrix...")
     t0 = time.time()
-    
-    cgm_paths = get_cgm_paths(config, is_cell, timestamp)
-    output_dir, fp_transcripts_processed, fp_gene_names, fp_seg, fp_seg_name = cgm_paths
 
+    output_dir, fp_transcripts_processed, fp_gene_names, fp_seg, _ = get_cgm_paths(config, is_cell, timestamp)
     include_spatial = config.cgm_params.include_spatial
 
-    # Column names in the transcripts csv
-    x_col = config.transcripts.x_col
-    y_col = config.transcripts.y_col
-    gene_col = config.transcripts.gene_col
+    x_col, y_col, gene_col = config.transcripts.x_col, config.transcripts.y_col, config.transcripts.gene_col
+    seg_map_mi, height, width, cell_ids_unique, _ = get_seg_map(fp_seg)
 
-    # Get segmentation map and associated metrics
-    seg_map_mi, height, width, cell_ids_unique, n_cells = get_seg_map(fp_seg)
-
-    # Read gene names and get cols
     with open(fp_gene_names) as file:
         gene_names = [line.rstrip() for line in file]
 
     col_names = ["cell_id"] + gene_names
-
     n_processes = get_n_processes(config.cpus)
 
-    scale_pix_x = config.affine.scale_pix_x
-    scale_pix_y = config.affine.scale_pix_y
-
+    scale_pix_x, scale_pix_y = config.affine.scale_pix_x, config.affine.scale_pix_y
     fp_expr = os.path.join(output_dir, config.files.fp_expr)
-    print(f"\tExpressions path: {fp_expr}")
 
     if not os.path.exists(fp_expr):
         print(f"\tFile does not exist; generating...")
 
-        # Rescale to pixel size
         height_pix = np.round(height / config.affine.scale_pix_y).astype(int)
         width_pix = np.round(width / config.affine.scale_pix_x).astype(int)
+        seg_map, fp_rescaled_seg = resize_seg_map(seg_map_mi, width_pix, height_pix, output_dir)
 
-        seg_map, fp_rescaled_seg = resize_seg_map(seg_map_mi, width_pix, height_pix, output_dir, use_cv2=False)
-
-        # Initialize df_expr properly
         df_expr = pd.DataFrame(columns=["cell_id", x_col, y_col, gene_col])
 
-        # Divide into patches for large datasets that exceed memory capacity
         h_coords, _ = get_patches_coords(height_pix, config.cgm_params.max_sum_hw // 2)
         w_coords, _ = get_patches_coords(width_pix, config.cgm_params.max_sum_hw - (config.cgm_params.max_sum_hw // 2))
         hw_coords = [(hs, he, ws, we) for (hs, he) in h_coords for (ws, we) in w_coords]
@@ -418,24 +402,21 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
         output_dfs = []
         for hs, he, ws, we in tqdm(hw_coords):
             seg_map, df_expr = prepare_expr(seg_map_full, hs, he, ws, we, fp_transcripts_processed, 
-                                            x_col, y_col, scale_pix_x, scale_pix_y, print_ranges=False)
+                                            x_col, y_col, scale_pix_x, scale_pix_y)
 
             df_expr.reset_index(drop=True, inplace=True)
 
             print("Extracting cell-gene matrix chunks")
-            save_chunks = False
             df_out = process_starmap(df_expr, n_processes, output_dir, cell_ids_unique, col_names, 
-                                     seg_map, x_col, y_col, gene_col, save_chunks)
+                                     seg_map, x_col, y_col, gene_col, save_chunks=False)
 
-            # Ensure df_out is correctly assigned before appending
             if df_out is not None and not df_out.empty:
                 output_dfs.append(df_out)
 
-        # Concatenate all DataFrames if they exist
         if output_dfs:
             df_expr = pd.concat(output_dfs, ignore_index=True)
-            df_expr.set_index("cell_id", drop=True, inplace=True)
-            df_expr.to_csv(fp_expr)
+            df_expr = df_expr.groupby("cell_id", as_index=False).sum()
+            df_expr.to_csv(fp_expr, index=False)
             print(f"Saved final cell-gene matrix to {fp_expr}")
         else:
             print("⚠ Warning: No valid expression data was generated.")
@@ -444,24 +425,15 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
 
     else:
         print(f"\tFile exists; reloading...")
-        df_expr = pd.read_csv(fp_expr, index_col=0)
+        df_expr = pd.read_csv(fp_expr)
 
-    # Ensure spatial metadata is added
     if include_spatial and is_cell:
         print("Computing cell locations and sizes...")
-        t10 = time.time()
+        df_meta = process_starmap_meta(df_expr, gene_names, n_processes, output_dir, seg_map_mi, scale_pix_x, scale_pix_y)
 
-        df_meta = process_starmap_meta(df_expr, gene_names, n_processes, output_dir, seg_map_mi, 
-                                       scale_pix_x, scale_pix_y, cell_annotations=None, save_chunks=False)
+        df_expr = df_meta.merge(df_expr, on="cell_id", how="left")
 
-        t11 = time.time()
-        print(f"Processing meta cell info took {t11-t10} seconds.")
-
-        # Merge metadata into df_expr
-        df_final = df_expr.merge(df_meta, on="cell_id", how="left")
-
-        # Save the fully merged expr_mat.csv
-        df_final.to_csv(fp_expr)
+        df_expr.to_csv(fp_expr, index=False)
         print(f"Saved updated cell-gene matrix with metadata: {fp_expr}")
 
     print("Done making cell gene matrix.")
