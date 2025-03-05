@@ -363,6 +363,7 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
                 y_col,
                 gene_col,
             )
+            '''
             
             # Method #2: Starmap and dedicated Pool
             df_expr_splits = np.array_split(df_expr, n_processes)
@@ -407,6 +408,8 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
 
             for p in processes:
                 p.join()
+
+            '''
 
             t9 = time.time()
             print(f"\Processing data: {t9-t8} seconds")
