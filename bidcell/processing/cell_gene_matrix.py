@@ -222,18 +222,7 @@ def process_chunk_meta(
             except Exception:
                 output[cur_i, 1:8] = [-1, -1, -1, -1, -1, -1, -1]  # Fill with defaults on error
 
-    # Save as csv
-    col_names_coords = [
-        "cell_id",
-        "cell_centroid_x",
-        "cell_centroid_y",
-        "pixel_size",  # Renamed from cell_size
-        "eccentricity",
-        "cell_type",
-        "spearman",
-        "cell_type_atlas"
-    ]
-    
+    # Save as csv    
     df_split = pd.DataFrame(
         output, index=list(range(output.shape[0])), columns=col_names_coords
     )
