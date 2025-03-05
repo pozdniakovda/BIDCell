@@ -218,7 +218,7 @@ def resize_seg_map(seg_map_mi, width_pix, height_pix, output_dir, use_cv2=False)
         fp_rescaled_seg, seg_map.astype(np.uint32), photometric="minisblack"
     )
 
-    return seg_map
+    return seg_map, fp_rescaled_seg
 
 
 def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = None):
@@ -262,7 +262,7 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
         height_pix = np.round(height / config.affine.scale_pix_y).astype(int)
         width_pix = np.round(width / config.affine.scale_pix_x).astype(int)
 
-        seg_map = resize_seg_map(seg_map_mi, width_pix, height_pix, output_dir, use_cv2=False)
+        seg_map, fp_rescaled_seg = resize_seg_map(seg_map_mi, width_pix, height_pix, output_dir, use_cv2=False)
 
         df_out = pd.DataFrame(0, index=cell_ids_unique, columns=col_names)
         df_out["cell_id"] = cell_ids_unique.copy()
@@ -280,9 +280,10 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
         hw_coords = [(hs, he, ws, we) for (hs, he) in h_coords for (ws, we) in w_coords]
 
         print("Extracting cell expressions")
+        seg_map_full = tifffile.imread(fp_rescaled_seg)
         for hs, he, ws, we in tqdm(hw_coords):
             print(f"Patch H {hs}:{he}, W {ws}:{we}")
-            seg_map = tifffile.imread(fp_rescaled_seg)[hs:he, ws:we]
+            seg_map = seg_map_full[hs:he, ws:we]
             print(seg_map.shape)
 
             df_expr = read_expr_csv(fp_transcripts_processed)
