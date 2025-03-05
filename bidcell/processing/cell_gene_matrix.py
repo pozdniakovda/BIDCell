@@ -222,6 +222,11 @@ def resize_seg_map(seg_map_mi, width_pix, height_pix, output_dir, use_cv2=False)
 
 
 def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = None):
+    # Generates the cell gene matrix
+
+    print(f"Making cell gene matrix...")
+    t0 = time.time()
+    
     cgm_paths = get_cgm_paths(config, is_cell, timestamp)
     output_dir, fp_transcripts_processed, fp_gene_names, fp_seg, fp_seg_name = cgm_paths
 
@@ -257,6 +262,9 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
     scale_pix_x = config.affine.scale_pix_x
     scale_pix_y = config.affine.scale_pix_y
 
+    t1 = time.time()
+    print(f"\tInitialization: {t1-t0} seconds")
+
     if not os.path.exists(output_dir + "/" + config.files.fp_expr):
         # Rescale to pixel size
         height_pix = np.round(height / config.affine.scale_pix_y).astype(int)
@@ -264,8 +272,14 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
 
         seg_map, fp_rescaled_seg = resize_seg_map(seg_map_mi, width_pix, height_pix, output_dir, use_cv2=False)
 
+        t2 = time.time()
+        print(f"\tSegmentation map resizing: {t2-t1} seconds")
+
         df_out = pd.DataFrame(0, index=cell_ids_unique, columns=col_names)
         df_out["cell_id"] = cell_ids_unique.copy()
+
+        t3 = time.time()
+        print(f"\tOutput dataframe generation: {t3-t2} seconds")
 
         # Divide into patches for large datasets that exceed memory capacity
         if (height_pix + width_pix) > config.cgm_params.max_sum_hw:
@@ -279,9 +293,18 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
         w_coords, _ = get_patches_coords(width_pix, patch_w)
         hw_coords = [(hs, he, ws, we) for (hs, he) in h_coords for (ws, we) in w_coords]
 
-        print("Extracting cell expressions")
+        t4 = time.time()
+        print(f"\tGetting patches coords: {t4-t3} seconds")
+
+        #print("Extracting cell expressions")
         seg_map_full = tifffile.imread(fp_rescaled_seg)
+
+        t5 = time.time()
+        print(f"\tLoading full segmentation map: {t5-t4} seconds")
+        
         for hs, he, ws, we in tqdm(hw_coords):
+            t6 = time.time()
+            
             print(f"Patch H {hs}:{he}, W {ws}:{we}")
             seg_map = seg_map_full[hs:he, ws:we]
             print(seg_map.shape)
@@ -293,6 +316,9 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
                 df_expr[y_col].min(),
                 df_expr[y_col].max(),
             )
+
+            t7 = time.time()
+            print(f"\tReading expressions: {t7-t6} seconds")
 
             df_expr = transform_locations(df_expr, x_col, scale_pix_x)
             df_expr = transform_locations(df_expr, y_col, scale_pix_y)
@@ -317,14 +343,15 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
                 df_expr[y_col].max(),
             )
 
+            t8 = time.time()
+            print(f"\tTransforming locations: {t8-t7} seconds")
+
             df_expr.reset_index(drop=True, inplace=True)
 
             print("Extracting cell-gene matrix chunks")
             processes = []
 
-            # Method #1: Pass the whole dataset instead of chunks
-            t0 = time.time()
-            
+            # Method #1: Pass the whole dataset instead of chunks            
             process_fast(
                 df_expr,  
                 output_dir,
@@ -336,8 +363,8 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
                 gene_col,
             )
             
-            t1 = time.time()
-            print(f"cgm process_fast took {t1-t0} seconds")
+            t9 = time.time()
+            print(f"\tprocess_fast: {t9-t8} seconds")
 
             '''
             # Method #2: Starmap and dedicated Pool
@@ -383,7 +410,7 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
                 p.join()
             '''
 
-            print("Combining cell-gene matrix chunks")
+            #print("Combining cell-gene matrix chunks")
 
             fp_chunks = glob.glob(output_dir + "/chunk_*.csv")
             for fpc in fp_chunks:
@@ -392,9 +419,15 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
 
             df_out.to_csv(output_dir + "/" + config.files.fp_expr)
 
+            t10 = time.time()
+            print(f"\tCombining cell gene matrix chunks: {t10-t9} seconds")
+
             # Clean up
             for fpc in fp_chunks:
                 os.remove(fpc)
+
+            t11 = time.time()
+            print(f"\tCleanup: {t11-t10} seconds")
 
         print("Obtained cell-gene matrix")
         
@@ -407,7 +440,7 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
 
     if include_spatial:
         if is_cell:
-            print("Computing cell locations and sizes")
+            print("Computing cell locations and sizes...")
     
             matrix_all = df_out.to_numpy().astype(np.float32)
             matrix_all_splits = np.array_split(matrix_all, n_processes)
