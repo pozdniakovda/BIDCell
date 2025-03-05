@@ -515,14 +515,11 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
             df_out.to_csv(fp_expr)
 
             t9 = time.time()
-            print(f"\tCombining cell gene matrix chunks: {t9-t8} seconds")
+            print(f"\tCombining cell gene matrix chunks took {t9-t8} seconds")
 
             # Clean up
             for fpc in fp_chunks:
                 os.remove(fpc)
-
-            t10 = time.time()
-            print(f"\tCleanup: {t10-t9} seconds")
 
         print("Obtained cell-gene matrix")
         
@@ -537,6 +534,7 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
     if include_spatial:
         if is_cell:
             print("Computing cell locations and sizes...")
+            t10 = time.time()
             
             # Original method
             #process_parallel_meta(df_out, gene_names, n_processes, output_dir, seg_map_mi, 
@@ -545,6 +543,9 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
             # Starmap method
             process_starmap_meta(df_out, gene_names, n_processes, output_dir, seg_map_mi, 
                                  scale_pix_x, scale_pix_y, cell_annotations=None)
+
+            t11 = time.time()
+            print(f"Processing meta cell info took {t11-t10} seconds.")
 
     print("Done making cell gene matrix.")
 
