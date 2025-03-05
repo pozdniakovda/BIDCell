@@ -7,6 +7,7 @@ import multiprocessing as mp
 mp.set_start_method("forkserver", force=True)
 
 # import cv2
+from skimage.measure import regionprops, label
 from skimage.transform import resize
 import numpy as np
 import pandas as pd
@@ -85,7 +86,7 @@ def process_chunk(
 
 
 def process_chunk_meta(
-    matrix, fp_output, seg_map_mi, col_names_coords, scale_pix_x, scale_pix_y
+    matrix, fp_output, seg_map_mi, col_names_coords, scale_pix_x, scale_pix_y, cell_annotations=None
 ):
     """Compute cell locations and sizes"""
 
@@ -106,15 +107,42 @@ def process_chunk_meta(
                 centroid_y = sum(y_points) / len(y_points)
                 output[cur_i, 1] = centroid_x * scale_pix_x
                 output[cur_i, 2] = centroid_y * scale_pix_y
-
-                # cell_size
-                output[cur_i, 3] = len(coords[0]) / (scale_pix_x * scale_pix_y)
+    
+                # cell_size (renamed to pixel_size)
+                pixel_size = len(coords[0]) / (scale_pix_x * scale_pix_y)
+                output[cur_i, 3] = pixel_size
+    
+                # Compute eccentricity using regionprops
+                mask = (seg_map_mi == cell_id).astype(np.uint8)
+                labeled_mask = label(mask)
+                props = regionprops(labeled_mask)
+                eccentricity = props[0].eccentricity if props else -1
+                output[cur_i, 4] = eccentricity  # Assign eccentricity
+    
+                # Assign cell_type, spearman, and cell_type_atlas
+                if cell_annotations is not None and cell_id in cell_annotations:
+                    annotation = cell_annotations[cell_id]
+                    output[cur_i, 5] = annotation.get("cell_type", "Unknown")
+                    output[cur_i, 6] = annotation.get("spearman", -1)
+                    output[cur_i, 7] = annotation.get("cell_type_atlas", "Unknown")
+                else:
+                    output[cur_i, 5:8] = ["Unknown", -1, "Unknown"]  # Default values
+    
             except Exception:
-                output[cur_i, 1] = -1
-                output[cur_i, 2] = -1
-                output[cur_i, 3] = -1
+                output[cur_i, 1:8] = [-1, -1, -1, -1, "Unknown", -1, "Unknown"]  # Fill with defaults on error
 
     # Save as csv
+    col_names_coords = [
+        "cell_id",
+        "cell_centroid_x",
+        "cell_centroid_y",
+        "pixel_size",  # Renamed from cell_size
+        "eccentricity",
+        "cell_type",
+        "spearman",
+        "cell_type_atlas"
+    ]
+    
     df_split = pd.DataFrame(
         output, index=list(range(output.shape[0])), columns=col_names_coords
     )
@@ -364,40 +392,39 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
             df_expr_splits = np.array_split(df_expr, n_processes)
             with mp.Pool(n_processes) as pool:
                 pool.starmap(
-                    process_chunk,
+                    process_chunk_meta,  # Use process_chunk_meta instead of process_chunk
                     [
                         (
                             chunk,
                             output_dir,
-                            cell_ids_unique,
-                            col_names,
-                            seg_map,
-                            x_col,
-                            y_col,
-                            gene_col,
+                            seg_map_mi,  # Segmentation map
+                            col_names_coords,  # Updated column names
+                            scale_pix_x,
+                            scale_pix_y,
+                            cell_annotations,  # Pass cell annotations dictionary
                         )
                         for chunk in df_expr_splits
                     ],
                 )
+
 
             '''
             
             # Method #3: Original
             df_expr_splits = np.array_split(df_expr, n_processes)
             for chunk in df_expr_splits:
-                p = mp.Process(
-                    target=process_chunk,
-                    args=(
-                        chunk,
-                        output_dir,
-                        cell_ids_unique,
-                        col_names,
-                        seg_map,
-                        x_col,
-                        y_col,
-                        gene_col,
-                    ),
-                )
+            p = mp.Process(
+                target=process_chunk_meta,
+                args=(
+                    chunk,
+                    fp_output,
+                    seg_map_mi,
+                    col_names_coords,
+                    scale_pix_x,
+                    scale_pix_y,
+                    cell_annotations,  # Pass the annotations dictionary
+                ),
+            )
                 processes.append(p)
                 p.start()
 
