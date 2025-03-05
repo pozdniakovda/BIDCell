@@ -4,7 +4,7 @@ import os
 import sys
 import time
 import multiprocessing as mp
-# mp.set_start_method("spawn", force=True)
+mp.set_start_method("spawn", force=True)
 
 # import cv2
 from skimage.transform import resize
