@@ -73,12 +73,12 @@ def process_chunk_corr(matrix, dir_output, sc_expr, sc_labels, n_atlas_types):
     matrix_out[:, 3] = best_i_type.copy()
 
     # Save as csv
+    fp_anno = dir_output + "/preannotations_%d.csv" % matrix_out[0, 0]
     df_split = pd.DataFrame(
         matrix_out, index=list(range(matrix_out.shape[0])), columns=col_names
     )
-    df_split.to_csv(
-        dir_output + "/preannotations_%d.csv" % matrix_out[0, 0], index=False
-    )
+    df_split.to_csv(fp_anno, index=False)
+    print(f"Saved preannotations file: {fp_anno}")
 
 
 def preannotate(config: Config):
