@@ -1,6 +1,7 @@
 """BIDCellModel class module"""
 import importlib.resources
 import os
+import pandas as pd
 from pathlib import Path
 from shutil import copyfile, copytree
 from typing import Literal
