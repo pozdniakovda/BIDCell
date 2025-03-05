@@ -181,12 +181,13 @@ def process_chunk_meta(matrix, fp_output, seg_map_mi, col_names_coords,
     """Compute cell locations, sizes, eccentricity, and retrieve cell type annotations."""
 
     chunk_id = matrix[0, 0]
-    output = np.zeros((matrix.shape[0], len(col_names_coords)))
-    output[:, 0] = matrix[:, 0].copy()
-    output[:, 4:] = matrix[:, 1:].copy()  # Keep gene expression values
+    
+    # Convert to Pandas DataFrame to handle mixed data types
+    df_output = pd.DataFrame(columns=col_names_coords)
+    df_output["cell_id"] = matrix[:, 0].astype(int)  # Ensure IDs are integers
 
     # Convert to pixel resolution
-    for cur_i, cell_id in enumerate(output[:, 0]):
+    for cur_i, cell_id in enumerate(df_output["cell_id"]):
         if cell_id > 0:
             try:
                 # Get coordinates of the cell in segmentation mask
@@ -195,44 +196,40 @@ def process_chunk_meta(matrix, fp_output, seg_map_mi, col_names_coords,
                 y_points = coords[0]
 
                 # Compute centroid
-                centroid_x = sum(x_points) / len(x_points)
-                centroid_y = sum(y_points) / len(y_points)
-                output[cur_i, 1] = centroid_x * scale_pix_x
-                output[cur_i, 2] = centroid_y * scale_pix_y
+                df_output.at[cur_i, "cell_centroid_x"] = (sum(x_points) / len(x_points)) * scale_pix_x
+                df_output.at[cur_i, "cell_centroid_y"] = (sum(y_points) / len(y_points)) * scale_pix_y
 
                 # Compute pixel size
-                pixel_size = len(coords[0]) / (scale_pix_x * scale_pix_y)
-                output[cur_i, 3] = pixel_size
+                df_output.at[cur_i, "pixel_size"] = len(coords[0]) / (scale_pix_x * scale_pix_y)
 
                 # Compute eccentricity using regionprops
                 mask = (seg_map_mi == cell_id).astype(np.uint8)
                 labeled_mask = label(mask)
                 props = regionprops(labeled_mask)
-                eccentricity = props[0].eccentricity if props else -1
-                output[cur_i, 4] = eccentricity  # Assign eccentricity
+                df_output.at[cur_i, "eccentricity"] = props[0].eccentricity if props else -1
 
                 # Assign cell_type, spearman, and cell_type_atlas if available
                 if cell_annotations is not None and cell_id in cell_annotations:
                     annotation = cell_annotations[cell_id]
-                    output[cur_i, 5] = annotation.get("cell_type", "Unknown")
-                    output[cur_i, 6] = annotation.get("spearman", -1)
-                    output[cur_i, 7] = annotation.get("cell_type_atlas", "Unknown")
+                    df_output.at[cur_i, "cell_type"] = annotation.get("cell_type", "Unknown")
+                    df_output.at[cur_i, "spearman"] = annotation.get("spearman", -1)
+                    df_output.at[cur_i, "cell_type_atlas"] = annotation.get("cell_type_atlas", "Unknown")
                 else:
-                    output[cur_i, 5:8] = ["Unknown", -1, "Unknown"]  # Default values
+                    df_output.at[cur_i, "cell_type"] = "Unknown"
+                    df_output.at[cur_i, "spearman"] = -1
+                    df_output.at[cur_i, "cell_type_atlas"] = "Unknown"
 
             except Exception:
-                output[cur_i, 1:8] = [-1, -1, -1, -1, "Unknown", -1, "Unknown"]  # Fill with defaults on error
+                df_output.at[cur_i, "cell_centroid_x"] = -1
+                df_output.at[cur_i, "cell_centroid_y"] = -1
+                df_output.at[cur_i, "pixel_size"] = -1
+                df_output.at[cur_i, "eccentricity"] = -1
+                df_output.at[cur_i, "cell_type"] = "Unknown"
+                df_output.at[cur_i, "spearman"] = -1
+                df_output.at[cur_i, "cell_type_atlas"] = "Unknown"
 
-    # Convert to DataFrame and save
-    df_split = pd.DataFrame(
-        output,
-        index=list(range(output.shape[0])),
-        columns=col_names_coords
-    )
-    df_split["cell_type"] = df_split["cell_type"].replace(-1, "Unknown")
-    df_split["cell_type_atlas"] = df_split["cell_type_atlas"].replace(-1, "Unknown")
-
-    df_split.to_csv(fp_output + "%d.csv" % chunk_id, index=False)
+    # Save as CSV
+    df_output.to_csv(f"{fp_output}{chunk_id}.csv", index=False)
 
 
 def process_parallel_meta(df_out, gene_names, n_processes, output_dir, seg_map_mi, 
@@ -534,10 +531,20 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
             # Original method
             #process_parallel_meta(df_out, gene_names, n_processes, output_dir, seg_map_mi, 
             #                      scale_pix_x, scale_pix_y, cell_annotations=None)
-
-            # Starmap method
+            
+            # Load cell type annotations if available
+            annotations_path = os.path.join(output_dir, "preannotations.csv")
+            if os.path.exists(annotations_path):
+                df_annotations = pd.read_csv(annotations_path)
+                cell_annotations = {
+                    row["cell_id"]: {"cell_type": row["cell_type"], "spearman": row["spearman"], "cell_type_atlas": row["cell_type_atlas"]}
+                    for _, row in df_annotations.iterrows()
+                }
+            else:
+                cell_annotations = None
+            
             process_starmap_meta(df_out, gene_names, n_processes, output_dir, seg_map_mi, 
-                                 scale_pix_x, scale_pix_y, cell_annotations=None)
+                                 scale_pix_x, scale_pix_y, cell_annotations=cell_annotations)
 
             t11 = time.time()
             print(f"Processing meta cell info took {t11-t10} seconds.")
