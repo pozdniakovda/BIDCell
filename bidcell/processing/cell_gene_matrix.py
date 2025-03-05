@@ -372,7 +372,7 @@ def get_seg_map(fp_seg):
     cell_ids_unique = np.unique(seg_map_mi.reshape(-1))
     cell_ids_unique = cell_ids_unique[1:]
     n_cells = len(cell_ids_unique)
-    print("Number of cells: " + str(n_cells))
+    print("\tNumber of cells: " + str(n_cells))
 
     return seg_map_mi, height, width, cell_ids_unique, n_cells
 
