@@ -220,7 +220,7 @@ def process_chunk_meta(
                     output[cur_i, 5:8] = ["Unknown", -1, "Unknown"]  # Default values
     
             except Exception:
-                output[cur_i, 1:8] = [-1, -1, -1, -1, "Unknown", -1, "Unknown"]  # Fill with defaults on error
+                output[cur_i, 1:8] = [-1, -1, -1, -1, -1, -1, -1]  # Fill with defaults on error
 
     # Save as csv
     col_names_coords = [
