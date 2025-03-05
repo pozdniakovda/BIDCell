@@ -78,7 +78,7 @@ def process_chunk_corr(matrix, dir_output, sc_expr, sc_labels, n_atlas_types):
         matrix_out, index=list(range(matrix_out.shape[0])), columns=col_names
     )
     df_split.to_csv(fp_anno, index=False)
-    print(f"Saved preannotations file: {fp_anno}")
+    #print(f"Saved preannotations file: {fp_anno}")
 
 
 def preannotate(config: Config, save_merged=False):
