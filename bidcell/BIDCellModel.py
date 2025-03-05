@@ -175,77 +175,77 @@ class BIDCellModel:
                                                                                   self.solver_override, 
                                                                                   self.device_idx, self.verbose)
     
-def predict(self) -> None:
-    """Segment and annotate the cells, ensuring all data is properly merged into a clean expr_mat.csv."""
-
-    print(f"Beginning prediction...")
-    predict(self.config)
-
-    if self.config.experiment_dirs.dir_id == "last":
-        timestamp = get_newest_id(
-            os.path.join(self.config.files.data_dir, "model_outputs")
-        )
-    else:
-        timestamp = self.config.experiment_dirs.dir_id
-        self.__check_valid_timestamp(timestamp)
-
-    print(f"Filling grid...")
-    fill_grid(self.config, timestamp)
-
-    print(f"Postprocessing predictions...")
-    postprocess_predictions(self.config, timestamp)
-
-    print(f"Making cell gene matrix...")
-    make_cell_gene_mat(self.config, is_cell=True, timestamp=timestamp)
-
-    print(f"Re-running preannotation...")
-    preannotate(self.config, save_merged=True)
-
-    print(f"Reloading and merging all data into expr_mat.csv...")
-
-    # Define paths
-    expr_mat_path = os.path.join(self.config.files.data_dir, self.config.files.dir_cgm, timestamp, self.config.files.fp_expr)
-    preannotations_path = os.path.join(self.config.files.data_dir, "preannotations_merged.csv")
-
-    # Ensure both files exist before merging
-    if os.path.exists(expr_mat_path):
-        df_expr = pd.read_csv(expr_mat_path)
-
-        # Ensure unique `cell_id`s and remove duplicate rows by summing counts
-        df_expr = df_expr.groupby("cell_id", as_index=False).sum()
-
-        # Load and merge spatial metadata correctly
-        metadata_cols = ["cell_id", "cell_centroid_x", "cell_centroid_y", "pixel_size", "eccentricity"]
-        df_meta = df_expr[metadata_cols] if set(metadata_cols).issubset(df_expr.columns) else None
-
-        # Remove metadata columns from df_expr to avoid duplication later
-        df_expr = df_expr.drop(columns=[col for col in metadata_cols if col in df_expr.columns], errors="ignore")
-
-        # Load and merge annotations correctly
-        if os.path.exists(preannotations_path):
-            df_annotations = pd.read_csv(preannotations_path)
-            df_expr = df_expr.merge(df_annotations, on="cell_id", how="left")
+    def predict(self) -> None:
+        """Segment and annotate the cells, ensuring all data is properly merged into a clean expr_mat.csv."""
+    
+        print(f"Beginning prediction...")
+        predict(self.config)
+    
+        if self.config.experiment_dirs.dir_id == "last":
+            timestamp = get_newest_id(
+                os.path.join(self.config.files.data_dir, "model_outputs")
+            )
         else:
-            print("⚠ Warning: preannotations_merged.csv not found. Skipping annotation merge.")
-
-        # Drop unwanted "Unnamed" columns from improper merges
-        df_expr = df_expr.loc[:, ~df_expr.columns.str.contains("^Unnamed")]
-
-        # Remove _x and _y column suffixes by summing them
-        df_expr = df_expr.groupby(df_expr.columns.str.rstrip("_x"), axis=1).sum()
-
-        # Ensure metadata columns are at the beginning
-        if df_meta is not None:
-            df_expr = df_meta.merge(df_expr, on="cell_id", how="left")
-
-        # Save the final expr_mat.csv
-        df_expr.to_csv(expr_mat_path, index=False)
-        print(f"Successfully cleaned and saved expr_mat.csv at: {expr_mat_path}")
-
-    else:
-        print("⚠ Warning: expr_mat.csv not found. Skipping merge.")
-
-    print(f"Done prediction.")
+            timestamp = self.config.experiment_dirs.dir_id
+            self.__check_valid_timestamp(timestamp)
+    
+        print(f"Filling grid...")
+        fill_grid(self.config, timestamp)
+    
+        print(f"Postprocessing predictions...")
+        postprocess_predictions(self.config, timestamp)
+    
+        print(f"Making cell gene matrix...")
+        make_cell_gene_mat(self.config, is_cell=True, timestamp=timestamp)
+    
+        print(f"Re-running preannotation...")
+        preannotate(self.config, save_merged=True)
+    
+        print(f"Reloading and merging all data into expr_mat.csv...")
+    
+        # Define paths
+        expr_mat_path = os.path.join(self.config.files.data_dir, self.config.files.dir_cgm, timestamp, self.config.files.fp_expr)
+        preannotations_path = os.path.join(self.config.files.data_dir, "preannotations_merged.csv")
+    
+        # Ensure both files exist before merging
+        if os.path.exists(expr_mat_path):
+            df_expr = pd.read_csv(expr_mat_path)
+    
+            # Ensure unique `cell_id`s and remove duplicate rows by summing counts
+            df_expr = df_expr.groupby("cell_id", as_index=False).sum()
+    
+            # Load and merge spatial metadata correctly
+            metadata_cols = ["cell_id", "cell_centroid_x", "cell_centroid_y", "pixel_size", "eccentricity"]
+            df_meta = df_expr[metadata_cols] if set(metadata_cols).issubset(df_expr.columns) else None
+    
+            # Remove metadata columns from df_expr to avoid duplication later
+            df_expr = df_expr.drop(columns=[col for col in metadata_cols if col in df_expr.columns], errors="ignore")
+    
+            # Load and merge annotations correctly
+            if os.path.exists(preannotations_path):
+                df_annotations = pd.read_csv(preannotations_path)
+                df_expr = df_expr.merge(df_annotations, on="cell_id", how="left")
+            else:
+                print("⚠ Warning: preannotations_merged.csv not found. Skipping annotation merge.")
+    
+            # Drop unwanted "Unnamed" columns from improper merges
+            df_expr = df_expr.loc[:, ~df_expr.columns.str.contains("^Unnamed")]
+    
+            # Remove _x and _y column suffixes by summing them
+            df_expr = df_expr.groupby(df_expr.columns.str.rstrip("_x"), axis=1).sum()
+    
+            # Ensure metadata columns are at the beginning
+            if df_meta is not None:
+                df_expr = df_meta.merge(df_expr, on="cell_id", how="left")
+    
+            # Save the final expr_mat.csv
+            df_expr.to_csv(expr_mat_path, index=False)
+            print(f"Successfully cleaned and saved expr_mat.csv at: {expr_mat_path}")
+    
+        else:
+            print("⚠ Warning: expr_mat.csv not found. Skipping merge.")
+    
+        print(f"Done prediction.")
 
     @staticmethod
     def get_example_config(vendor: Literal["cosmx", "merscope", "stereoseq", "xenium"]) -> None:
