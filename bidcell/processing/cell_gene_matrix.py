@@ -4,7 +4,7 @@ import os
 import sys
 import time
 import multiprocessing as mp
-mp.set_start_method("spawn", force=True)
+# mp.set_start_method("spawn", force=True)
 
 # import cv2
 from skimage.transform import resize
@@ -351,7 +351,8 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
             print("Extracting cell-gene matrix chunks")
             processes = []
 
-            # Method #1: Pass the whole dataset instead of chunks            
+            # Method #1: Pass the whole dataset instead of chunks
+            '''
             process_fast(
                 df_expr,  
                 output_dir,
@@ -363,10 +364,6 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
                 gene_col,
             )
             
-            t9 = time.time()
-            print(f"\tprocess_fast: {t9-t8} seconds")
-
-            '''
             # Method #2: Starmap and dedicated Pool
             df_expr_splits = np.array_split(df_expr, n_processes)
             with mp.Pool(n_processes) as pool:
@@ -387,6 +384,8 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
                     ],
                 )
 
+            '''
+            
             # Method #3: Original
             df_expr_splits = np.array_split(df_expr, n_processes)
             for chunk in df_expr_splits:
@@ -408,7 +407,9 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
 
             for p in processes:
                 p.join()
-            '''
+
+            t9 = time.time()
+            print(f"\Processing data: {t9-t8} seconds")
 
             #print("Combining cell-gene matrix chunks")
 
