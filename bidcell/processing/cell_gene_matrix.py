@@ -240,10 +240,57 @@ def process_chunk_meta(
     df_split.to_csv(fp_output + "%d.csv" % chunk_id, index=False)
 
 
-def process_starmap_meta(df_expr, n_processes, output_dir, seg_map_mi, col_names_coords, 
-                         scale_pix_x, scale_pix_y, cell_annotations):
-    # Method #2: Starmap and dedicated Pool for meta
-    df_expr_splits = np.array_split(df_expr, n_processes)
+def process_parallel_meta(df_out, gene_names, n_processes, output_dir, seg_map_mi, 
+                          scale_pix_x, scale_pix_y, cell_annotations=None):
+    # Original meta processing where cell shape is measured and quantified
+    
+    matrix_all = df_out.to_numpy().astype(np.float32)
+    matrix_all_splits = np.array_split(matrix_all, n_processes)
+    processes = []
+
+    fp_output = output_dir + "/cell_outputs_"
+    col_names_coords = [
+        "cell_id",
+        "cell_centroid_x",
+        "cell_centroid_y",
+        "cell_size",
+    ] + gene_names
+
+    for chunk in matrix_all_splits:
+        p = mp.Process(
+            target=process_chunk_meta,
+            args=(
+                chunk,
+                fp_output,
+                seg_map_mi,
+                col_names_coords,
+                scale_pix_x,
+                scale_pix_y,
+            ),
+        )
+        processes.append(p)
+        p.start()
+
+    for p in processes:
+        p.join()
+
+
+def process_starmap_meta(df_out, gene_names, n_processes, output_dir, seg_map_mi, 
+                         scale_pix_x, scale_pix_y, cell_annotations=None):
+    # Meta processing where cell shape is quantified; parallized with Starmap
+
+    matrix_all = df_out.to_numpy().astype(np.float32)
+    matrix_all_splits = np.array_split(matrix_all, n_processes)
+    processes = []
+
+    fp_output = output_dir + "/cell_outputs_"
+    col_names_coords = [
+        "cell_id",
+        "cell_centroid_x",
+        "cell_centroid_y",
+        "cell_size",
+    ] + gene_names
+    
     with mp.Pool(n_processes) as pool:
         pool.starmap(
             process_chunk_meta,  # Use process_chunk_meta instead of process_chunk
@@ -257,7 +304,7 @@ def process_starmap_meta(df_expr, n_processes, output_dir, seg_map_mi, col_names
                     scale_pix_y,
                     cell_annotations,  # Pass cell annotations dictionary
                 )
-                for chunk in df_expr_splits
+                for chunk in matrix_all_splits
             ],
         )
 
@@ -497,39 +544,14 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
     if include_spatial:
         if is_cell:
             print("Computing cell locations and sizes...")
+            
+            # Original method
+            #process_parallel_meta(df_out, gene_names, n_processes, output_dir, seg_map_mi, 
+            #                      scale_pix_x, scale_pix_y, cell_annotations=None)
 
-            process_starmap_meta(df_expr, n_processes, output_dir, seg_map_mi, col_names_coords, 
-                                 scale_pix_x, scale_pix_y, cell_annotations)
-    
-            matrix_all = df_out.to_numpy().astype(np.float32)
-            matrix_all_splits = np.array_split(matrix_all, n_processes)
-            processes = []
-    
-            fp_output = output_dir + "/cell_outputs_"
-            col_names_coords = [
-                "cell_id",
-                "cell_centroid_x",
-                "cell_centroid_y",
-                "cell_size",
-            ] + gene_names
-    
-            for chunk in matrix_all_splits:
-                p = mp.Process(
-                    target=process_chunk_meta,
-                    args=(
-                        chunk,
-                        fp_output,
-                        seg_map_mi,
-                        col_names_coords,
-                        scale_pix_x,
-                        scale_pix_y,
-                    ),
-                )
-                processes.append(p)
-                p.start()
-    
-            for p in processes:
-                p.join()
+            # Starmap method
+            process_starmap_meta(df_out, gene_names, n_processes, output_dir, seg_map_mi, 
+                                 scale_pix_x, scale_pix_y, cell_annotations=None)
 
     print("Done making cell gene matrix.")
 
