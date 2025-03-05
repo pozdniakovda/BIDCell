@@ -80,6 +80,34 @@ def process_chunk(
     df_out.to_csv(output_dir + "/" + "chunk_%d.csv" % chunk_id)
 
 
+def process_parallel(chunk, output_dir, cell_ids_unique, col_names, seg_map, 
+                     x_col, y_col, gene_col, df_expr, n_processes):
+    # Original parallelized data processing method
+    df_expr_splits = np.array_split(df_expr, n_processes)
+    processes = []
+
+    print("Extracting cell-gene matrix chunks")
+    for chunk in df_expr_splits:
+        p = mp.Process(
+            target=process_chunk,
+            args=(
+                chunk,
+                output_dir,
+                cell_ids_unique,
+                col_names,
+                seg_map,
+                x_col,
+                y_col,
+                gene_col,
+            ),
+        )
+        processes.append(p)
+        p.start()
+
+    for p in processes:
+        p.join()
+
+
 def process_chunk_meta(
     matrix, fp_output, seg_map_mi, col_names_coords, scale_pix_x, scale_pix_y, cell_annotations=None
 ):
@@ -402,31 +430,9 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
                     ],
                 )
 
-
-            '''
-            
             # Method #3: Original
-            df_expr_splits = np.array_split(df_expr, n_processes)
-            for chunk in df_expr_splits:
-            p = mp.Process(
-                target=process_chunk_meta,
-                args=(
-                    chunk,
-                    fp_output,
-                    seg_map_mi,
-                    col_names_coords,
-                    scale_pix_x,
-                    scale_pix_y,
-                    cell_annotations,  # Pass the annotations dictionary
-                ),
-            )
-                processes.append(p)
-                p.start()
-
-            for p in processes:
-                p.join()
-
-            '''
+            #process_parallel(chunk, output_dir, cell_ids_unique, col_names, seg_map, 
+            #                 x_col, y_col, gene_col, df_expr, n_processes)
 
             t9 = time.time()
             print(f"\Processing data: {t9-t8} seconds")
