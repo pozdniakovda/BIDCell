@@ -176,11 +176,10 @@ class BIDCellModel:
                                                                                   self.device_idx, self.verbose)
 
     def predict(self) -> None:
-        """Segment and annotate the cells.
-        """
+        """Segment and annotate the cells, then merge all metadata into expr_mat.csv."""
         print(f"Beginning prediction...")
         predict(self.config)
-
+    
         if self.config.experiment_dirs.dir_id == "last":
             timestamp = get_newest_id(
                 os.path.join(self.config.files.data_dir, "model_outputs")
@@ -188,16 +187,16 @@ class BIDCellModel:
         else:
             timestamp = self.config.experiment_dirs.dir_id
             self.__check_valid_timestamp(timestamp)
-
+    
         print(f"Filling grid...")
         fill_grid(self.config, timestamp)
-
+    
         print(f"Postprocessing predictions...")
         postprocess_predictions(self.config, timestamp)
-
+    
         print(f"Making cell gene matrix...")
         make_cell_gene_mat(self.config, is_cell=True, timestamp=timestamp)
-
+    
         print(f"Re-running preannotation...")
         preannotate(self.config, save_merged=True)
         
@@ -221,7 +220,7 @@ class BIDCellModel:
             print("Warning: expr_mat.csv not found, skipping merge.")
         else:
             print("Warning: expr_mat.csv and preannotations_merged.csv not found, skipping merge.")
-
+    
         print(f"Done prediction.")
 
     @staticmethod
