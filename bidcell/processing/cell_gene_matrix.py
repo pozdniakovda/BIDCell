@@ -523,7 +523,7 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
             df_out.to_csv(output_dir + "/" + config.files.fp_expr)
 
             t9 = time.time()
-            print(f"\tCombining cell gene matrix chunks: {t10-t9} seconds")
+            print(f"\tCombining cell gene matrix chunks: {t9-t8} seconds")
 
             # Clean up
             for fpc in fp_chunks:
