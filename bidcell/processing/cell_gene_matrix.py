@@ -445,9 +445,6 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
     scale_pix_x = config.affine.scale_pix_x
     scale_pix_y = config.affine.scale_pix_y
 
-    t1 = time.time()
-    print(f"\tInitialization: {t1-t0} seconds")
-
     fp_expr = output_dir + "/" + config.files.fp_expr
     print(f"\tExpressions path: {fp_expr}")
 
@@ -459,14 +456,8 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
 
         seg_map, fp_rescaled_seg = resize_seg_map(seg_map_mi, width_pix, height_pix, output_dir, use_cv2=False)
 
-        t2 = time.time()
-        print(f"\tSegmentation map resizing: {t2-t1} seconds")
-
         df_out = pd.DataFrame(0, index=cell_ids_unique, columns=col_names)
         df_out["cell_id"] = cell_ids_unique.copy()
-
-        t3 = time.time()
-        print(f"\tOutput dataframe generation: {t3-t2} seconds")
 
         # Divide into patches for large datasets that exceed memory capacity
         if (height_pix + width_pix) > config.cgm_params.max_sum_hw:
@@ -480,14 +471,11 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
         w_coords, _ = get_patches_coords(width_pix, patch_w)
         hw_coords = [(hs, he, ws, we) for (hs, he) in h_coords for (ws, we) in w_coords]
 
-        t4 = time.time()
-        print(f"\tGetting patches coords: {t4-t3} seconds")
-
         #print("Extracting cell expressions")
         seg_map_full = tifffile.imread(fp_rescaled_seg)
 
+        # Time taken up to here is less than 0.1 seconds; majority comes from resizing
         t5 = time.time()
-        print(f"\tLoading full segmentation map: {t5-t4} seconds")
         
         for hs, he, ws, we in tqdm(hw_coords):
             t6 = time.time()
