@@ -20,6 +20,51 @@ from ..config import Config, load_config
 np.seterr(divide="ignore", invalid="ignore")
 
 
+def prepare_expr(seg_map_full, hs, he, ws, we, fp_transcripts_processed, x_col, y_col, 
+                 scale_pix_x, scale_pix_y, print_ranges=False):
+    # Prepares segmentation submap and expressions for processing
+    
+    print(f"Patch H {hs}:{he}, W {ws}:{we}")
+    seg_map = seg_map_full[hs:he, ws:we]
+    print(seg_map.shape)
+
+    df_expr = read_expr_csv(fp_transcripts_processed)
+    if print_ranges:
+        print(
+            df_expr[x_col].min(),
+            df_expr[x_col].max(),
+            df_expr[y_col].min(),
+            df_expr[y_col].max(),
+        )
+
+    df_expr = transform_locations(df_expr, x_col, scale_pix_x)
+    df_expr = transform_locations(df_expr, y_col, scale_pix_y)
+
+    df_expr = df_expr[
+        (df_expr[x_col].between(ws, we - 1))
+        & (df_expr[y_col].between(hs, he - 1))
+    ]
+    if print_ranges:
+        print(
+            df_expr[x_col].min(),
+            df_expr[x_col].max(),
+            df_expr[y_col].min(),
+            df_expr[y_col].max(),
+        )
+
+    df_expr = transform_locations(df_expr, x_col, 1, ws)
+    df_expr = transform_locations(df_expr, y_col, 1, hs)
+    if print_ranges: 
+        print(
+            df_expr[x_col].min(),
+            df_expr[x_col].max(),
+            df_expr[y_col].min(),
+            df_expr[y_col].max(),
+        )
+
+    return seg_map, df_expr
+
+
 def process_fast(
     chunk, output_dir, cell_ids_unique, col_names, seg_map, x_col, y_col, gene_col
 ):
@@ -395,47 +440,12 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
         
         for hs, he, ws, we in tqdm(hw_coords):
             t6 = time.time()
-            
-            print(f"Patch H {hs}:{he}, W {ws}:{we}")
-            seg_map = seg_map_full[hs:he, ws:we]
-            print(seg_map.shape)
-
-            df_expr = read_expr_csv(fp_transcripts_processed)
-            print(
-                df_expr[x_col].min(),
-                df_expr[x_col].max(),
-                df_expr[y_col].min(),
-                df_expr[y_col].max(),
-            )
+            # Prepare expression data and segmentation map subset for processing
+            seg_map, df_expr = prepare_expr(seg_map_full, hs, he, ws, we, fp_transcripts_processed, 
+                                            x_col, y_col, scale_pix_x, scale_pix_y, print_ranges=False)
 
             t7 = time.time()
-            print(f"\tReading expressions: {t7-t6} seconds")
-
-            df_expr = transform_locations(df_expr, x_col, scale_pix_x)
-            df_expr = transform_locations(df_expr, y_col, scale_pix_y)
-
-            df_expr = df_expr[
-                (df_expr[x_col].between(ws, we - 1))
-                & (df_expr[y_col].between(hs, he - 1))
-            ]
-            print(
-                df_expr[x_col].min(),
-                df_expr[x_col].max(),
-                df_expr[y_col].min(),
-                df_expr[y_col].max(),
-            )
-
-            df_expr = transform_locations(df_expr, x_col, 1, ws)
-            df_expr = transform_locations(df_expr, y_col, 1, hs)
-            print(
-                df_expr[x_col].min(),
-                df_expr[x_col].max(),
-                df_expr[y_col].min(),
-                df_expr[y_col].max(),
-            )
-
-            t8 = time.time()
-            print(f"\tTransforming locations: {t8-t7} seconds")
+            print(f"\Preparing data subset for processing: {t7-t6} seconds")
 
             df_expr.reset_index(drop=True, inplace=True)
 
@@ -455,8 +465,8 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
                 #process_parallel(chunk, output_dir, cell_ids_unique, col_names, seg_map, 
                 #                 x_col, y_col, gene_col, df_expr, n_processes)
     
-                t9 = time.time()
-            print(f"\Processing data: {t9-t8} seconds")
+                t8 = time.time()
+                print(f"\Processing data: {t8-t7} seconds")
 
             #print("Combining cell-gene matrix chunks")
 
@@ -467,19 +477,19 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
 
             df_out.to_csv(output_dir + "/" + config.files.fp_expr)
 
-            t10 = time.time()
+            t9 = time.time()
             print(f"\tCombining cell gene matrix chunks: {t10-t9} seconds")
 
             # Clean up
             for fpc in fp_chunks:
                 os.remove(fpc)
 
-            t11 = time.time()
-            print(f"\tCleanup: {t11-t10} seconds")
+            t10 = time.time()
+            print(f"\tCleanup: {t10-t9} seconds")
 
         print("Obtained cell-gene matrix")
         
-        os.remove(fp_rescaled_seg)        
+        os.remove(fp_rescaled_seg)
         del seg_map
         del df_expr
 
