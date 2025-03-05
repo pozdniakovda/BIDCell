@@ -135,8 +135,8 @@ def process_starmap(df_expr, n_processes, output_dir, cell_ids_unique, col_names
         for i, (df_out, file_path) in enumerate(pool.starmap(process_chunk, args)):
             if file_path is not None:
                 print(f"Processed and saved results for chunk #{i+1}: {file_path}")
-            else:
-                print(f"Processed results for chunk #{i+1}")
+            # else:
+            #     print(f"Processed results for chunk #{i+1}")
             
             results.append(df_out)
 
@@ -261,8 +261,8 @@ def process_starmap_meta(df_out, gene_names, n_processes, output_dir, seg_map_mi
         for i, (df_out, file_path) in enumerate(pool.starmap(process_chunk_meta, args)):
             if file_path is not None:
                 print(f"Processed and saved meta results for chunk #{i+1}: {file_path}")
-            else:
-                print(f"Processed meta results for chunk #{i+1}")
+            # else:
+                # print(f"Processed meta results for chunk #{i+1}")
             
             results.append(df_out)
 
