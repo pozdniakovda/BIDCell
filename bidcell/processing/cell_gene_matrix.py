@@ -176,41 +176,42 @@ def process_starmap(df_expr, n_processes, output_dir, cell_ids_unique, col_names
         )
 
 
-def process_chunk_meta(
-    matrix, fp_output, seg_map_mi, col_names_coords, scale_pix_x, scale_pix_y, cell_annotations=None
-):
-    """Compute cell locations and sizes"""
+def process_chunk_meta(matrix, fp_output, seg_map_mi, col_names_coords, 
+                       scale_pix_x, scale_pix_y, cell_annotations=None):
+    """Compute cell locations, sizes, eccentricity, and retrieve cell type annotations."""
 
     chunk_id = matrix[0, 0]
     output = np.zeros((matrix.shape[0], len(col_names_coords)))
     output[:, 0] = matrix[:, 0].copy()
-    output[:, 4:] = matrix[:, 1:].copy()
+    output[:, 4:] = matrix[:, 1:].copy()  # Keep gene expression values
 
     # Convert to pixel resolution
     for cur_i, cell_id in enumerate(output[:, 0]):
         if cell_id > 0:
             try:
-                # cell_centroid_x and cell_centroid_y
+                # Get coordinates of the cell in segmentation mask
                 coords = np.where(seg_map_mi == cell_id)
                 x_points = coords[1]
                 y_points = coords[0]
+
+                # Compute centroid
                 centroid_x = sum(x_points) / len(x_points)
                 centroid_y = sum(y_points) / len(y_points)
                 output[cur_i, 1] = centroid_x * scale_pix_x
                 output[cur_i, 2] = centroid_y * scale_pix_y
-    
-                # cell_size (renamed to pixel_size)
+
+                # Compute pixel size
                 pixel_size = len(coords[0]) / (scale_pix_x * scale_pix_y)
                 output[cur_i, 3] = pixel_size
-    
+
                 # Compute eccentricity using regionprops
                 mask = (seg_map_mi == cell_id).astype(np.uint8)
                 labeled_mask = label(mask)
                 props = regionprops(labeled_mask)
                 eccentricity = props[0].eccentricity if props else -1
                 output[cur_i, 4] = eccentricity  # Assign eccentricity
-    
-                # Assign cell_type, spearman, and cell_type_atlas
+
+                # Assign cell_type, spearman, and cell_type_atlas if available
                 if cell_annotations is not None and cell_id in cell_annotations:
                     annotation = cell_annotations[cell_id]
                     output[cur_i, 5] = annotation.get("cell_type", "Unknown")
@@ -218,14 +219,19 @@ def process_chunk_meta(
                     output[cur_i, 7] = annotation.get("cell_type_atlas", "Unknown")
                 else:
                     output[cur_i, 5:8] = ["Unknown", -1, "Unknown"]  # Default values
-    
-            except Exception:
-                output[cur_i, 1:8] = [-1, -1, -1, -1, -1, -1, -1]  # Fill with defaults on error
 
-    # Save as csv    
+            except Exception:
+                output[cur_i, 1:8] = [-1, -1, -1, -1, "Unknown", -1, "Unknown"]  # Fill with defaults on error
+
+    # Convert to DataFrame and save
     df_split = pd.DataFrame(
-        output, index=list(range(output.shape[0])), columns=col_names_coords
+        output,
+        index=list(range(output.shape[0])),
+        columns=col_names_coords
     )
+    df_split["cell_type"] = df_split["cell_type"].replace(-1, "Unknown")
+    df_split["cell_type_atlas"] = df_split["cell_type_atlas"].replace(-1, "Unknown")
+
     df_split.to_csv(fp_output + "%d.csv" % chunk_id, index=False)
 
 
