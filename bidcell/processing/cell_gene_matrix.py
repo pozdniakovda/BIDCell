@@ -208,25 +208,11 @@ def process_chunk_meta(matrix, fp_output, seg_map_mi, col_names_coords,
                 props = regionprops(labeled_mask)
                 df_output.at[cur_i, "eccentricity"] = props[0].eccentricity if props else -1
 
-                # Assign cell_type, spearman, and cell_type_atlas if available
-                if cell_annotations is not None and cell_id in cell_annotations:
-                    annotation = cell_annotations[cell_id]
-                    df_output.at[cur_i, "cell_type"] = annotation.get("cell_type", "Unknown")
-                    df_output.at[cur_i, "spearman"] = annotation.get("spearman", -1)
-                    df_output.at[cur_i, "cell_type_atlas"] = annotation.get("cell_type_atlas", "Unknown")
-                else:
-                    df_output.at[cur_i, "cell_type"] = "Unknown"
-                    df_output.at[cur_i, "spearman"] = -1
-                    df_output.at[cur_i, "cell_type_atlas"] = "Unknown"
-
             except Exception:
                 df_output.at[cur_i, "cell_centroid_x"] = -1
                 df_output.at[cur_i, "cell_centroid_y"] = -1
                 df_output.at[cur_i, "pixel_size"] = -1
                 df_output.at[cur_i, "eccentricity"] = -1
-                df_output.at[cur_i, "cell_type"] = "Unknown"
-                df_output.at[cur_i, "spearman"] = -1
-                df_output.at[cur_i, "cell_type_atlas"] = "Unknown"
 
     # Save as CSV
     df_output.to_csv(f"{fp_output}{chunk_id}.csv", index=False)
@@ -245,7 +231,8 @@ def process_parallel_meta(df_out, gene_names, n_processes, output_dir, seg_map_m
         "cell_id",
         "cell_centroid_x",
         "cell_centroid_y",
-        "cell_size",
+        "pixel_size",
+        "eccentricity",
     ] + gene_names
 
     for chunk in matrix_all_splits:
@@ -282,7 +269,8 @@ def process_starmap_meta(df_out, gene_names, n_processes, output_dir, seg_map_mi
         "cell_id",
         "cell_centroid_x",
         "cell_centroid_y",
-        "cell_size",
+        "pixel_size",
+        "eccentricity",
     ] + gene_names
     
     with mp.Pool(n_processes) as pool:
