@@ -447,8 +447,10 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
 
     t1 = time.time()
     print(f"\tInitialization: {t1-t0} seconds")
+    print(f"\tExpressions path: {output_dir + "/" + config.files.fp_expr}")
 
     if not os.path.exists(output_dir + "/" + config.files.fp_expr):
+        print(f"\tFile does not exist; generating...")
         # Rescale to pixel size
         height_pix = np.round(height / config.affine.scale_pix_y).astype(int)
         width_pix = np.round(width / config.affine.scale_pix_x).astype(int)
@@ -539,6 +541,7 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
         del df_expr
 
     else:
+        print(f"\tFile exists; reloading...")
         df_out = pd.read_csv(output_dir + "/" + config.files.fp_expr, index_col=0)
 
     if include_spatial:
