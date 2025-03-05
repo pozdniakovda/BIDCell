@@ -266,6 +266,8 @@ def process_parallel_meta(df_out, gene_names, n_processes, output_dir, seg_map_m
     for p in processes:
         p.join()
 
+    return col_names_coords
+
 
 def process_starmap_meta(df_out, gene_names, n_processes, output_dir, seg_map_mi, 
                          scale_pix_x, scale_pix_y, cell_annotations=None):
@@ -299,6 +301,8 @@ def process_starmap_meta(df_out, gene_names, n_processes, output_dir, seg_map_mi
                 for chunk in matrix_all_splits
             ],
         )
+
+    return col_names_coords
 
 
 def transform_locations(df_expr, col, scale, shift=0):
@@ -529,8 +533,8 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
             t10 = time.time()
             
             # Original method
-            #process_parallel_meta(df_out, gene_names, n_processes, output_dir, seg_map_mi, 
-            #                      scale_pix_x, scale_pix_y, cell_annotations=None)
+            #col_names_coords = process_parallel_meta(df_out, gene_names, n_processes, output_dir, seg_map_mi, 
+            #                                         scale_pix_x, scale_pix_y, cell_annotations=None)
             
             # Load cell type annotations if available
             annotations_path = os.path.join(output_dir, "preannotations.csv")
@@ -543,8 +547,8 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
             else:
                 cell_annotations = None
             
-            process_starmap_meta(df_out, gene_names, n_processes, output_dir, seg_map_mi, 
-                                 scale_pix_x, scale_pix_y, cell_annotations=cell_annotations)
+            col_names_coords = process_starmap_meta(df_out, gene_names, n_processes, output_dir, seg_map_mi, 
+                                                    scale_pix_x, scale_pix_y, cell_annotations=cell_annotations)
 
             t11 = time.time()
             print(f"Processing meta cell info took {t11-t10} seconds.")
