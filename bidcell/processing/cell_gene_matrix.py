@@ -125,8 +125,8 @@ def process_chunk(
     df_out.to_csv(output_dir + "/" + "chunk_%d.csv" % chunk_id)
 
 
-def process_parallel(chunk, output_dir, cell_ids_unique, col_names, seg_map, 
-                     x_col, y_col, gene_col, df_expr, n_processes):
+def process_parallel(df_expr, n_processes, output_dir, cell_ids_unique, col_names, 
+                     seg_map, x_col, y_col, gene_col):
     # Original parallelized data processing method
     df_expr_splits = np.array_split(df_expr, n_processes)
     processes = []
@@ -153,8 +153,8 @@ def process_parallel(chunk, output_dir, cell_ids_unique, col_names, seg_map,
         p.join()
 
 
-def process_starmap(chunk, output_dir, cell_ids_unique, col_names, seg_map, 
-                    x_col, y_col, gene_col, df_expr, n_processes):
+def process_starmap(df_expr, n_processes, output_dir, cell_ids_unique, col_names, 
+                    seg_map, x_col, y_col, gene_col):
     # Method #2: Starmap and dedicated Pool
     df_expr_splits = np.array_split(df_expr, n_processes)
     with mp.Pool(n_processes) as pool:
@@ -443,7 +443,6 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
             # Prepare expression data and segmentation map subset for processing
             seg_map, df_expr = prepare_expr(seg_map_full, hs, he, ws, we, fp_transcripts_processed, 
                                             x_col, y_col, scale_pix_x, scale_pix_y, print_ranges=False)
-
             t7 = time.time()
             print(f"\Preparing data subset for processing: {t7-t6} seconds")
 
@@ -452,21 +451,20 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
             print("Extracting cell-gene matrix chunks")
             processes = []
 
-            for chunk in df_expr_splits:
-                # Method #1: Pass the whole dataset instead of chunks
-                #process_fast(df_expr, output_dir, cell_ids_unique, col_names, seg_map,
-                #             x_col, y_col, gene_col)
-                
-                # Method #2: Starmap and dedicated Pool
-                process_starmap(chunk, output_dir, cell_ids_unique, col_names, seg_map, 
-                                x_col, y_col, gene_col, df_expr, n_processes)
-                
-                # Method #3: Original
-                #process_parallel(chunk, output_dir, cell_ids_unique, col_names, seg_map, 
-                #                 x_col, y_col, gene_col, df_expr, n_processes)
-    
-                t8 = time.time()
-                print(f"\Processing data: {t8-t7} seconds")
+            # Method #1: Pass the whole dataset instead of chunks
+            #process_fast(df_expr, output_dir, cell_ids_unique, col_names, seg_map,
+            #             x_col, y_col, gene_col)
+            
+            # Method #2: Starmap and dedicated Pool
+            process_starmap(df_expr, n_processes, output_dir, cell_ids_unique, col_names, 
+                            seg_map, x_col, y_col, gene_col)
+            
+            # Method #3: Original
+            #process_parallel(df_expr, n_processes, output_dir, cell_ids_unique, col_names, 
+            #                 seg_map, x_col, y_col, gene_col)
+
+            t8 = time.time()
+            print(f"\Processing data: {t8-t7} seconds")
 
             #print("Combining cell-gene matrix chunks")
 
