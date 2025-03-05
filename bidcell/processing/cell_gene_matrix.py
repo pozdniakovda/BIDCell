@@ -67,7 +67,6 @@ def process_chunk(
 ):
     """Extract cell expression profiles"""
 
-    t1=time.time()
     df_out = pd.DataFrame(0, index=cell_ids_unique, columns=col_names)
     df_out["cell_id"] = cell_ids_unique.copy()
 
@@ -83,10 +82,6 @@ def process_chunk(
             df_out.loc[seg_val, gene] += 1
 
     df_out.to_csv(output_dir + "/" + "chunk_%d.csv" % chunk_id)
-
-    t2=time.time()
-    t=t2-t1
-    print(f"Processed cell gene matrix df in {t:.3f} seconds.")
 
 
 def process_chunk_meta(
