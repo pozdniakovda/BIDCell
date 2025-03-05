@@ -121,7 +121,7 @@ class BIDCellModel:
             generate_expression_maps(self.config)
         generate_patches(self.config)
         make_cell_gene_mat(self.config, is_cell=False)
-        preannotate(self.config)
+        preannotate(self.config, save_merged=False)
 
     def stitch_nuclei(self):
         """Stich separate FOV files into a single one (e.g. CosMx data).\n
@@ -199,7 +199,7 @@ class BIDCellModel:
         make_cell_gene_mat(self.config, is_cell=True, timestamp=timestamp)
 
         print(f"Re-running preannotation...")
-        preannotate(self.config)
+        preannotate(self.config, save_merged=True)
         
         print(f"Reloading cell gene matrix to include annotations...")
         cell_gene_matrix_path = os.path.join(
