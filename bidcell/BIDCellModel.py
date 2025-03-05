@@ -197,6 +197,31 @@ class BIDCellModel:
         print(f"Making cell gene matrix...")
         make_cell_gene_mat(self.config, is_cell=True, timestamp=timestamp)
 
+        print(f"Re-running preannotation...")
+        preannotate(self.config)
+        
+        print(f"Reloading cell gene matrix to include annotations...")
+        cell_gene_matrix_path = os.path.join(
+            self.config.files.data_dir, self.config.files.dir_cgm, timestamp, self.config.files.fp_expr
+        )
+        print(f"\tCell gene matrix path: {cell_gene_matrix_path}")
+        
+        if os.path.exists(cell_gene_matrix_path):
+            df_cell_gene = pd.read_csv(cell_gene_matrix_path)
+            preannotation_path = os.path.join(self.config.files.data_dir, "preannotations.csv")
+        
+            if os.path.exists(preannotation_path):
+                df_preannot = pd.read_csv(preannotation_path)
+                df_merged = df_cell_gene.merge(df_preannot, on="cell_id", how="left")
+        
+                # Save updated cell gene matrix
+                df_merged.to_csv(cell_gene_matrix_path, index=False)
+                print(f"\tUpdated cell gene matrix saved with annotations.")
+            else:
+                print(f"\tWarning: Preannotation file {preannotation_path} not found.")
+        else:
+            print(f"\tWarning: Cell gene matrix file {cell_gene_matrix_path} not found.")
+
         print(f"Done prediction.")
 
     @staticmethod
