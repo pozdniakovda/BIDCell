@@ -165,6 +165,8 @@ def process_starmap(df_expr, n_processes, output_dir, cell_ids_unique, col_names
     """Parallelized CGM data processing using `starmap`; optionally calculates metadata."""
     
     df_expr_splits = np.array_split(df_expr, n_processes)
+    print(f"df_expr len={len(df_expr)}")
+    print(f"df_expr_splits lens: {[len(df_expr_split) for df_expr_split in df_expr_splits]}")
     results = []
 
     print("Extracting cell-gene matrix chunks")
