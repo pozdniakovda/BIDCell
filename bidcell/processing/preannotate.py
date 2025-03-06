@@ -103,6 +103,10 @@ def preannotate(config: Config, is_cell: bool = False, timestamp: str | None = N
 
     # Ensure the order of genes match
     genes_cells = df_cells.columns[1:].tolist()
+    remove_cols = ["cell_centroid_x", "cell_centroid_y", "cell_size", "pixel_size"]
+    for col in remove_cols:
+        if col in genes_cells:
+            genes_cells.remove(col)
     print("genes_cells:")
     print(genes_cells)
     
