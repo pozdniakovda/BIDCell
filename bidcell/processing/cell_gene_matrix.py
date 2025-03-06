@@ -65,8 +65,8 @@ def prepare_expr(seg_map_full, hs, he, ws, we, fp_transcripts_processed, x_col, 
     return seg_map, df_expr
 
 
-def process_chunk(chunk, output_dir, cell_ids_unique, col_names, seg_map, 
-                  x_col, y_col, gene_col, save_chunk=False):
+def process_chunk(chunk, output_dir, cell_ids_unique, col_names, x_col, y_col, gene_col, 
+                  seg_map, scale_pix_x, scale_pix_y,save_chunk=False, generate_metadata=False):
     """Extract cell expression profiles"""
 
     df_out = pd.DataFrame(0, index=cell_ids_unique, columns=col_names)
@@ -83,6 +83,46 @@ def process_chunk(chunk, output_dir, cell_ids_unique, col_names, seg_map,
         if seg_val > 0:
             df_out.loc[seg_val, gene] += 1
 
+    ''' Compute cell locations, sizes, eccentricity, and retrieve cell type annotations '''
+
+    if generate_metadata:
+        for cur_i, cell_id in enumerate(df_out["cell_id"]):
+            if cell_id > 0:
+                try:
+                    # Get coordinates of the cell in segmentation mask
+                    coords = np.where(seg_map_mi == cell_id)
+                    x_points = coords[1]
+                    y_points = coords[0]
+    
+                    # Compute centroid
+                    df_out.at[cur_i, "cell_centroid_x"] = (sum(x_points) / len(x_points)) * scale_pix_x
+                    df_out.at[cur_i, "cell_centroid_y"] = (sum(y_points) / len(y_points)) * scale_pix_y
+    
+                    # Compute pixel size
+                    df_out.at[cur_i, "pixel_size"] = len(coords[0]) / (scale_pix_x * scale_pix_y)
+    
+                    # Compute eccentricity using regionprops
+                    mask = (seg_map_mi == cell_id).astype(np.uint8)
+                    labeled_mask = label(mask)
+                    props = regionprops(labeled_mask)
+                    df_out.at[cur_i, "eccentricity"] = props[0].eccentricity if props else -1
+    
+                except Exception:
+                    df_out.at[cur_i, "cell_centroid_x"] = -1
+                    df_out.at[cur_i, "cell_centroid_y"] = -1
+                    df_out.at[cur_i, "pixel_size"] = -1
+                    df_out.at[cur_i, "eccentricity"] = -1
+            else: 
+                print(f"Caution: at step #{cur_i}, current cell_id ({cell_id}) <= 0 "
+                      "and will be skipped.")
+
+        # Reorder columns
+        cols = list(col_names).copy()
+        cols.remove("cell_id")
+        cols = ["cell_id", "cell_centroid_x", "cell_centroid_y", "pixel_size", "eccentricity"] + cols
+        df_out = df_out[cols]
+
+    # Optionally save as CSV
     if save_chunk:
         file_path = output_dir + "/" + "chunk_%d.csv" % chunk_id
         df_out.to_csv(file_path)
@@ -120,9 +160,9 @@ def process_parallel(df_expr, n_processes, output_dir, cell_ids_unique, col_name
         p.join()
 
 
-def process_starmap(df_expr, n_processes, output_dir, cell_ids_unique, col_names, 
-                    seg_map, x_col, y_col, gene_col, save_chunks=False):
-    """Parallelized CGM data processing using `starmap`, collecting and merging results."""
+def process_starmap(df_expr, n_processes, output_dir, cell_ids_unique, col_names, x_col, y_col, 
+                    gene_col, seg_map, scale_pix_x, scale_pix_y, save_chunks=False, generate_metadata=False):
+    """Parallelized CGM data processing using `starmap`; optionally calculates metadata."""
     
     df_expr_splits = np.array_split(df_expr, n_processes)
     results = []
@@ -130,7 +170,10 @@ def process_starmap(df_expr, n_processes, output_dir, cell_ids_unique, col_names
     print("Extracting cell-gene matrix chunks")
 
     with mp.Pool(n_processes) as pool:
-        args = [(chunk, output_dir, cell_ids_unique, col_names, seg_map, x_col, y_col, gene_col, save_chunks) for chunk in df_expr_splits]
+        args = []
+        for chunk in df_expr_splits:
+            args.append((chunk, output_dir, cell_ids_unique, col_names, x_col, y_col, gene_col, 
+                         seg_map, scale_pix_x, scale_pix_y, save_chunks, generate_metadata))
 
         for i, (df_out, file_path) in enumerate(pool.starmap(process_chunk, args)):
             if file_path is not None:
