@@ -479,7 +479,7 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
 
             print("Extracting cell-gene matrix chunks")
             save_chunks = False
-            generate_metadata = True if include_spatial and is_cell
+            generate_metadata = True if include_spatial and is_cell else False
             df_out = process_starmap(df_expr, n_processes, output_dir, cell_ids_unique, col_names, x_col, y_col, 
                                      gene_col, seg_map, scale_pix_x, scale_pix_y, save_chunks, generate_metadata)
 
