@@ -195,31 +195,17 @@ class BIDCellModel:
         postprocess_predictions(self.config, timestamp)
 
         print(f"Making cell gene matrix...")
-        make_cell_gene_mat(self.config, is_cell=True, timestamp=timestamp)
+        cgm_merged = make_cell_gene_mat(self.config, is_cell=True, timestamp=timestamp)
         
         print(f"Re-running preannotation...")
         anno_df = preannotate(self.config, is_cell=True, timestamp=timestamp, save_merged=True)
 
-        print(f"Reloading cell gene matrix to include annotations...")
-        expr_mat_path = os.path.join(self.config.files.data_dir, self.config.files.dir_cgm, timestamp, self.config.files.fp_expr)
-        preannotations_path = os.path.join(self.config.files.data_dir, "preannotations_merged.csv")
+        print(f"Applying annotations to cell gene matrix...")
+        cgm_merged = cgm_merged.merge(anno_df, on="cell_id", how="left")
     
-        if os.path.exists(expr_mat_path) and os.path.exists(preannotations_path):
-            df_expr = pd.read_csv(expr_mat_path)
-            df_annotations = pd.read_csv(preannotations_path)
-    
-            # Merge on cell_id
-            df_merged = df_expr.merge(df_annotations, on="cell_id", how="left")
-    
-            # Save the updated expr_mat.csv
-            df_merged.to_csv(expr_mat_path, index=False)
-            print(f"Merged annotations into expr_mat.csv successfully! Save path: {expr_mat_path}")
-        elif os.path.exists(expr_mat_path) and not os.path.exists(preannotations_path):
-            print("Warning: preannotations_merged.csv not found, skipping merge.")
-        elif not os.path.exists(expr_mat_path) and os.path.exists(preannotations_path):
-            print("Warning: expr_mat.csv not found, skipping merge.")
-        else:
-            print("Warning: expr_mat.csv and preannotations_merged.csv not found, skipping merge.")
+        fp_expr_merged = os.path.join(self.config.files.data_dir, "expr_mat_annotated.csv")
+        cgm_merged.to_csv(fp_expr_merged, index=False)
+        print(f"Saved annotated cell-gene matrix to {fp_expr_merged}")
     
         print(f"Done prediction.")
 
