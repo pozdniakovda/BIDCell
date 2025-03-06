@@ -524,9 +524,12 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
         fp_expr_merged = fp_expr.rsplit(".", 1)[0] + "_merged.csv"
         df_merged.to_csv(fp_expr_merged)
         print(f"Saved merged cell-gene matrix to {fp_expr_merged}")
-
-
-    print("Done making cell gene matrix.")
+        print("Done making cell gene matrix; returned df_merged.")
+        return df_merged
+    
+    else: 
+        print("Done making cell gene matrix; returned df_out.")
+        return df_out
 
 
 if __name__ == "__main__":
