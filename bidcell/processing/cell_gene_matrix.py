@@ -305,10 +305,12 @@ def get_cgm_paths(config: Config, is_cell: bool, timestamp: str | None = None):
             "".join(fp_seg_name),
         )
 
+    fp_expr = os.path.join(output_dir, config.files.fp_expr)
+
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    return (output_dir, fp_transcripts_processed, fp_gene_names, fp_seg, fp_seg_name)
+    return (output_dir, fp_transcripts_processed, fp_gene_names, fp_seg, fp_seg_name, fp_expr)
 
 
 def get_seg_map(fp_seg):
@@ -356,7 +358,14 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
 
     print(f"Making cell gene matrix...")    
     cgm_paths = get_cgm_paths(config, is_cell, timestamp)
-    output_dir, fp_transcripts_processed, fp_gene_names, fp_seg, fp_seg_name = cgm_paths
+    output_dir, fp_transcripts_processed, fp_gene_names, fp_seg, fp_seg_name, fp_expr = cgm_paths
+
+    print(f"\toutput_dir: {output_dir}")
+    print(f"\tfp_transcripts_processed: {fp_transcripts_processed}")
+    print(f"\tfp_gene_names: {fp_gene_names}")
+    print(f"\tfp_seg: {fp_seg}")
+    print(f"\tfp_seg_name: {fp_seg_name}")
+    print(f"\tfp_expr: {fp_expr}")
 
     include_spatial = config.cgm_params.include_spatial
 
@@ -378,9 +387,6 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
 
     scale_pix_x = config.affine.scale_pix_x
     scale_pix_y = config.affine.scale_pix_y
-
-    fp_expr = os.path.join(output_dir, config.files.fp_expr)
-    print(f"\tExpressions path: {fp_expr}")
 
     if not os.path.exists(fp_expr):
         print(f"\tFile does not exist; generating...")
