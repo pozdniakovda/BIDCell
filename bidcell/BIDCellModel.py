@@ -198,7 +198,7 @@ class BIDCellModel:
         make_cell_gene_mat(self.config, is_cell=True, timestamp=timestamp)
         
         print(f"Re-running preannotation...")
-        preannotate(self.config, save_merged=True)
+        preannotate(self.config, is_cell=True, timestamp=timestamp, save_merged=True)
 
         print(f"Reloading cell gene matrix to include annotations...")
         expr_mat_path = os.path.join(self.config.files.data_dir, self.config.files.dir_cgm, timestamp, self.config.files.fp_expr)
