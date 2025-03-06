@@ -135,36 +135,8 @@ def process_chunk(chunk, output_dir, cell_ids_unique, col_names, x_col, y_col, g
     return (df_out, file_path)
 
 
-def process_parallel(df_expr, n_processes, output_dir, cell_ids_unique, col_names, 
-                     seg_map, x_col, y_col, gene_col):
-    # Original parallelized data processing method
-    df_expr_splits = np.array_split(df_expr, n_processes)
-    processes = []
-
-    print("Extracting cell-gene matrix chunks")
-    for chunk in df_expr_splits:
-        p = mp.Process(
-            target=process_chunk,
-            args=(
-                chunk,
-                output_dir,
-                cell_ids_unique,
-                col_names,
-                seg_map,
-                x_col,
-                y_col,
-                gene_col,
-            ),
-        )
-        processes.append(p)
-        p.start()
-
-    for p in processes:
-        p.join()
-
-
-def process_starmap(df_expr, n_processes, output_dir, cell_ids_unique, col_names, x_col, y_col, 
-                    gene_col, seg_map, scale_pix_x, scale_pix_y, save_chunks=False, generate_metadata=False):
+def process_parallel(df_expr, n_processes, output_dir, cell_ids_unique, col_names, x_col, y_col, 
+                     gene_col, seg_map, scale_pix_x, scale_pix_y, save_chunks=False, generate_metadata=False):
     """Parallelized CGM data processing using `starmap`; optionally calculates metadata."""
     
     df_expr_splits = np.array_split(df_expr, n_processes)
@@ -245,45 +217,7 @@ def process_chunk_meta(matrix, fp_output, seg_map_mi, col_names_coords,
 
 
 def process_parallel_meta(df_out, gene_names, n_processes, output_dir, seg_map_mi, 
-                          scale_pix_x, scale_pix_y, cell_annotations=None):
-    # Original meta processing where cell shape is measured and quantified
-    
-    matrix_all = df_out.to_numpy().astype(np.float32)
-    matrix_all_splits = np.array_split(matrix_all, n_processes)
-    processes = []
-
-    fp_output = output_dir + "/cell_outputs_"
-    col_names_coords = [
-        "cell_id",
-        "cell_centroid_x",
-        "cell_centroid_y",
-        "pixel_size",
-        "eccentricity",
-    ] + gene_names
-
-    for chunk in matrix_all_splits:
-        p = mp.Process(
-            target=process_chunk_meta,
-            args=(
-                chunk,
-                fp_output,
-                seg_map_mi,
-                col_names_coords,
-                scale_pix_x,
-                scale_pix_y,
-            ),
-        )
-        processes.append(p)
-        p.start()
-
-    for p in processes:
-        p.join()
-
-    return col_names_coords
-
-
-def process_starmap_meta(df_out, gene_names, n_processes, output_dir, seg_map_mi, 
-                         scale_pix_x, scale_pix_y, cell_annotations=None, save_chunks=False):
+                          scale_pix_x, scale_pix_y, cell_annotations=None, save_chunks=False):
     # Meta processing where cell shape is quantified; parallized with Starmap
 
     matrix_all = df_out.to_numpy().astype(np.float32)
@@ -478,8 +412,8 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
             print("Extracting cell-gene matrix chunks")
             save_chunks = False
             generate_metadata = True if include_spatial and is_cell else False
-            df_out = process_starmap(df_expr, n_processes, output_dir, cell_ids_unique, col_names, x_col, y_col, 
-                                     gene_col, seg_map, scale_pix_x, scale_pix_y, save_chunks, False)
+            df_out = process_parallel(df_expr, n_processes, output_dir, cell_ids_unique, col_names, x_col, y_col, 
+                                      gene_col, seg_map, scale_pix_x, scale_pix_y, save_chunks, False)
 
             fp_chunks = glob.glob(os.path.join(output_dir, "chunk_*.csv"))
             #for fpc in fp_chunks:
@@ -507,8 +441,8 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
         print("Computing cell locations and sizes...")
         t10 = time.time()
 
-        df_meta = process_starmap_meta(df_out, gene_names, n_processes, output_dir, seg_map_mi, 
-                                       scale_pix_x, scale_pix_y, cell_annotations=None, save_chunks=False)
+        df_meta = process_parallel_meta(df_out, gene_names, n_processes, output_dir, seg_map_mi, 
+                                        scale_pix_x, scale_pix_y, cell_annotations=None, save_chunks=False)
 
         t11 = time.time()
         print(f"Processing meta cell info took {t11-t10} seconds.")
