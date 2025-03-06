@@ -130,6 +130,8 @@ def preannotate(config: Config, is_cell: bool = False, timestamp: str | None = N
         print("Check names of genes")
         sys.exit()
 
+    print(f"genes_cells len={len(genes_cells)}")
+
     sc_expr = df_ref.iloc[:, :-3].to_numpy()
     n_atlas_types = sc_expr.shape[0]
     sc_labels = df_ref.iloc[:, -3].to_numpy().astype(int)
@@ -139,7 +141,7 @@ def preannotate(config: Config, is_cell: bool = False, timestamp: str | None = N
     n_processes = get_n_processes(config.cpus)
     print(f"Number of splits for multiprocessing: {n_processes}")
 
-    matrix_all = df_cells.to_numpy().astype(np.float32)
+    matrix_all = df_cells[genes_cells].to_numpy().astype(np.float32)
     matrix_all_splits = np.array_split(matrix_all, n_processes)
 
     print("Computing simple annotation")
