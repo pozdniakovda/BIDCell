@@ -171,6 +171,8 @@ def preannotate(config: Config, is_cell: bool = False, timestamp: str | None = N
     for anno_fp in anno_fps:
         os.remove(anno_fp)
 
+    return cell_df
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
