@@ -70,7 +70,8 @@ def process_chunk(chunk, output_dir, cell_ids_unique, col_names, x_col, y_col, g
     """Extract cell expression profiles"""
 
     # Identify which cell IDs are present in this chunk
-    cell_ids_in_chunk = chunk[x_col].map(lambda x: seg_map[:, x]).unique()
+    cell_ids_in_chunk = np.unique(seg_map[chunk[y_col], chunk[x_col]])
+    cell_ids_in_chunk = cell_ids_in_chunk[cell_ids_in_chunk > 0]
     df_out = pd.DataFrame(0, index=cell_ids_in_chunk, columns=col_names)
     df_out["cell_id"] = cell_ids_in_chunk.copy()
 
