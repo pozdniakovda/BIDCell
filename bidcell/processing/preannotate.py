@@ -142,9 +142,9 @@ def preannotate(config: Config, is_cell: bool = False, timestamp: str | None = N
     args_list = [(chunk, dir_dataset, sc_expr, sc_labels, n_atlas_types) for chunk in matrix_all_splits]
     cell_dfs = []
     anno_fps = []
-    
-    with mp.Pool(processes=n_processes) as pool:
-        for df_split, fp_anno in pool.imap(process_chunk_corr, args_list):
+        
+    with mp.Pool(processes=mp.cpu_count()) as pool:
+        for df_split, fp_anno in pool.starmap(process_chunk_corr, args_list):
             cell_dfs.append(df_split)
             anno_fps.append(fp_anno)
     
