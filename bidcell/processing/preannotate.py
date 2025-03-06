@@ -168,8 +168,8 @@ def preannotate(config: Config, is_cell: bool = False, timestamp: str | None = N
         cell_df.to_csv(dir_dataset + "/preannotations_merged.csv")
     
     # Clean up
-    for anno_fp in anno_fps:
-        os.remove(anno_fp)
+    #for anno_fp in anno_fps:
+    #    os.remove(anno_fp)
 
     return cell_df
 
