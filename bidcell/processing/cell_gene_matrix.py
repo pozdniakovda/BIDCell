@@ -354,9 +354,7 @@ def resize_seg_map(seg_map_mi, width_pix, height_pix, output_dir, use_cv2=False)
 def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = None):
     """Generates the cell-gene matrix but does NOT merge annotations (handled in predict())."""
 
-    print(f"Making cell gene matrix...")
-    t0 = time.time()
-    
+    print(f"Making cell gene matrix...")    
     cgm_paths = get_cgm_paths(config, is_cell, timestamp)
     output_dir, fp_transcripts_processed, fp_gene_names, fp_seg, fp_seg_name = cgm_paths
 
@@ -439,13 +437,8 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
 
     if include_spatial and is_cell:
         print("Computing cell locations and sizes...")
-        t10 = time.time()
-
         df_meta = process_parallel_meta(df_out, gene_names, n_processes, output_dir, seg_map_mi, 
                                         scale_pix_x, scale_pix_y, cell_annotations=None, save_chunks=False)
-
-        t11 = time.time()
-        print(f"Processing meta cell info took {t11-t10} seconds.")
 
         fp_expr_meta = fp_expr.rsplit(".", 1)[0] + "_meta.csv"
         df_meta.to_csv(fp_expr_meta)
