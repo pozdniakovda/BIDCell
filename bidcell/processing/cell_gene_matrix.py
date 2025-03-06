@@ -190,6 +190,7 @@ def process_starmap(df_expr, n_processes, output_dir, cell_ids_unique, col_names
 
     # Concatenate all DataFrames
     df_merged = pd.concat(results, ignore_index=True)
+    df_merged = df_merged.groupby("cell_id", as_index=False).sum()
     df_merged.set_index("cell_id", drop=True)
 
     return df_merged
