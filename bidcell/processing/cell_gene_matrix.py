@@ -296,7 +296,7 @@ def process_starmap_meta(df_out, gene_names, n_processes, output_dir, seg_map_mi
         "cell_centroid_y",
         "pixel_size",
         "eccentricity",
-    ] + gene_names
+    ]
 
     results = []
     
