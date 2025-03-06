@@ -171,7 +171,10 @@ def preannotate(config: Config, is_cell: bool = False, timestamp: str | None = N
 
     # Save merged dataframe
     if save_merged:
-        cell_df.to_csv(dir_dataset + "/preannotations_merged.csv")
+        if is_cell:
+            cell_df.to_csv(dir_dataset + "/preannotations_cell_merged.csv")
+        else:
+            cell_df.to_csv(dir_dataset + "/preannotations_nuclei_merged.csv")
 
     return cell_df
 
