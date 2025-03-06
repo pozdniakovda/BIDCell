@@ -107,13 +107,8 @@ def preannotate(config: Config, is_cell: bool = False, timestamp: str | None = N
     for col in remove_cols:
         if col in genes_cells:
             genes_cells.remove(col)
-    print("genes_cells:")
-    print(genes_cells)
     
     ct_columns = df_ref_orig.columns[-3:].tolist()
-    print("ct_columns:")
-    print(ct_columns)
-    
     df_ref = df_ref_orig[genes_cells + ct_columns]
 
     genes_ref = df_ref.columns[:-3]
