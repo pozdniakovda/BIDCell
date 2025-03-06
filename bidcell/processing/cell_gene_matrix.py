@@ -439,15 +439,7 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
     with open(fp_gene_names) as file:
         gene_names = [line.rstrip() for line in file]
 
-    if is_cell and include_spatial:
-        col_names = [
-            "cell_id",
-            "cell_centroid_x",
-            "cell_centroid_y",
-            "cell_size",
-        ] + gene_names
-    else:
-        col_names = ["cell_id"] + gene_names
+    col_names = ["cell_id"] + gene_names
 
     n_processes = get_n_processes(config.cpus)
 
