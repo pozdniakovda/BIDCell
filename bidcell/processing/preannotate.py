@@ -149,6 +149,8 @@ def preannotate(config: Config, is_cell: bool = False, timestamp: str | None = N
             anno_fps.append(fp_anno)
     
     cell_df = pd.concat(cell_dfs, ignore_index=True)
+    print(f"Annotated cell_df:")
+    print(cell_df)
 
     cell_type_col = cell_df["cell_type"].to_numpy()
     cell_id_col = cell_df["cell_id"].to_numpy()
