@@ -471,7 +471,7 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
         t11 = time.time()
         print(f"Processing meta cell info took {t11-t10} seconds.")
 
-        fp_expr_meta = fp_expr.rsplit(".", 1) + "_meta.csv"
+        fp_expr_meta = fp_expr.rsplit(".", 1)[0] + "_meta.csv"
         df_merged.to_csv(fp_expr_meta)
         print(f"Saved current cell-gene matrix meta information to {fp_expr_meta}")
 
