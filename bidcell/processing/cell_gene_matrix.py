@@ -511,15 +511,24 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
         print("Computing cell locations and sizes...")
         t10 = time.time()
 
-        df_merged = process_starmap_meta(df_out, gene_names, n_processes, output_dir, seg_map_mi, 
-                                         scale_pix_x, scale_pix_y, cell_annotations=None, save_chunks=False)
+        df_meta = process_starmap_meta(df_out, gene_names, n_processes, output_dir, seg_map_mi, 
+                                       scale_pix_x, scale_pix_y, cell_annotations=None, save_chunks=False)
 
         t11 = time.time()
         print(f"Processing meta cell info took {t11-t10} seconds.")
 
         fp_expr_meta = fp_expr.rsplit(".", 1)[0] + "_meta.csv"
-        df_merged.to_csv(fp_expr_meta)
+        df_meta.to_csv(fp_expr_meta)
         print(f"Saved current cell-gene matrix meta information to {fp_expr_meta}")
+
+        # Merge the dataframes together
+        df_merged = pd.merge(df_meta, df_out, on="cell_id", how="inner")
+        
+        # Save merged file as expr_mat.csv (overwrite existing)
+        fp_expr_merged = fp_expr.rsplit(".", 1)[0] + "_merged.csv"
+        df_merged.to_csv(fp_expr_merged)
+        print(f"Saved merged cell-gene matrix to {fp_expr_merged}")
+
 
     print("Done making cell gene matrix.")
 
