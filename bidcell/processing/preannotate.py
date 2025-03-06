@@ -81,9 +81,15 @@ def process_chunk_corr(matrix, dir_output, sc_expr, sc_labels, n_atlas_types):
     #print(f"Saved preannotations file: {fp_anno}")
 
 
-def preannotate(config: Config, save_merged=False):
+def preannotate(config: Config, is_cell: bool = False, timestamp: str | None = None, save_merged = False):
     dir_dataset = config.files.data_dir
-    expr_dir = os.path.join(dir_dataset, config.files.dir_cgm, "nuclei")
+    dir_cgm = config.files.dir_cgm
+    
+    if is_cell is False:
+        expr_dir = os.path.join(dir_dataset, dir_cgm, "nuclei")
+    else:
+        expr_dir = os.path.join(dir_dataset, dir_cgm, timestamp)
+
     print(f"preannotate expr_dir: {expr_dir}")
 
     # Cell expressions - order of gene names (columns) will be in same order as all_gene_names.txt
@@ -147,7 +153,10 @@ def preannotate(config: Config, save_merged=False):
     cell_type_col = cell_df["cell_type"].to_numpy()
     cell_id_col = cell_df["cell_id"].to_numpy()
 
-    h5f = h5py.File(dir_dataset + "/" + config.files.fp_nuclei_anno, "w")
+    fp_anno = config.files.fp_cell_anno if is_cell else config.files.fp_nuclei_anno
+    h5f_path = dir_dataset + "/" + fp_anno
+    
+    h5f = h5py.File(h5f_path, "w")
     h5f.create_dataset("data", data=cell_type_col)
     h5f.create_dataset("ids", data=cell_id_col)
     h5f.close()
