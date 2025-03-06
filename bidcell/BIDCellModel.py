@@ -121,7 +121,7 @@ class BIDCellModel:
             generate_expression_maps(self.config)
         generate_patches(self.config)
         make_cell_gene_mat(self.config, is_cell=False)
-        preannotate(self.config, save_merged=False)
+        preannotate(self.config, save_merged=True)
 
     def stitch_nuclei(self):
         """Stich separate FOV files into a single one (e.g. CosMx data).\n
