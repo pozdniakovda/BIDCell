@@ -174,10 +174,9 @@ class BIDCellModel:
                                                                                   self.lr_override, 
                                                                                   self.solver_override, 
                                                                                   self.device_idx, self.verbose)
-    
+
     def predict(self) -> None:
-        """Segment and annotate the cells, ensuring all data is properly merged into a clean expr_mat.csv."""
-    
+        """Segment and annotate the cells, then merge all metadata into expr_mat.csv."""
         print(f"Beginning prediction...")
         predict(self.config)
     
@@ -200,50 +199,27 @@ class BIDCellModel:
     
         print(f"Re-running preannotation...")
         preannotate(self.config, save_merged=True)
-    
-        print(f"Reloading and merging all data into expr_mat.csv...")
-    
-        # Define paths
+        
+        print(f"Reloading cell gene matrix to include annotations...")
         expr_mat_path = os.path.join(self.config.files.data_dir, self.config.files.dir_cgm, timestamp, self.config.files.fp_expr)
         preannotations_path = os.path.join(self.config.files.data_dir, "preannotations_merged.csv")
     
-        # Ensure both files exist before merging
-        if os.path.exists(expr_mat_path):
+        if os.path.exists(expr_mat_path) and os.path.exists(preannotations_path):
             df_expr = pd.read_csv(expr_mat_path)
+            df_annotations = pd.read_csv(preannotations_path)
     
-            # Ensure unique `cell_id`s and remove duplicate rows by summing counts
-            df_expr = df_expr.groupby("cell_id", as_index=False).sum()
+            # Merge on cell_id
+            df_merged = df_expr.merge(df_annotations, on="cell_id", how="left")
     
-            # Load and merge spatial metadata correctly
-            metadata_cols = ["cell_id", "cell_centroid_x", "cell_centroid_y", "pixel_size", "eccentricity"]
-            df_meta = df_expr[metadata_cols] if set(metadata_cols).issubset(df_expr.columns) else None
-    
-            # Remove metadata columns from df_expr to avoid duplication later
-            df_expr = df_expr.drop(columns=[col for col in metadata_cols if col in df_expr.columns], errors="ignore")
-    
-            # Load and merge annotations correctly
-            if os.path.exists(preannotations_path):
-                df_annotations = pd.read_csv(preannotations_path)
-                df_expr = df_expr.merge(df_annotations, on="cell_id", how="left")
-            else:
-                print("⚠ Warning: preannotations_merged.csv not found. Skipping annotation merge.")
-    
-            # Drop unwanted "Unnamed" columns from improper merges
-            df_expr = df_expr.loc[:, ~df_expr.columns.str.contains("^Unnamed")]
-    
-            # Remove _x and _y column suffixes by summing them
-            df_expr = df_expr.groupby(df_expr.columns.str.rstrip("_x"), axis=1).sum()
-    
-            # Ensure metadata columns are at the beginning
-            if df_meta is not None:
-                df_expr = df_meta.merge(df_expr, on="cell_id", how="left")
-    
-            # Save the final expr_mat.csv
-            df_expr.to_csv(expr_mat_path, index=False)
-            print(f"Successfully cleaned and saved expr_mat.csv at: {expr_mat_path}")
-    
+            # Save the updated expr_mat.csv
+            df_merged.to_csv(expr_mat_path, index=False)
+            print(f"Merged annotations into expr_mat.csv successfully! Save path: {expr_mat_path}")
+        elif os.path.exists(expr_mat_path) and not os.path.exists(preannotations_path):
+            print("Warning: preannotations_merged.csv not found, skipping merge.")
+        elif not os.path.exists(expr_mat_path) and os.path.exists(preannotations_path):
+            print("Warning: expr_mat.csv not found, skipping merge.")
         else:
-            print("⚠ Warning: expr_mat.csv not found. Skipping merge.")
+            print("Warning: expr_mat.csv and preannotations_merged.csv not found, skipping merge.")
     
         print(f"Done prediction.")
 
