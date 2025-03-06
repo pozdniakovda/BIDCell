@@ -90,18 +90,26 @@ def preannotate(config: Config, is_cell: bool = False, timestamp: str | None = N
     else:
         expr_dir = os.path.join(dir_dataset, dir_cgm, timestamp)
 
-    print(f"preannotate expr_dir: {expr_dir}")
-
     # Cell expressions - order of gene names (columns) will be in same order as all_gene_names.txt
-    df_cells = pd.read_csv(os.path.join(expr_dir, config.files.fp_expr), index_col=0)
+    fp_expr = os.path.join(expr_dir, config.files.fp_expr)
+    print(f"Loading cell expressions from fp_expr: {fp_expr}")
+    df_cells = pd.read_csv(fp_expr, index_col=0)
     print(f"Number of cells: {df_cells.shape[0]}")
 
     # Reference data - no requirement of column orders - ensure same order as df_cells
-    df_ref_orig = pd.read_csv(config.files.fp_ref, index_col=0)
+    fp_ref = config.files.fp_ref
+    print(f"Loading reference from fp_expr: {fp_ref}")
+    df_ref_orig = pd.read_csv(fp_ref, index_col=0)
 
     # Ensure the order of genes match
     genes_cells = df_cells.columns[1:].tolist()
+    print("genes_cells:")
+    print(genes_cells)
+    
     ct_columns = df_ref_orig.columns[-3:].tolist()
+    print("ct_columns:")
+    print(ct_columns)
+    
     df_ref = df_ref_orig[genes_cells + ct_columns]
 
     genes_ref = df_ref.columns[:-3]
