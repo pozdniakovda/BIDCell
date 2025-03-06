@@ -68,13 +68,13 @@ def prepare_expr(seg_map_full, hs, he, ws, we, fp_transcripts_processed, x_col, 
 def process_chunk(chunk, output_dir, cell_ids_unique, col_names, seg_map, 
                   x_col, y_col, gene_col, save_chunk=False):
     """Extract cell expression profiles"""
-    
+
     df_out = pd.DataFrame(0, index=cell_ids_unique, columns=col_names)
     df_out["cell_id"] = cell_ids_unique.copy()
 
     chunk_id = chunk.index[0]
 
-    for _, row in chunk.iterrows():
+    for index_row, row in chunk.iterrows():
         gene = row[gene_col]
         w_loc = row[x_col]
         h_loc = row[y_col]
@@ -83,19 +83,13 @@ def process_chunk(chunk, output_dir, cell_ids_unique, col_names, seg_map,
         if seg_val > 0:
             df_out.loc[seg_val, gene] += 1
 
-    # Check if any gene columns are completely empty
-    if df_out.iloc[:, 1:].isnull().all().all():
-        warning_message = f"All gene expression values are empty for chunk {chunk_id}!"
-    else:
-        warning_message = None
-
     if save_chunk:
-        file_path = output_dir + f"/chunk_{chunk_id}.csv"
+        file_path = output_dir + "/" + "chunk_%d.csv" % chunk_id
         df_out.to_csv(file_path)
     else:
         file_path = None
 
-    return (df_out, file_path, warning_message)
+    return (df_out, file_path)
 
 
 def process_parallel(df_expr, n_processes, output_dir, cell_ids_unique, col_names, 
@@ -129,7 +123,7 @@ def process_parallel(df_expr, n_processes, output_dir, cell_ids_unique, col_name
 def process_starmap(df_expr, n_processes, output_dir, cell_ids_unique, col_names, 
                     seg_map, x_col, y_col, gene_col, save_chunks=False):
     """Parallelized CGM data processing using `starmap`, collecting and merging results."""
-
+    
     df_expr_splits = np.array_split(df_expr, n_processes)
     results = []
 
@@ -138,21 +132,16 @@ def process_starmap(df_expr, n_processes, output_dir, cell_ids_unique, col_names
     with mp.Pool(n_processes) as pool:
         args = [(chunk, output_dir, cell_ids_unique, col_names, seg_map, x_col, y_col, gene_col, save_chunks) for chunk in df_expr_splits]
 
-        for df_out, file_path, warning_message in pool.starmap(process_chunk, args):
-            if warning_message is not None:
-                print(f"Warning: {warning_message}")
-
-            if file_path:
-                print(f"Processed and saved: {file_path}")
+        for i, (df_out, file_path) in enumerate(pool.starmap(process_chunk, args)):
+            if file_path is not None:
+                print(f"Processed and saved results for chunk #{i+1}: {file_path}")
             # else:
             #     print(f"Processed results for chunk #{i+1}")
             
             results.append(df_out)
 
-    # Merge results and keep only valid gene columns
+    # Concatenate all DataFrames
     df_merged = pd.concat(results, ignore_index=True)
-    df_merged = df_merged.loc[:, df_merged.notna().any()]  # Remove empty columns
-
     df_merged.set_index("cell_id", drop=True)
 
     return df_merged
@@ -164,30 +153,46 @@ def process_chunk_meta(matrix, fp_output, seg_map_mi, col_names_coords,
 
     chunk_id = matrix[0, 0]
     
-    # Convert to Pandas DataFrame (only metadata columns)
+    # Convert to Pandas DataFrame to handle mixed data types
     df_output = pd.DataFrame(columns=col_names_coords)
-    df_output["cell_id"] = matrix[:, 0].astype(int)
+    df_output["cell_id"] = matrix[:, 0].astype(int)  # Ensure IDs are integers
 
+    # Convert to pixel resolution
     for cur_i, cell_id in enumerate(df_output["cell_id"]):
         if cell_id > 0:
             try:
-                # Extract spatial metadata
+                # Get coordinates of the cell in segmentation mask
                 coords = np.where(seg_map_mi == cell_id)
-                df_output.at[cur_i, "cell_centroid_x"] = np.mean(coords[1]) * scale_pix_x
-                df_output.at[cur_i, "cell_centroid_y"] = np.mean(coords[0]) * scale_pix_y
-                df_output.at[cur_i, "pixel_size"] = len(coords[0]) / (scale_pix_x * scale_pix_y)
-                df_output.at[cur_i, "eccentricity"] = regionprops(label(seg_map_mi == cell_id))[0].eccentricity
-            except Exception:
-                df_output.at[cur_i, ["cell_centroid_x", "cell_centroid_y", "pixel_size", "eccentricity"]] = [-1, -1, -1, -1]
+                x_points = coords[1]
+                y_points = coords[0]
 
-    # Save only if needed
+                # Compute centroid
+                df_output.at[cur_i, "cell_centroid_x"] = (sum(x_points) / len(x_points)) * scale_pix_x
+                df_output.at[cur_i, "cell_centroid_y"] = (sum(y_points) / len(y_points)) * scale_pix_y
+
+                # Compute pixel size
+                df_output.at[cur_i, "pixel_size"] = len(coords[0]) / (scale_pix_x * scale_pix_y)
+
+                # Compute eccentricity using regionprops
+                mask = (seg_map_mi == cell_id).astype(np.uint8)
+                labeled_mask = label(mask)
+                props = regionprops(labeled_mask)
+                df_output.at[cur_i, "eccentricity"] = props[0].eccentricity if props else -1
+
+            except Exception:
+                df_output.at[cur_i, "cell_centroid_x"] = -1
+                df_output.at[cur_i, "cell_centroid_y"] = -1
+                df_output.at[cur_i, "pixel_size"] = -1
+                df_output.at[cur_i, "eccentricity"] = -1
+
+    # Save as CSV
     if save_chunk:
         file_path = f"{fp_output}{chunk_id}.csv"
         df_output.to_csv(file_path, index=False)
     else:
         file_path = None
 
-    return df_output, file_path
+    return (df_output, file_path)
 
 
 def process_parallel_meta(df_out, gene_names, n_processes, output_dir, seg_map_mi, 
@@ -364,35 +369,51 @@ def resize_seg_map(seg_map_mi, width_pix, height_pix, output_dir, use_cv2=False)
 
 
 def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = None):
-    """Generates a cleaned and correctly formatted cell-gene matrix with metadata."""
+    """Generates the cell-gene matrix and merges all metadata into a single expr_mat.csv file."""
 
     print(f"Making cell gene matrix...")
     t0 = time.time()
+    
+    cgm_paths = get_cgm_paths(config, is_cell, timestamp)
+    output_dir, fp_transcripts_processed, fp_gene_names, fp_seg, fp_seg_name = cgm_paths
 
-    output_dir, fp_transcripts_processed, fp_gene_names, fp_seg, _ = get_cgm_paths(config, is_cell, timestamp)
     include_spatial = config.cgm_params.include_spatial
 
-    x_col, y_col, gene_col = config.transcripts.x_col, config.transcripts.y_col, config.transcripts.gene_col
-    seg_map_mi, height, width, cell_ids_unique, _ = get_seg_map(fp_seg)
+    # Column names in the transcripts csv
+    x_col = config.transcripts.x_col
+    y_col = config.transcripts.y_col
+    gene_col = config.transcripts.gene_col
 
+    # Get segmentation map and associated metrics
+    seg_map_mi, height, width, cell_ids_unique, n_cells = get_seg_map(fp_seg)
+
+    # Read gene names and get cols
     with open(fp_gene_names) as file:
         gene_names = [line.rstrip() for line in file]
 
-    col_names = ["cell_id"] + gene_names
+    col_names = ["cell_id"] + gene_names  # Start with cell IDs and gene expressions
+
+    # Add spatial metadata columns if enabled
+    if is_cell and include_spatial:
+        col_names += ["cell_centroid_x", "cell_centroid_y", "cell_size", "eccentricity"]
+
     n_processes = get_n_processes(config.cpus)
 
-    scale_pix_x, scale_pix_y = config.affine.scale_pix_x, config.affine.scale_pix_y
+    scale_pix_x = config.affine.scale_pix_x
+    scale_pix_y = config.affine.scale_pix_y
+
     fp_expr = os.path.join(output_dir, config.files.fp_expr)
+    print(f"\tExpressions path: {fp_expr}")
 
     if not os.path.exists(fp_expr):
         print(f"\tFile does not exist; generating...")
-
+        # Rescale to pixel size
         height_pix = np.round(height / config.affine.scale_pix_y).astype(int)
         width_pix = np.round(width / config.affine.scale_pix_x).astype(int)
-        seg_map, fp_rescaled_seg = resize_seg_map(seg_map_mi, width_pix, height_pix, output_dir)
 
-        df_expr = pd.DataFrame(columns=["cell_id", x_col, y_col, gene_col])
+        seg_map, fp_rescaled_seg = resize_seg_map(seg_map_mi, width_pix, height_pix, output_dir, use_cv2=False)
 
+        # Divide into patches for large datasets that exceed memory capacity
         h_coords, _ = get_patches_coords(height_pix, config.cgm_params.max_sum_hw // 2)
         w_coords, _ = get_patches_coords(width_pix, config.cgm_params.max_sum_hw - (config.cgm_params.max_sum_hw // 2))
         hw_coords = [(hs, he, ws, we) for (hs, he) in h_coords for (ws, we) in w_coords]
@@ -402,7 +423,7 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
         output_dfs = []
         for hs, he, ws, we in tqdm(hw_coords):
             seg_map, df_expr = prepare_expr(seg_map_full, hs, he, ws, we, fp_transcripts_processed, 
-                                            x_col, y_col, scale_pix_x, scale_pix_y)
+                                            x_col, y_col, scale_pix_x, scale_pix_y, print_ranges=False)
 
             df_expr.reset_index(drop=True, inplace=True)
 
@@ -410,31 +431,26 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
             df_out = process_starmap(df_expr, n_processes, output_dir, cell_ids_unique, col_names, 
                                      seg_map, x_col, y_col, gene_col, save_chunks=False)
 
-            if df_out is not None and not df_out.empty:
-                output_dfs.append(df_out)
+            output_dfs.append(df_out)
 
-        if output_dfs:
-            df_expr = pd.concat(output_dfs, ignore_index=True)
-            df_expr = df_expr.groupby("cell_id", as_index=False).sum()
-            df_expr.to_csv(fp_expr, index=False)
-            print(f"Saved final cell-gene matrix to {fp_expr}")
-        else:
-            print("⚠ Warning: No valid expression data was generated.")
+        df_expr_final = pd.concat(output_dfs, ignore_index=True)
+
+        # Compute and merge spatial metadata
+        if include_spatial and is_cell:
+            print("Computing cell locations and sizes...")
+            df_meta = process_starmap_meta(df_expr_final, gene_names, n_processes, output_dir, seg_map_mi, 
+                                           scale_pix_x, scale_pix_y, cell_annotations=None, save_chunks=False)
+
+            df_expr_final = df_expr_final.merge(df_meta, on="cell_id", how="left")
+
+        df_expr_final.to_csv(fp_expr, index=False)
+        print(f"Saved final cell-gene matrix with metadata to {fp_expr}")
 
         os.remove(fp_rescaled_seg)
 
     else:
         print(f"\tFile exists; reloading...")
-        df_expr = pd.read_csv(fp_expr)
-
-    if include_spatial and is_cell:
-        print("Computing cell locations and sizes...")
-        df_meta = process_starmap_meta(df_expr, gene_names, n_processes, output_dir, seg_map_mi, scale_pix_x, scale_pix_y)
-
-        df_expr = df_meta.merge(df_expr, on="cell_id", how="left")
-
-        df_expr.to_csv(fp_expr, index=False)
-        print(f"Saved updated cell-gene matrix with metadata: {fp_expr}")
+        df_expr_final = pd.read_csv(fp_expr)
 
     print("Done making cell gene matrix.")
 
