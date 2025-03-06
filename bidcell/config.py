@@ -52,6 +52,8 @@ class FileParams(BaseModel):
     fp_expr: str = "expr_mat.csv"
     # file name of nuclei annotations
     fp_nuclei_anno: str = "nuclei_cell_type.h5"
+    # file name of cell annotations
+    fp_cell_anno: str = "pred_cell_type.h5"
     # file name of text file containing selected gene names, e.g. selected_genes.txt
     fp_selected_genes: str | None = None
 
