@@ -481,7 +481,7 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
             save_chunks = False
             generate_metadata = True if include_spatial and is_cell else False
             df_out = process_starmap(df_expr, n_processes, output_dir, cell_ids_unique, col_names, x_col, y_col, 
-                                     gene_col, seg_map, scale_pix_x, scale_pix_y, save_chunks, generate_metadata)
+                                     gene_col, seg_map, scale_pix_x, scale_pix_y, save_chunks, False)
 
             fp_chunks = glob.glob(os.path.join(output_dir, "chunk_*.csv"))
             #for fpc in fp_chunks:
@@ -505,7 +505,6 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
         print(f"\tFile exists; reloading...")
         df_out = pd.read_csv(fp_expr, index_col=0)
 
-    '''
     if include_spatial and is_cell:
         print("Computing cell locations and sizes...")
         t10 = time.time()
@@ -519,7 +518,6 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
         fp_expr_meta = fp_expr.rsplit(".", 1)[0] + "_meta.csv"
         df_merged.to_csv(fp_expr_meta)
         print(f"Saved current cell-gene matrix meta information to {fp_expr_meta}")
-    '''
 
     print("Done making cell gene matrix.")
 
