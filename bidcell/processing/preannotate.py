@@ -80,6 +80,8 @@ def process_chunk_corr(matrix, dir_output, sc_expr, sc_labels, n_atlas_types):
     df_split.to_csv(fp_anno, index=False)
     #print(f"Saved preannotations file: {fp_anno}")
 
+    return (df_split, fp_anno)
+
 
 def preannotate(config: Config, is_cell: bool = False, timestamp: str | None = None, save_merged = False):
     dir_dataset = config.files.data_dir
@@ -135,27 +137,18 @@ def preannotate(config: Config, is_cell: bool = False, timestamp: str | None = N
 
     matrix_all = df_cells.to_numpy().astype(np.float32)
     matrix_all_splits = np.array_split(matrix_all, n_processes)
-    processes = []
 
     print("Computing simple annotation")
-    for chunk in matrix_all_splits:
-        p = mp.Process(
-            target=process_chunk_corr,
-            args=(chunk, dir_dataset, sc_expr, sc_labels, n_atlas_types),
-        )
-        processes.append(p)
-        p.start()
-
-    for p in processes:
-        p.join()
-
-    fp_chunks = glob.glob(dir_dataset + "/preannotations_*.csv")
-    for fp_i, fpc in enumerate(fp_chunks):
-        df_i = pd.read_csv(fpc)
-        if fp_i == 0:
-            cell_df = df_i.copy()
-        else:
-            cell_df = pd.concat([cell_df, df_i], axis=0)
+    args_list = [(chunk, dir_dataset, sc_expr, sc_labels, n_atlas_types) for chunk in matrix_all_splits]
+    cell_dfs = []
+    anno_fps = []
+    
+    with mp.Pool(processes=n_processes) as pool:
+        for df_split, fp_anno in pool.imap(process_chunk_corr, args_list):
+            cell_dfs.append(df_split)
+            anno_fps.append(fp_anno)
+    
+    cell_df = pd.concat(cell_dfs, ignore_index=True)
 
     cell_type_col = cell_df["cell_type"].to_numpy()
     cell_id_col = cell_df["cell_id"].to_numpy()
@@ -170,13 +163,11 @@ def preannotate(config: Config, is_cell: bool = False, timestamp: str | None = N
 
     # Save merged dataframe
     if save_merged:
-        preannotation_dfs = [pd.read_csv(file_path) for file_path in fp_chunks]
-        preannotation_df = pd.concat(preannotation_dfs, ignore_index=True)
-        preannotation_df.to_csv(dir_dataset + "/preannotations_merged.csv")
+        cell_df.to_csv(dir_dataset + "/preannotations_merged.csv")
     
     # Clean up
-    for fpc in fp_chunks:
-        os.remove(fpc)
+    for anno_fp in anno_fps:
+        os.remove(anno_fp)
 
 
 if __name__ == "__main__":
