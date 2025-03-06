@@ -194,12 +194,12 @@ class BIDCellModel:
         print(f"Postprocessing predictions...")
         postprocess_predictions(self.config, timestamp)
 
-        print(f"Re-running preannotation...")
-        preannotate(self.config, save_merged=True)
-
         print(f"Making cell gene matrix...")
         make_cell_gene_mat(self.config, is_cell=True, timestamp=timestamp)
         
+        print(f"Re-running preannotation...")
+        preannotate(self.config, save_merged=True)
+
         print(f"Reloading cell gene matrix to include annotations...")
         expr_mat_path = os.path.join(self.config.files.data_dir, self.config.files.dir_cgm, timestamp, self.config.files.fp_expr)
         preannotations_path = os.path.join(self.config.files.data_dir, "preannotations_merged.csv")
