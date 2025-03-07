@@ -207,7 +207,7 @@ class BIDCellModel:
         info_cols = []
         gene_cols = list(cgm_merged.columns).copy()
         for meta_col in meta_cols:
-            if meta_col in cols:
+            if meta_col in cgm_merged.columns:
                 gene_cols.remove(meta_col)
                 info_cols.append(meta_col)
         cgm_merged = cgm_merged[info_cols + gene_cols]
