@@ -140,7 +140,7 @@ def get_seg_mask(sample_seg, sample_n):
 
 
 def save_fig_outputs(sample_seg, sample_n, sample_sa, sample_expr, patch_fp, 
-                     random_seed=42, binary_expr_map=True, log_expr_map=True):
+                     random_seed=42, binary_expr_map=False, log_expr_map=True):
     """
     Generate and save one or more figures of inputs and outputs with deterministic randomization.
     """
