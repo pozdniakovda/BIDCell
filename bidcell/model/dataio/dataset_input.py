@@ -197,7 +197,7 @@ class DataProcessing(data.Dataset):
         "Denotes the total number of samples"
         return len(self.fp_patches)
 
-    def __getitem__(self, index, verbose=True):
+    def __getitem__(self, index, verbose=False):
         '''
         Generates one sample of data
 
