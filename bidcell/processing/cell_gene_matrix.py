@@ -361,11 +361,6 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
     output_dir, fp_transcripts_processed, fp_gene_names, fp_seg, fp_seg_name, fp_expr = cgm_paths
 
     print(f"\toutput_dir: {output_dir}")
-    print(f"\tfp_transcripts_processed: {fp_transcripts_processed}")
-    print(f"\tfp_gene_names: {fp_gene_names}")
-    print(f"\tfp_seg: {fp_seg}")
-    print(f"\tfp_seg_name: {fp_seg_name}")
-    print(f"\tfp_expr: {fp_expr}")
 
     include_spatial = config.cgm_params.include_spatial
 
