@@ -389,7 +389,7 @@ class DataProcessing(data.Dataset):
             tensor_names = ["expr_sum_split", "expr_split", "nucl_split", "search_areas", 
                             "search_pos", "search_neg", "nucl_aug", "expr_aug_sum"]
             for tensor_name, tensor in zip(tensor_names, tensors):
-                unique_vals = np.unique(tensor)
+                unique_vals = np.unique(tensor.detach().numpy())
                 if len(unique_vals) > 2:
                     print(f"\t{tensor_name} has {len(unique_vals)} unique vals (min={unique_vals.min()}, max={unique_vals.max()}):")
                     print(unique_vals)
