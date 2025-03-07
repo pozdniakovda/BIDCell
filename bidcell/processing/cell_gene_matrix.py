@@ -66,13 +66,20 @@ def prepare_expr(seg_map_full, hs, he, ws, we, fp_transcripts_processed, x_col, 
 
 
 def process_chunk(chunk, output_dir, cell_ids_unique, col_names, x_col, y_col, gene_col, 
-                  seg_map, scale_pix_x, scale_pix_y,save_chunk=False, generate_metadata=False):
+                  seg_map, scale_pix_x, scale_pix_y, save_chunk=False, 
+                  generate_metadata=False, assign_blank_cells=True):
     """Extract cell expression profiles"""
 
-    # Identify which cell IDs are present in this chunk
-    cell_ids_in_chunk = np.unique(seg_map[chunk[y_col], chunk[x_col]])
-    cell_ids_in_chunk = cell_ids_in_chunk[cell_ids_in_chunk > 0]
-    df_out = pd.DataFrame(0, index=cell_ids_in_chunk, columns=col_names)
+    # Construct the output dataframe
+    if assign_blank_cells:
+        # Assign rows for all cell IDs, even those that aren't present in this chunk
+        df_out = pd.DataFrame(0, index=cell_ids_unique, columns=col_names)
+    else:
+        # Identify which cell IDs are present in this chunk
+        cell_ids_in_chunk = np.unique(seg_map[chunk[y_col], chunk[x_col]])
+        cell_ids_in_chunk = cell_ids_in_chunk[cell_ids_in_chunk > 0]
+        df_out = pd.DataFrame(0, index=cell_ids_in_chunk, columns=col_names)
+    
     df_out["cell_id"] = cell_ids_in_chunk.copy()
 
     chunk_id = chunk.index[0]
