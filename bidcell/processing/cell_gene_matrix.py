@@ -453,11 +453,11 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
         df_merged.to_csv(fp_expr_merged)
         print(f"Saved merged cell-gene matrix to {fp_expr_merged}")
         print("Done making cell gene matrix; returned df_merged.")
-        return df_merged
+        return (df_merged, output_dir)
     
     else: 
         print("Done making cell gene matrix; returned df_out.")
-        return df_out
+        return (df_out, output_dir)
 
 
 if __name__ == "__main__":
