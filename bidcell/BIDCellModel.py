@@ -202,7 +202,16 @@ class BIDCellModel:
 
         print(f"Applying annotations to cell gene matrix...")
         cgm_merged = cgm_merged.merge(anno_df, on="cell_id", how="left")
-    
+        meta_cols = ["cell_id", "cell_centroid_x", "cell_centroid_y", "pixel_size", "eccentricity", 
+                     "cell_type", "spearman", "cell_type_atlas"]
+        info_cols = []
+        gene_cols = list(cgm_merged.columns).copy()
+        for meta_col in meta_cols:
+            if meta_col in cols:
+                gene_cols.remove(meta_col)
+                info_cols.append(meta_col)
+        cgm_merged = cgm_merged[info_cols + gene_cols]
+            
         fp_expr_merged = os.path.join(cgm_output_dir, "expr_mat_annotated.csv")
         cgm_merged.to_csv(fp_expr_merged, index=False)
         print(f"Saved annotated cell-gene matrix to {fp_expr_merged}")
