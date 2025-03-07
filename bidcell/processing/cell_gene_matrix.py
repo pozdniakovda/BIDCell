@@ -73,13 +73,13 @@ def process_chunk(chunk, output_dir, cell_ids_unique, col_names, x_col, y_col, g
     if assign_blank_cells:
         # Assign rows for all cell IDs, even those that aren't present in this chunk
         df_out = pd.DataFrame(0, index=cell_ids_unique, columns=col_names)
+        df_out["cell_id"] = cell_ids_unique.copy()
     else:
         # Identify which cell IDs are present in this chunk
         cell_ids_in_chunk = np.unique(seg_map[chunk[y_col], chunk[x_col]])
         cell_ids_in_chunk = cell_ids_in_chunk[cell_ids_in_chunk > 0]
         df_out = pd.DataFrame(0, index=cell_ids_in_chunk, columns=col_names)
-    
-    df_out["cell_id"] = cell_ids_in_chunk.copy()
+        df_out["cell_id"] = cell_ids_in_chunk.copy()
 
     chunk_id = chunk.index[0]
 
