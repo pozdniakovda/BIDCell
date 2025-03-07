@@ -195,7 +195,7 @@ class BIDCellModel:
         postprocess_predictions(self.config, timestamp)
 
         print(f"Making cell gene matrix...")
-        cgm_merged = make_cell_gene_mat(self.config, is_cell=True, timestamp=timestamp)
+        cgm_merged, cgm_output_dir = make_cell_gene_mat(self.config, is_cell=True, timestamp=timestamp)
         
         print(f"Re-running preannotation...")
         anno_df = preannotate(self.config, is_cell=True, timestamp=timestamp, save_merged=True)
@@ -203,7 +203,7 @@ class BIDCellModel:
         print(f"Applying annotations to cell gene matrix...")
         cgm_merged = cgm_merged.merge(anno_df, on="cell_id", how="left")
     
-        fp_expr_merged = os.path.join(self.config.files.data_dir, "expr_mat_annotated.csv")
+        fp_expr_merged = os.path.join(cgm_output_dir, "expr_mat_annotated.csv")
         cgm_merged.to_csv(fp_expr_merged, index=False)
         print(f"Saved annotated cell-gene matrix to {fp_expr_merged}")
     
