@@ -90,6 +90,10 @@ def predict(config: Config) -> str:
     n_genes = atlas_exprs.shape[1] - 3
     logging.info("Number of genes: %d" % n_genes)
 
+    random_seed = 42
+    sample_expr_binary = config.training_params.sample_expr_binary
+    sample_expr_log = config.training_params.sample_expr_log
+
     test_output_dirs = {}
     
     for training_repeat in np.arange(1, training_repeats+1): 
@@ -226,9 +230,8 @@ def predict(config: Config) -> str:
                         patch_fp = current_dir + "/%d_%d.png" % (coords_h1, coords_w1)
     
                         if (batch_idx % config.training_params.sample_freq) == 0:
-                            save_fig_outputs(
-                                sample_seg, sample_n, sample_sa, sample_expr, patch_fp
-                            )
+                            save_fig_outputs(sample_seg, sample_n, sample_sa, sample_expr, patch_fp, random_seed, 
+                                             sample_expr_binary, sample_expr_log)
     
                         seg_patch = get_seg_mask(sample_seg, sample_n)
     
