@@ -197,7 +197,7 @@ class DataProcessing(data.Dataset):
         "Denotes the total number of samples"
         return len(self.fp_patches)
 
-    def __getitem__(self, index, verbose=False):
+    def __getitem__(self, index, verbose=True):
         '''
         Generates one sample of data
 
@@ -382,6 +382,19 @@ class DataProcessing(data.Dataset):
                   f"\tsearch_neg shape: {search_neg.shape}\n"
                   f"\tnucl_aug shape: {nucl_aug.shape}\n"
                   f"\texpr_aug_sum shape: {expr_aug_sum.shape}")
+
+            print(f"Unique values and ranges of tensors output from DataProcessing:")
+            tensors = [expr_sum_split, expr_split, nucl_split, search_areas, 
+                       search_pos, search_neg, nucl_aug, expr_aug_sum]
+            tensor_names = ["expr_sum_split", "expr_split", "nucl_split", "search_areas", 
+                            "search_pos", "search_neg", "nucl_aug", "expr_aug_sum"]
+            for tensor_name, tensor in zip(tensor_names, tensors):
+                unique_vals = np.unique(tensor)
+                if len(unique_vals) > 2:
+                    print(f"\t{tensor_name} has {len(unique_vals)} unique vals (min={unique_vals.min()}, max={unique_vals.max()}):")
+                    print(unique_vals)
+                else: 
+                    print(f"\t{tensor_name} unique vals: {unique_vals}")
 
         if self.isTraining:
             return (
