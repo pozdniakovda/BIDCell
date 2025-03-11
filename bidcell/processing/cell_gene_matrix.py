@@ -148,30 +148,66 @@ def process_chunk_meta(matrix, fp_output, seg_map_mi, col_names_coords,
     # Convert to pixel resolution
     for cur_i, cell_id in enumerate(df_output["cell_id"]):
         if cell_id > 0:
-            try:
-                # Get coordinates of the cell in segmentation mask
+            try: 
                 coords = np.where(seg_map_mi == cell_id)
                 x_points = coords[1]
                 y_points = coords[0]
+            except Exception as e: 
+                print(f"process_chunk_meta exception at cur_id={cur_id}, cell_id={cell_id}: "
+                      f"\n{str(e)}")
+                continue
 
-                # Compute centroid
+            exceptions = ["process_chunk_meta encountered the following exceptions "
+                          "at cur_id={cur_id}, cell_id={cell_id}:"]
+            try:
+                # Compute x-centroid
                 df_output.at[cur_i, "cell_centroid_x"] = (sum(x_points) / len(x_points)) * scale_pix_x
-                df_output.at[cur_i, "cell_centroid_y"] = (sum(y_points) / len(y_points)) * scale_pix_y
+            except Exception as e:
+                df_output.at[cur_i, "cell_centroid_x"] = -1
+                exceptions.append(f"Exception while calculating x-centroid: {e}")
 
+            try:
+                # Compute y-centroid
+                df_output.at[cur_i, "cell_centroid_y"] = (sum(y_points) / len(y_points)) * scale_pix_y
+            except Exception as e:
+                df_output.at[cur_i, "cell_centroid_y"] = -1
+                exceptions.append(f"Exception while calculating y-centroid: {e}")
+
+            try:
                 # Compute pixel size
                 df_output.at[cur_i, "pixel_size"] = len(coords[0]) / (scale_pix_x * scale_pix_y)
-
-                # Compute eccentricity using regionprops
+            except Exception as e:
+                df_output.at[cur_i, "pixel_size"] = -1
+                exceptions.append(f"Exception while calculating pixel size: {e}")
+          
+            # Compute eccentricity using regionprops
+            try:
                 mask = (seg_map_mi == cell_id).astype(np.uint8)
                 labeled_mask = label(mask)
-                props = regionprops(labeled_mask)
-                df_output.at[cur_i, "eccentricity"] = props[0].eccentricity if props else -1
-
-            except Exception:
-                df_output.at[cur_i, "cell_centroid_x"] = -1
-                df_output.at[cur_i, "cell_centroid_y"] = -1
-                df_output.at[cur_i, "pixel_size"] = -1
+            except Exception as e:
                 df_output.at[cur_i, "eccentricity"] = -1
+                exceptions.append(f"Exception while labeling mask: {e}")
+                print("\n".join([exceptions]))
+                continue
+
+            try:
+                props = regionprops(labeled_mask)
+            except Exception as e:
+                df_output.at[cur_i, "eccentricity"] = -1
+                exceptions.append(f"Exception while applying regionprops(): {e}")
+                print("\n".join([exceptions]))
+                continue
+
+            try:
+                df_output.at[cur_i, "eccentricity"] = props[0].eccentricity if props else -1
+            except Exception as e:
+                df_output.at[cur_i, "eccentricity"] = -1
+                exceptions.append(f"Exception while assigning eccentricity: {e}")
+                print("\n".join([exceptions]))
+                continue
+
+            if len(exceptions) > 1:
+                print("\n".join([exceptions]))
 
     # Save as CSV
     if save_chunk:
