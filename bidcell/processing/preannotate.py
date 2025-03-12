@@ -41,17 +41,56 @@ def normalise_matrix(matrix):
 def process_chunk_corr(matrix, dir_output, sc_expr, sc_labels, n_atlas_types, save_chunk=False):
     matrix_out = np.zeros((matrix.shape[0], 4))
     col_names = ["cell_id", "cell_type", "spearman", "cell_type_atlas"]
+    
+    # Check for NaN in input data
+    sc_expr_nan = np.isnan(sc_expr)
+    if sc_expr_nan.all():
+        print(f"Warning: entire `sc_expr` is NaN.")
+    elif sc_expr_nan.any():
+        print(f"Warning: `sc_expr` contains {sc_expr_nan.sum()}/{len(sc_expr_nan)} NaN values.")
+        
+    matrix_nan = np.isnan(matrix[:, 1:])
+    if matrix_nan.all():
+        print(f"Warning: entire `matrix` is NaN.")
+    elif matrix_nan.any():
+        print(f"Warning: `matrix` contains {matrix_nan.sum()}/{len(matrix_nan)} NaN values.")
 
     # cell_type
     cell_genes_norm = normalise_matrix(matrix[:, 1:])
+    cg_norm_nan = np.isnan(cell_genes_norm)
+    if cg_norm_nan.all():
+        print(f"Warning: entire `cell_genes_norm` is NaN.")
+    elif cg_norm_nan.any():
+        print(f"Warning: `cell_genes_norm` contains {cg_norm_nan.sum()}/{len(cg_norm_nan)} NaN values.")
+
+    # Check for zero variance rows (which can cause NaN in Spearman)
+    zero_var_sc_expr = np.where(np.std(sc_expr, axis=1) == 0)[0]
+    zero_var_matrix = np.where(np.std(cell_genes_norm, axis=1) == 0)[0]
+    if len(zero_var_sc_expr) > 0:
+        print(f"Warning: {len(zero_var_sc_expr)} rows in `sc_expr` have zero variance.")
+    if len(zero_var_matrix) > 0:
+        print(f"Warning: {len(zero_var_matrix)} rows in `cell_genes_norm` have zero variance.")
+    
     res = spearmanr(sc_expr, cell_genes_norm, axis=1)
     corr = res.correlation
+
+    corr_nan = np.isnan(corr)
+    if corr_nan.all():
+        print(f"Warning: Spearman correlation matrix is entirely NaN.")
+    elif corr_nan.any():
+        print(f"Warning: Spearman correlation matrix contains {corr_nan.sum()}/{len(corr_nan)} NaN values.")
+    
     # bottom left section
     corr = corr[n_atlas_types:, :n_atlas_types]
 
     corr_best = np.max(corr, 1)
     best_i_type = np.argmax(corr, 1)
     predicted_cell_type = [sc_labels[x] for x in best_i_type]
+
+    nan_true = np.isnan(corr_best)
+    num_nan = np.sum(nan_true)
+    if num_nan > 0:
+        print(f"Warning: {num_nan}/{len(nan_true)} cells have NaN correlations and will be assigned -1.")
 
     nan_true = np.isnan(corr_best)
     corr_best = [x if not y else -1 for (x, y) in zip(corr_best, nan_true)]
