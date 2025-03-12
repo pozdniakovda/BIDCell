@@ -31,7 +31,7 @@ def json_file_to_pyobj(filename):
     return json2obj(open(filename).read())
 
 
-def normalise_matrix(matrix):
+def normalise_matrix(matrix, replace_zeros=True):
     x_sums = np.sum(matrix, axis=1)
     x_sums_nan = np.isnan(x_sums)
     if x_sums_nan.all():
@@ -46,6 +46,10 @@ def normalise_matrix(matrix):
     elif x_sums_zero.any():
         print(f"Warning: `x_sums` contains {x_sums_zero.sum()} ({x_sums_zero.mean():.2f}%) zeros. See `x_sums`:")
         print(x_sums)
+        
+    if x_sums_zero.any() and replace_zeros:
+        x_sums[x_sums == 0] = 1
+        print(f"Replaced `x_sums` zeros (n={x_sums_zero.sum()}) with ones to prevent division-by-zero errors.")
     
     matrix = matrix / np.expand_dims(x_sums, -1)
     matrix_nan = np.isnan(matrix)
