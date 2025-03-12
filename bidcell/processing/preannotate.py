@@ -109,8 +109,9 @@ def process_chunk_corr(matrix, dir_output, sc_expr, sc_labels, n_atlas_types, sa
     predicted_cell_type = [sc_labels[x] for x in best_i_type]
 
     nan_true = np.isnan(corr_best)
+    num_nan = nan_true.sum()
     if num_nan > 0:
-        print(f"Warning: {nan_true.sum()} ({nan_true.mean():.2f}%) cells have NaN correlations and will be assigned -1.")
+        print(f"Warning: {num_nan} ({nan_true.mean():.2f}%) cells have NaN correlations and will be assigned -1.")
 
     nan_true = np.isnan(corr_best)
     corr_best = [x if not y else -1 for (x, y) in zip(corr_best, nan_true)]
