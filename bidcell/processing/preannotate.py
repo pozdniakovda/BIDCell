@@ -33,8 +33,29 @@ def json_file_to_pyobj(filename):
 
 def normalise_matrix(matrix):
     x_sums = np.sum(matrix, axis=1)
+    x_sums_nan = np.isnan(x_sums)
+    if x_sums_nan.all():
+        print(f"Warning: entire `x_sums` is NaN.")
+    elif x_sums_nan.any():
+        print(f"Warning: `x_sums` contains {x_sums_nan.sum()} ({x_sums_nan.mean():.2f}%) NaN values. See `x_sums`:")
+        print(x_sums)
+    
     matrix = matrix / np.expand_dims(x_sums, -1)
+    matrix_nan = np.isnan(matrix)
+    if matrix_nan.all():
+        print(f"Warning: after being divided by `x_sums`, entire `matrix` is NaN.")
+    elif matrix_nan.any():
+        print(f"Warning: after being divided by `x_sums`, `matrix` contains {matrix_nan.sum()} ({matrix_nan.mean():.2f}%) NaN values. See `matrix`:")
+        print(matrix)
+    
     matrix = np.log1p(matrix)
+    matrix_nan = np.isnan(matrix)
+    if matrix_nan.all():
+        print(f"Warning: after applying np.log1p(), entire `matrix` is NaN.")
+    elif matrix_nan.any():
+        print(f"Warning: after applying np.log1p(), `matrix` contains {matrix_nan.sum()} ({matrix_nan.mean():.2f}%) NaN values. See `np.log1p(matrix)`:")
+        print(matrix)
+    
     return matrix
 
 
