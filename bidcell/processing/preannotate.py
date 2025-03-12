@@ -39,6 +39,13 @@ def normalise_matrix(matrix):
     elif x_sums_nan.any():
         print(f"Warning: `x_sums` contains {x_sums_nan.sum()} ({x_sums_nan.mean():.2f}%) NaN values. See `x_sums`:")
         print(x_sums)
+
+    x_sums_zero = x_sums == 0
+    if x_sums_zero.all():
+        print(f"Warning: entire `x_sums` is zero (0).")
+    elif x_sums_zero.any():
+        print(f"Warning: `x_sums` contains {x_sums_zero.sum()} ({x_sums_zero.mean():.2f}%) zeros. See `x_sums`:")
+        print(x_sums)
     
     matrix = matrix / np.expand_dims(x_sums, -1)
     matrix_nan = np.isnan(matrix)
