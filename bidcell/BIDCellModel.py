@@ -2,6 +2,7 @@
 import importlib.resources
 import os
 import pandas as pd
+import time
 from pathlib import Path
 from shutil import copyfile, copytree
 from typing import Literal
@@ -111,17 +112,43 @@ class BIDCellModel:
     def preprocess(self) -> None:
         """Preprocess the dataset for training.
         """
+        t1 = time.time()
         if self.config.nuclei_fovs.stitch_nuclei_fovs:
             stitch_nuclei(self.config)
+            t2 = time.time()
+            print(f"stitch_nuclei() took {t2-t1} seconds")
+        else: 
+            t2 = t1
+        
         if self.config.nuclei.crop_nuclei_to_ts:
             generate_expression_maps(self.config)
+            t3 = time.time()
+            print(f"generate_expression_maps() took {t3-t2} seconds")
+            
             segment_nuclei(self.config)
+            t4 = time.time()
+            print(f"segment_nuclei() took {t4-t3} seconds")
+            
         else:
             segment_nuclei(self.config)
+            t3 = time.time()
+            print(f"segment_nuclei() took {t3-t2} seconds")
+            
             generate_expression_maps(self.config)
+            t4 = time.time()
+            print(f"generate_expression_maps() took {t4-t3} seconds")
+        
         generate_patches(self.config)
+        t5 = time.time()
+        print(f"generate_patches() took {t5-t4} seconds")
+        
         make_cell_gene_mat(self.config, is_cell=False)
+        t6 = time.time()
+        print(f"make_cell_gene_mat() took {t6-t5} seconds")
+        
         preannotate(self.config, save_merged=True)
+        t7 = time.time()
+        print(f"preannotate() took {t7-t6} seconds")
 
     def stitch_nuclei(self):
         """Stich separate FOV files into a single one (e.g. CosMx data).\n
