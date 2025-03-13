@@ -31,46 +31,50 @@ def json_file_to_pyobj(filename):
     return json2obj(open(filename).read())
 
 
-def normalise_matrix(matrix, replace_zeros=True):
+def normalise_matrix(matrix, replace_zeros=True, verbose=False):
     x_sums = np.sum(matrix, axis=1)
-    x_sums_nan = np.isnan(x_sums)
-    if x_sums_nan.all():
-        print(f"Warning: entire `x_sums` is NaN.")
-    elif x_sums_nan.any():
-        print(f"Warning: `x_sums` contains {x_sums_nan.sum()} ({100*x_sums_nan.mean():.2f}%) NaN values. See `x_sums`:")
-        print(x_sums)
+    if verbose:
+        x_sums_nan = np.isnan(x_sums)
+        if x_sums_nan.all():
+            print(f"Warning: entire `x_sums` is NaN.")
+        elif x_sums_nan.any():
+            print(f"Warning: `x_sums` contains {x_sums_nan.sum()} ({100*x_sums_nan.mean():.2f}%) NaN values. See `x_sums`:")
+            print(x_sums)
 
     x_sums_zero = x_sums == 0
-    if x_sums_zero.all():
-        print(f"Warning: entire `x_sums` is zero (0).")
-    elif x_sums_zero.any():
-        print(f"Warning: `x_sums` contains {x_sums_zero.sum()} ({100*x_sums_zero.mean():.2f}%) zeros. See `x_sums`:")
-        print(x_sums)
+    if verbose: 
+        if x_sums_zero.all():
+            print(f"Warning: entire `x_sums` is zero (0).")
+        elif x_sums_zero.any():
+            print(f"Warning: `x_sums` contains {x_sums_zero.sum()} ({100*x_sums_zero.mean():.2f}%) zeros. See `x_sums`:")
+            print(x_sums)
         
-    if x_sums_zero.any() and replace_zeros:
-        x_sums[x_sums == 0] = 1
-        print(f"Replaced `x_sums` zeros (n={x_sums_zero.sum()}) with ones to prevent division-by-zero errors.")
+        if x_sums_zero.any() and replace_zeros:
+            x_sums[x_sums == 0] = 1
+            print(f"Replaced `x_sums` zeros (n={x_sums_zero.sum()}) with ones to prevent division-by-zero errors.")
     
     matrix = matrix / np.expand_dims(x_sums, -1)
-    matrix_nan = np.isnan(matrix)
-    if matrix_nan.all():
-        print(f"Warning: after being divided by `x_sums`, entire `matrix` is NaN.")
-    elif matrix_nan.any():
-        print(f"Warning: after being divided by `x_sums`, `matrix` contains {matrix_nan.sum()} ({100*matrix_nan.mean():.2f}%) NaN values. See `matrix`:")
-        print(matrix)
+    if verbose: 
+        matrix_nan = np.isnan(matrix)
+        if matrix_nan.all():
+            print(f"Warning: after being divided by `x_sums`, entire `matrix` is NaN.")
+        elif matrix_nan.any():
+            print(f"Warning: after being divided by `x_sums`, `matrix` contains {matrix_nan.sum()} ({100*matrix_nan.mean():.2f}%) NaN values. See `matrix`:")
+            print(matrix)
     
     matrix = np.log1p(matrix)
-    matrix_nan = np.isnan(matrix)
-    if matrix_nan.all():
-        print(f"Warning: after applying np.log1p(), entire `matrix` is NaN.")
-    elif matrix_nan.any():
-        print(f"Warning: after applying np.log1p(), `matrix` contains {matrix_nan.sum()} ({100*matrix_nan.mean():.2f}%) NaN values. See `np.log1p(matrix)`:")
-        print(matrix)
+    if verbose:
+        matrix_nan = np.isnan(matrix)
+        if matrix_nan.all():
+            print(f"Warning: after applying np.log1p(), entire `matrix` is NaN.")
+        elif matrix_nan.any():
+            print(f"Warning: after applying np.log1p(), `matrix` contains {matrix_nan.sum()} ({100*matrix_nan.mean():.2f}%) NaN values. See `np.log1p(matrix)`:")
+            print(matrix)
     
     return matrix
 
 
-def process_chunk_corr(matrix, dir_output, sc_expr, sc_labels, n_atlas_types, save_chunk=False):
+def process_chunk_corr(matrix, dir_output, sc_expr, sc_labels, n_atlas_types, save_chunk=False, verbose=False):
     matrix_out = np.zeros((matrix.shape[0], 4))
     col_names = ["cell_id", "cell_type", "spearman", "cell_type_atlas"]
     
@@ -88,7 +92,7 @@ def process_chunk_corr(matrix, dir_output, sc_expr, sc_labels, n_atlas_types, sa
         print(f"Warning: `matrix` contains {matrix_nan.sum()} ({100*matrix_nan.mean():.2f}%) NaN values.")
 
     # cell_type
-    cell_genes_norm = normalise_matrix(matrix[:, 1:])
+    cell_genes_norm = normalise_matrix(matrix[:, 1:], replace_zeros=True, verbose=verbose)
     cg_norm_nan = np.isnan(cell_genes_norm)
     if cg_norm_nan.all():
         print(f"Warning: entire `cell_genes_norm` is NaN.")
@@ -158,7 +162,7 @@ def process_chunk_corr(matrix, dir_output, sc_expr, sc_labels, n_atlas_types, sa
 
 
 def preannotate(config: Config, is_cell: bool = False, timestamp: str | None = None, 
-                save_merged = False, save_chunks = False):
+                save_merged = False, save_chunks = False, verbose = False):
     dir_dataset = config.files.data_dir
     dir_cgm = config.files.dir_cgm
     
@@ -216,7 +220,7 @@ def preannotate(config: Config, is_cell: bool = False, timestamp: str | None = N
     matrix_all_splits = np.array_split(matrix_all, n_processes)
 
     print("Computing simple annotation")
-    args_list = [(chunk, dir_dataset, sc_expr, sc_labels, n_atlas_types, save_chunks) for chunk in matrix_all_splits]
+    args_list = [(chunk, dir_dataset, sc_expr, sc_labels, n_atlas_types, save_chunks, verbose) for chunk in matrix_all_splits]
     cell_dfs = []
     anno_fps = []
         
