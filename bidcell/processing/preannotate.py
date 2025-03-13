@@ -37,14 +37,14 @@ def normalise_matrix(matrix, replace_zeros=True):
     if x_sums_nan.all():
         print(f"Warning: entire `x_sums` is NaN.")
     elif x_sums_nan.any():
-        print(f"Warning: `x_sums` contains {x_sums_nan.sum()} ({x_sums_nan.mean():.2f}%) NaN values. See `x_sums`:")
+        print(f"Warning: `x_sums` contains {x_sums_nan.sum()} ({100*x_sums_nan.mean():.2f}%) NaN values. See `x_sums`:")
         print(x_sums)
 
     x_sums_zero = x_sums == 0
     if x_sums_zero.all():
         print(f"Warning: entire `x_sums` is zero (0).")
     elif x_sums_zero.any():
-        print(f"Warning: `x_sums` contains {x_sums_zero.sum()} ({x_sums_zero.mean():.2f}%) zeros. See `x_sums`:")
+        print(f"Warning: `x_sums` contains {x_sums_zero.sum()} ({100*x_sums_zero.mean():.2f}%) zeros. See `x_sums`:")
         print(x_sums)
         
     if x_sums_zero.any() and replace_zeros:
@@ -56,7 +56,7 @@ def normalise_matrix(matrix, replace_zeros=True):
     if matrix_nan.all():
         print(f"Warning: after being divided by `x_sums`, entire `matrix` is NaN.")
     elif matrix_nan.any():
-        print(f"Warning: after being divided by `x_sums`, `matrix` contains {matrix_nan.sum()} ({matrix_nan.mean():.2f}%) NaN values. See `matrix`:")
+        print(f"Warning: after being divided by `x_sums`, `matrix` contains {matrix_nan.sum()} ({100*matrix_nan.mean():.2f}%) NaN values. See `matrix`:")
         print(matrix)
     
     matrix = np.log1p(matrix)
@@ -64,7 +64,7 @@ def normalise_matrix(matrix, replace_zeros=True):
     if matrix_nan.all():
         print(f"Warning: after applying np.log1p(), entire `matrix` is NaN.")
     elif matrix_nan.any():
-        print(f"Warning: after applying np.log1p(), `matrix` contains {matrix_nan.sum()} ({matrix_nan.mean():.2f}%) NaN values. See `np.log1p(matrix)`:")
+        print(f"Warning: after applying np.log1p(), `matrix` contains {matrix_nan.sum()} ({100*matrix_nan.mean():.2f}%) NaN values. See `np.log1p(matrix)`:")
         print(matrix)
     
     return matrix
@@ -79,13 +79,13 @@ def process_chunk_corr(matrix, dir_output, sc_expr, sc_labels, n_atlas_types, sa
     if sc_expr_nan.all():
         print(f"Warning: entire `sc_expr` is NaN.")
     elif sc_expr_nan.any():
-        print(f"Warning: `sc_expr` contains {sc_expr_nan.sum()} ({sc_expr_nan.mean():.2f}%) NaN values.")
+        print(f"Warning: `sc_expr` contains {sc_expr_nan.sum()} ({100*sc_expr_nan.mean():.2f}%) NaN values.")
         
     matrix_nan = np.isnan(matrix[:, 1:])
     if matrix_nan.all():
         print(f"Warning: entire `matrix` is NaN.")
     elif matrix_nan.any():
-        print(f"Warning: `matrix` contains {matrix_nan.sum()} ({matrix_nan.mean():.2f}%) NaN values.")
+        print(f"Warning: `matrix` contains {matrix_nan.sum()} ({100*matrix_nan.mean():.2f}%) NaN values.")
 
     # cell_type
     cell_genes_norm = normalise_matrix(matrix[:, 1:])
@@ -93,7 +93,7 @@ def process_chunk_corr(matrix, dir_output, sc_expr, sc_labels, n_atlas_types, sa
     if cg_norm_nan.all():
         print(f"Warning: entire `cell_genes_norm` is NaN.")
     elif cg_norm_nan.any():
-        print(f"Warning: `cell_genes_norm` contains {cg_norm_nan.sum()} ({cg_norm_nan.mean():.2f}%) NaN values.")
+        print(f"Warning: `cell_genes_norm` contains {cg_norm_nan.sum()} ({100*cg_norm_nan.mean():.2f}%) NaN values.")
 
     # Check for zero variance rows (which can cause NaN in Spearman)
     zero_var_sc_expr = np.where(np.std(sc_expr, axis=1) == 0)[0]
@@ -110,7 +110,7 @@ def process_chunk_corr(matrix, dir_output, sc_expr, sc_labels, n_atlas_types, sa
     if corr_nan.all():
         print(f"Warning: Spearman correlation matrix is entirely NaN.")
     elif corr_nan.any():
-        print(f"Warning: Spearman correlation matrix contains {corr_nan.sum()} ({corr_nan.mean():.2f}%) NaN values.")
+        print(f"Warning: Spearman correlation matrix contains {corr_nan.sum()} ({100*corr_nan.mean():.2f}%) NaN values.")
     
     # bottom left section
     corr = corr[n_atlas_types:, :n_atlas_types]
@@ -122,7 +122,7 @@ def process_chunk_corr(matrix, dir_output, sc_expr, sc_labels, n_atlas_types, sa
     nan_true = np.isnan(corr_best)
     num_nan = nan_true.sum()
     if num_nan > 0:
-        print(f"Warning: {num_nan} ({nan_true.mean():.2f}%) cells have NaN correlations and will be assigned -1.")
+        print(f"Warning: {num_nan} ({100*nan_true.mean():.2f}%) cells have NaN correlations and will be assigned -1.")
 
     nan_true = np.isnan(corr_best)
     corr_best = [x if not y else -1 for (x, y) in zip(corr_best, nan_true)]
