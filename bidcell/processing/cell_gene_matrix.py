@@ -111,8 +111,6 @@ def process_parallel(df_expr, n_processes, output_dir, cell_ids_unique, col_name
     print(f"df_expr_splits lens: {[len(df_expr_split) for df_expr_split in df_expr_splits]}")
     results = []
 
-    print("Extracting cell-gene matrix chunks")
-
     with mp.Pool(n_processes) as pool:
         args = []
         for chunk in df_expr_splits:
@@ -405,7 +403,7 @@ def make_cell_gene_mat(config: Config, is_cell: bool, timestamp: str | None = No
 
             df_expr.reset_index(drop=True, inplace=True)
 
-            print("Extracting cell-gene matrix chunks")
+            print(f"Extracting cell-gene matrix chunks for coords [{hs}:{he}, {ws}:{we}]")
             save_chunks = False
             assign_blank_cells = True
             df_out = process_parallel(df_expr, n_processes, output_dir, cell_ids_unique, col_names, x_col, y_col, 
