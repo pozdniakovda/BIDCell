@@ -19,11 +19,20 @@ from .utils import get_n_processes, get_patches_coords, check_bit_depth
 from ..config import Config, load_config
 
 
-def process_gene_chunk(gene_chunk, df_patch, img_height, img_width, dir_output, hs, ws, 
-                       gene_col, x_col, y_col, counts_col, save_chunk=True, return_dict=True):
+def process_gene_chunk(
+    gene_chunk,
+    df_patch,
+    img_height,
+    img_width,
+    dir_output,
+    hs,
+    ws,
+    gene_col,
+    x_col,
+    y_col,
+    counts_col,
+):
     # print(gene_chunk)
-    gene_maps = {}
-    
     for i_fe, fe in enumerate(gene_chunk):
         # print(fe)
         df_fe = df_patch.loc[df_patch[gene_col] == fe]
@@ -49,12 +58,7 @@ def process_gene_chunk(gene_chunk, df_patch, img_height, img_width, dir_output, 
 
         fp_fe_map = f"{dir_output}/{fe}_{hs}_{ws}.tif"
         # print(fp_fe_map)
-        if save_chunk:
-            tifffile.imwrite(fp_fe_map, map_fe.astype(np.uint8), photometric="minisblack")
-        if return_dict:
-            gene_maps[fp_fe_map] = map_fe.astype(np.uint8)
-
-    return gene_maps
+        tifffile.imwrite(fp_fe_map, map_fe.astype(np.uint8), photometric="minisblack")
 
 
 def stitch_patches(dir_patches, fp_pattern):
@@ -280,38 +284,40 @@ def generate_expression_maps(config: Config):
 
         processes = []
 
-        print(f"\tPreparing chunk args...")
-        args_list = []
-        save_chunks = False
-        return_dict = True
         for gene_chunk in gene_names_chunks:
-            args_list.append((gene_chunk, df_patch, img_height, img_width, dir_out_maps, 
-                              hs, ws, gene_col, x_col, y_col, config.transcripts.counts_col, 
-                              save_chunks, return_dict))
+            p = mp.Process(
+                target=process_gene_chunk,
+                args=(
+                    gene_chunk,
+                    df_patch,
+                    img_height,
+                    img_width,
+                    dir_out_maps,
+                    hs,
+                    ws,
+                    gene_col,
+                    x_col,
+                    y_col,
+                    config.transcripts.counts_col,
+                ),
+            )
+            processes.append(p)
+            p.start()
 
-        print(f"\tProcessing gene chunks across {n_processes} parallel processes...")
-        with mp.Pool() as pool:
-            results = pool.starmap(process_gene_chunk, args_list)
-        
-        # Merge results into one dictionary
-        print(f"\tMerging gene_maps dicts")
-        gene_maps = {}
-        for result in results:
-            gene_maps.update(result)
+        for p in processes:
+            p.join()
 
         # Combine channel-wise
-        print(f"\Stacking gene maps together...")
         map_all_genes = np.zeros(
             (img_height, img_width, len(gene_names)), dtype=np.uint8
         )
+
         for i_fe, fe in enumerate(tqdm(gene_names)):
             fp_fe_map = f"{dir_out_maps}/{fe}_{hs}_{ws}.tif"
-            map_all_genes[:, :, i_fe] = gene_maps[fp_fe_map]
-            if save_chunks:
-                os.remove(fp_fe_map)
+            map_all_genes[:, :, i_fe] = tifffile.imread(fp_fe_map)
+            os.remove(fp_fe_map)
 
         # Sum across all markers
-        print(f"\Saving summed markers...")
         fp_out_map_sum = f"all_genes_sum_{hs}_{he}_{ws}_{we}.tif"
         tifffile.imwrite(
             dir_out_maps + "/" + fp_out_map_sum,
@@ -320,12 +326,9 @@ def generate_expression_maps(config: Config):
         )
 
         # Save to hdf5
-        print(f"\tSaving HDF5...")
         fp_out_map = f"all_genes_{hs}_{he}_{ws}_{we}.hdf5"
         h = h5py.File(dir_out_maps + "/" + fp_out_map, "w")
         _ = h.create_dataset("data", data=map_all_genes, dtype=np.uint8)
-            
-        print(f"\tDone patch!")
 
     print("Saved all maps")
 
