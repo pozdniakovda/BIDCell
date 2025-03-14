@@ -31,6 +31,7 @@ def process_gene_chunk(
     x_col,
     y_col,
     counts_col,
+    return_iterable=True,
 ):
     # print(gene_chunk)
     for i_fe, fe in enumerate(gene_chunk):
@@ -55,10 +56,19 @@ def process_gene_chunk(
                 map_fe[idx_y, idx_x] += idx_counts
 
         # print(map_fe.shape)
+        map_fe_uint8 = map_fe.astype(np.uint8)
 
         fp_fe_map = f"{dir_output}/{fe}_{hs}_{ws}.tif"
         # print(fp_fe_map)
-        tifffile.imwrite(fp_fe_map, map_fe.astype(np.uint8), photometric="minisblack")
+
+        if return_iterable: 
+            yield (i_fe, fe, fp_fe_map, map_fe_uint8)
+        else: 
+            tifffile.imwrite(fp_fe_map, map_fe_uint8, photometric="minisblack")
+        
+
+def process_gene_wrapper(args):
+    return process_gene_chunk(*args)
 
 
 def stitch_patches(dir_patches, fp_pattern):
@@ -285,28 +295,14 @@ def generate_expression_maps(config: Config):
         processes = []
 
         print(f"\tProcessing gene chunks...")
-        for gene_chunk in gene_names_chunks:
-            p = mp.Process(
-                target=process_gene_chunk,
-                args=(
-                    gene_chunk,
-                    df_patch,
-                    img_height,
-                    img_width,
-                    dir_out_maps,
-                    hs,
-                    ws,
-                    gene_col,
-                    x_col,
-                    y_col,
-                    config.transcripts.counts_col,
-                ),
-            )
-            processes.append(p)
-            p.start()
-
-        for p in processes:
-            p.join()
+        return_iterable = True
+        args = []
+        for gene_chunk in gene_chunks: 
+            args.append((gene_chunk, df_patch, img_height, img_width, dir_out_maps, hs, ws, 
+                         gene_col, x_col, y_col, config.transcripts.counts_col, return_iterable))
+        with mp.Pool() as pool: 
+            for i_fe, fe, fp_fe_map, map_fe_uint8 in pool.imap(process_gene_wrapper, args):
+                map_all_genes[:, :, i_fe] = map_fe_uint8
 
         # Combine channel-wise
         map_all_genes = np.zeros(
@@ -318,10 +314,6 @@ def generate_expression_maps(config: Config):
         with mp.Pool() as pool:
             for i_fe, map_subset in enumerate(pool.imap(tifffile.imread, fp_fe_maps)):
                 map_all_genes[:, :, i_fe] = map_subset
-
-        print(f"\tCleaning up temp files...")
-        for fp_fe_map in fp_fe_maps:
-            os.remove(fp_fe_map)
 
         # Sum across all markers
         print(f"\tSumming across all markers...")
