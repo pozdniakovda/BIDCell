@@ -293,7 +293,7 @@ def generate_expression_maps(config: Config):
         print(f"\tPreparing chunk args...")
         args_list = []
         for gene_chunk in gene_names_chunks:
-            args_list.append((gene_chunk, df_patch, img_height, img_wiidth, dir_out_maps, 
+            args_list.append((gene_chunk, df_patch, img_height, img_width, dir_out_maps, 
                               hs, ws, gene_col, x_col, y_col, config.transcripts.counts_col))
 
         print(f"\tProcessing gene chunks across {n_processes} parallel processes...")
