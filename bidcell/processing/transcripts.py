@@ -31,9 +31,10 @@ def process_gene_chunk(
     x_col,
     y_col,
     counts_col,
-    return_iterable=True,
+    return_images=True,
 ):
     # print(gene_chunk)
+    results = {}
     for i_fe, fe in enumerate(gene_chunk):
         # print(fe)
         df_fe = df_patch.loc[df_patch[gene_col] == fe]
@@ -61,10 +62,13 @@ def process_gene_chunk(
         fp_fe_map = f"{dir_output}/{fe}_{hs}_{ws}.tif"
         # print(fp_fe_map)
 
-        if return_iterable: 
-            yield (i_fe, fe, fp_fe_map, map_fe_uint8)
+        if return_images: 
+            results[i_fe] = map_fe_uint8
         else: 
             tifffile.imwrite(fp_fe_map, map_fe_uint8, photometric="minisblack")
+
+    if return_images:
+        return results
         
 
 def process_gene_wrapper(args):
@@ -295,14 +299,15 @@ def generate_expression_maps(config: Config):
         processes = []
 
         print(f"\tProcessing gene chunks...")
-        return_iterable = True
+        return_images = True
         args = []
         for gene_chunk in gene_names_chunks: 
             args.append((gene_chunk, df_patch, img_height, img_width, dir_out_maps, hs, ws, 
-                         gene_col, x_col, y_col, config.transcripts.counts_col, return_iterable))
+                         gene_col, x_col, y_col, config.transcripts.counts_col, return_images))
         with mp.Pool() as pool: 
-            for i_fe, fe, fp_fe_map, map_fe_uint8 in pool.imap(process_gene_wrapper, args):
-                map_all_genes[:, :, i_fe] = map_fe_uint8
+            for results in pool.imap_unordered(process_gene_wrapper, args):
+                for i_fe, map_fe_uint8 in results.items():
+                    map_all_genes[:, :, i_fe] = map_fe_uint8
 
         # Combine channel-wise
         map_all_genes = np.zeros(
