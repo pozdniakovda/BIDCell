@@ -284,28 +284,16 @@ def generate_expression_maps(config: Config):
 
         processes = []
 
+        print(f"\tPreparing chunk args...")
+        args_list = []
         for gene_chunk in gene_names_chunks:
-            p = mp.Process(
-                target=process_gene_chunk,
-                args=(
-                    gene_chunk,
-                    df_patch,
-                    img_height,
-                    img_width,
-                    dir_out_maps,
-                    hs,
-                    ws,
-                    gene_col,
-                    x_col,
-                    y_col,
-                    config.transcripts.counts_col,
-                ),
-            )
-            processes.append(p)
-            p.start()
+            args_list.append((gene_chunk, df_patch, img_height, img_wiidth, dir_out_maps, 
+                              hs, ws, gene_col, x_col, y_col, config.transcripts.counts_col))
 
-        for p in processes:
-            p.join()
+        print(f"\tProcessing gene chunks across {n_processes} parallel processes...")
+        with mp.Pool() as pool:
+            pool.starmap(process_gene_chunk, args_list)
+        print(f"\tDone processing gene chunks.")
 
         # Combine channel-wise
         map_all_genes = np.zeros(
