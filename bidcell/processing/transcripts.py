@@ -33,6 +33,8 @@ def process_gene_chunk(
     counts_col,
 ):
     # print(gene_chunk)
+    gene_maps = {}
+    
     for i_fe, fe in enumerate(gene_chunk):
         # print(fe)
         df_fe = df_patch.loc[df_patch[gene_col] == fe]
@@ -59,6 +61,10 @@ def process_gene_chunk(
         fp_fe_map = f"{dir_output}/{fe}_{hs}_{ws}.tif"
         # print(fp_fe_map)
         tifffile.imwrite(fp_fe_map, map_fe.astype(np.uint8), photometric="minisblack")
+
+        gene_maps[fe] = map_fe
+
+    return gene_maps
 
 
 def stitch_patches(dir_patches, fp_pattern):
@@ -292,31 +298,34 @@ def generate_expression_maps(config: Config):
 
         print(f"\tProcessing gene chunks across {n_processes} parallel processes...")
         with mp.Pool() as pool:
-            pool.starmap(process_gene_chunk, args_list)
-        print(f"\tDone processing gene chunks.")
-
-        # Combine channel-wise
-        map_all_genes = np.zeros(
-            (img_height, img_width, len(gene_names)), dtype=np.uint8
-        )
-
-        for i_fe, fe in enumerate(tqdm(gene_names)):
-            fp_fe_map = f"{dir_out_maps}/{fe}_{hs}_{ws}.tif"
-            map_all_genes[:, :, i_fe] = tifffile.imread(fp_fe_map)
-            os.remove(fp_fe_map)
-
+            results = pool.starmap(process_gene_chunk, args_list)
+        
+        # Merge results into one dictionary
+        print(f"\tMerging gene_maps dicts")
+        gene_maps = {}
+        for result in results:
+            gene_maps.update(result)
+        
+        # Combine all maps into a 3D array
+        print(f"\Stacking gene maps together...")
+        map_all_genes = np.stack([gene_maps[fe] for fe in gene_names], axis=-1)
+        
         # Sum across all markers
+        print(f"\Saving summed markers...")
         fp_out_map_sum = f"all_genes_sum_{hs}_{he}_{ws}_{we}.tif"
         tifffile.imwrite(
             dir_out_maps + "/" + fp_out_map_sum,
             np.sum(map_all_genes, -1).astype(np.uint8),
             photometric="minisblack",
         )
-
-        # Save to hdf5
+        
+        # Save to HDF5
+        print(f"\tSaving HDF5...")
         fp_out_map = f"all_genes_{hs}_{he}_{ws}_{we}.hdf5"
-        h = h5py.File(dir_out_maps + "/" + fp_out_map, "w")
-        _ = h.create_dataset("data", data=map_all_genes, dtype=np.uint8)
+        with h5py.File(dir_out_maps + "/" + fp_out_map, "w") as h:
+            h.create_dataset("data", data=map_all_genes, dtype=np.uint8)
+            
+        print(f"\tDone patch!")
 
     print("Saved all maps")
 
