@@ -299,6 +299,9 @@ def generate_expression_maps(config: Config):
         processes = []
 
         print(f"\tProcessing gene chunks...")
+        map_all_genes = np.zeros(
+            (img_height, img_width, len(gene_names)), dtype=np.uint8
+        )
         return_images = True
         args = []
         for gene_chunk in gene_names_chunks: 
@@ -308,11 +311,6 @@ def generate_expression_maps(config: Config):
             for results in pool.imap_unordered(process_gene_wrapper, args):
                 for i_fe, map_fe_uint8 in results.items():
                     map_all_genes[:, :, i_fe] = map_fe_uint8
-
-        # Combine channel-wise
-        map_all_genes = np.zeros(
-            (img_height, img_width, len(gene_names)), dtype=np.uint8
-        )
 
         print(f"\tApplying maps to map_all_genes...")
         fp_fe_maps = [f"{dir_out_maps}/{fe}_{hs}_{ws}.tif" for fe in gene_names]
