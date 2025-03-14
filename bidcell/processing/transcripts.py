@@ -284,6 +284,7 @@ def generate_expression_maps(config: Config):
 
         processes = []
 
+        print(f"\tProcessing gene chunks...")
         for gene_chunk in gene_names_chunks:
             p = mp.Process(
                 target=process_gene_chunk,
@@ -312,12 +313,18 @@ def generate_expression_maps(config: Config):
             (img_height, img_width, len(gene_names)), dtype=np.uint8
         )
 
-        for i_fe, fe in enumerate(tqdm(gene_names)):
-            fp_fe_map = f"{dir_out_maps}/{fe}_{hs}_{ws}.tif"
-            map_all_genes[:, :, i_fe] = tifffile.imread(fp_fe_map)
+        print(f"\tApplying maps to map_all_genes...")
+        fp_fe_maps = [f"{dir_out_maps}/{fe}_{hs}_{ws}.tif" for fe in gene_names]
+        with mp.Pool() as pool:
+            for i_fe, map_subset in enumerate(pool.imap(tifffile.imread, fp_fe_maps)):
+                map_all_genes[:, :, i_fe] = map_subset
+
+        print(f"\tCleaning up temp files...")
+        for fp_fe_map in fp_fe_maps:
             os.remove(fp_fe_map)
 
         # Sum across all markers
+        print(f"\tSumming across all markers...")
         fp_out_map_sum = f"all_genes_sum_{hs}_{he}_{ws}_{we}.tif"
         tifffile.imwrite(
             dir_out_maps + "/" + fp_out_map_sum,
@@ -326,9 +333,12 @@ def generate_expression_maps(config: Config):
         )
 
         # Save to hdf5
+        print(f"\tSaving HDF5...")
         fp_out_map = f"all_genes_{hs}_{he}_{ws}_{we}.hdf5"
         h = h5py.File(dir_out_maps + "/" + fp_out_map, "w")
         _ = h.create_dataset("data", data=map_all_genes, dtype=np.uint8)
+
+        print(f"\tDone processing patch.")
 
     print("Saved all maps")
 
