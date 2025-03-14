@@ -297,7 +297,7 @@ def generate_expression_maps(config: Config):
         print(f"\tProcessing gene chunks...")
         return_iterable = True
         args = []
-        for gene_chunk in gene_chunks: 
+        for gene_chunk in gene_names_chunks: 
             args.append((gene_chunk, df_patch, img_height, img_width, dir_out_maps, hs, ws, 
                          gene_col, x_col, y_col, config.transcripts.counts_col, return_iterable))
         with mp.Pool() as pool: 
