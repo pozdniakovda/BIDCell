@@ -312,12 +312,6 @@ def generate_expression_maps(config: Config):
                 for i_fe, map_fe_uint8 in results.items():
                     map_all_genes[:, :, i_fe] = map_fe_uint8
 
-        print(f"\tApplying maps to map_all_genes...")
-        fp_fe_maps = [f"{dir_out_maps}/{fe}_{hs}_{ws}.tif" for fe in gene_names]
-        with mp.Pool() as pool:
-            for i_fe, map_subset in enumerate(pool.imap(tifffile.imread, fp_fe_maps)):
-                map_all_genes[:, :, i_fe] = map_subset
-
         # Sum across all markers
         print(f"\tSumming across all markers...")
         fp_out_map_sum = f"all_genes_sum_{hs}_{he}_{ws}_{we}.tif"
