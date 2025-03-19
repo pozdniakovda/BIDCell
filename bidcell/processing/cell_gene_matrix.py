@@ -103,7 +103,8 @@ def process_chunk(chunk, output_dir, cell_ids_unique, col_names, x_col, y_col, g
 
 
 def process_parallel(df_expr, n_processes, output_dir, cell_ids_unique, col_names, x_col, y_col, 
-                     gene_col, seg_map, scale_pix_x, scale_pix_y, save_chunks=False, assign_blank_cells=True):
+                     gene_col, seg_map, scale_pix_x, scale_pix_y, 
+                     save_chunks=False, assign_blank_cells=True, verbose=False):
     """Parallelized CGM data processing using `starmap`; optionally calculates metadata."""
     
     df_expr_splits = np.array_split(df_expr, n_processes)
@@ -118,10 +119,11 @@ def process_parallel(df_expr, n_processes, output_dir, cell_ids_unique, col_name
                          seg_map, scale_pix_x, scale_pix_y, save_chunks, assign_blank_cells))
 
         for i, (df_out, file_path) in enumerate(pool.starmap(process_chunk, args)):
-            if file_path is not None:
-                print(f"Processed and saved results for chunk #{i+1}: {file_path}")
-            else:
-                print(f"Processed results for chunk #{i+1}")
+            if verbose: 
+                if file_path is not None:
+                    print(f"Processed and saved results for chunk #{i+1}: {file_path}")
+                else:
+                    print(f"Processed results for chunk #{i+1}")
             
             results.append(df_out)
 
@@ -211,8 +213,8 @@ def process_chunk_meta(matrix, fp_output, seg_map_mi, col_names_coords,
     return (df_output, file_path)
 
 
-def process_parallel_meta(df_out, gene_names, n_processes, output_dir, seg_map_mi, 
-                          scale_pix_x, scale_pix_y, cell_annotations=None, save_chunks=False):
+def process_parallel_meta(df_out, gene_names, n_processes, output_dir, seg_map_mi, scale_pix_x, 
+                          scale_pix_y, cell_annotations=None, save_chunks=False, verbose=False):
     # Meta processing where cell shape is quantified; parallized with Starmap
 
     matrix_all = df_out.to_numpy().astype(np.float32)
@@ -237,10 +239,11 @@ def process_parallel_meta(df_out, gene_names, n_processes, output_dir, seg_map_m
                          cell_annotations, save_chunks))
 
         for i, (df_out, file_path) in enumerate(pool.starmap(process_chunk_meta, args)):
-            if file_path is not None:
-                print(f"Processed and saved meta results for chunk #{i+1}: {file_path}")
-            else:
-                print(f"Processed meta results for chunk #{i+1}")
+            if verbose: 
+                if file_path is not None:
+                    print(f"Processed and saved meta results for chunk #{i+1}: {file_path}")
+                else:
+                    print(f"Processed meta results for chunk #{i+1}")
             
             results.append(df_out)
 
