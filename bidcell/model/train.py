@@ -445,8 +445,9 @@ def train(config: Config, learning_rate = None, selected_solver = None, device_i
         model_freq = config.testing_params.test_step
 
     # Dataloader
-    logging.info("Preparing data")
-    train_loader = initialise_dataloader(config, shuffle=False)
+    shuffle = True
+    logging.info("Preparing data (shuffle={shuffle})")
+    train_loader = initialise_dataloader(config, shuffle)
     logging.info(f"Total number of training examples: {len(train_loader)}")
 
     # Extract loss weights and combination rules
