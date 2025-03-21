@@ -29,10 +29,11 @@ class STCHLoss(nn.Module):
     "Smooth Tchebycheff Scalarization for Multi-Objective Optimization"
     """
 
-    def __init__(self, preference_weights, device) -> None:
+    def __init__(self, preference_weights, device, verbose=False) -> None:
         super(STCHLoss, self).__init__()
         self.preference_weights = preference_weights
         self.device = device
+        self.verbose = verbose
 
     def forward(self, losses, preference_weights=None, ideal_vals=None, mu=1.0):
         if preference_weights is None:
@@ -57,35 +58,49 @@ class STCHLoss(nn.Module):
             elif loss.dtype == torch.float16 or loss.dtype == torch.float32:
                 original_dtype = str(loss.dtype)
                 loss = loss.to(torch.float64)
-                print(f"Notice: loss dtype={original_dtype}, so was recast to {loss.dtype}")
+                if self.verbose: 
+                    print(f"\tNotice: for loss #{idx+1}, loss dtype={original_dtype}, so was recast to {loss.dtype}")
             
             if not torch.is_tensor(ideal_val):
                 ideal_val = torch.tensor(ideal_val, dtype=torch.float64, device=self.device)
             if not torch.is_tensor(preference_weight):
                 preference_weight = torch.tensor(preference_weight, dtype=torch.float64, device=self.device)
 
-            stch_loss = loss - ideal_val  # distance to ideal value
-            stch_loss = stch_loss * preference_weight  # applies the weight for this loss
-            stch_loss = stch_loss / mu  # divides by a smoothing factor
+            # Subtract ideal value (usually zero for most objectives)
+            stch_loss = loss - ideal_val
             if torch.isinf(stch_loss) or torch.isnan(stch_loss):
-                print(f"\tERROR: stch_loss is {stch_loss.item()}")
+                print(f"\tERROR: for loss #{idx+1}, after subtracting ideal_val={ideal_val}, stch_loss is {stch_loss.item()}")
 
-            stch_loss = torch.exp(stch_loss)  # takes the exponential
+            # Apply the preference weight to the loss
+            stch_loss = stch_loss * preference_weight
             if torch.isinf(stch_loss) or torch.isnan(stch_loss):
-                print(f"\tERROR: after torch.exp(), stch_loss is {stch_loss.item()}")
+                print(f"\tERROR: for loss #{idx+1}, after multiplying by preference_weight={preference_weight}, stch_loss is {stch_loss.item()}")
+
+            # Divide by the smoothing factor mu
+            stch_loss = stch_loss / mu
+            if torch.isinf(stch_loss) or torch.isnan(stch_loss):
+                print(f"\tERROR: for loss #{idx+1}, after dividing by mu={mu}, stch_loss is {stch_loss.item()}")
+
+            # Take the exponential
+            stch_loss = torch.exp(stch_loss)
+            if torch.isinf(stch_loss) or torch.isnan(stch_loss):
+                print(f"\tERROR: for loss #{idx+1}, after torch.exp(), stch_loss is {stch_loss.item()}")
 
             stch_losses.append(stch_loss)
 
+        # Sum the exponentials
         stch_losses = torch.stack(stch_losses)
         stch_loss = torch.sum(stch_losses)
         if torch.isinf(stch_loss) or torch.isnan(stch_loss):
             print(f"ERROR: Sum of STCH-scalarized losses is {stch_loss.item()}")
 
-        stch_loss = torch.log(stch_loss)  # log of summed losses
+        # Take the natural logarithm
+        stch_loss = torch.log(stch_loss)
         if torch.isinf(stch_loss) or torch.isnan(stch_loss):
             print(f"ERROR: Final STCH loss is {stch_loss.item()}")
 
-        stch_loss = stch_loss * mu  # scale by mu
+        # Rescale by mu
+        stch_loss = stch_loss * mu
         if torch.isinf(stch_loss) or torch.isnan(stch_loss):
             print(f"ERROR: Final scaled STCH loss: {stch_loss.item()}")
 
