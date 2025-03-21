@@ -35,8 +35,6 @@ class STCHLoss(nn.Module):
         self.device = device
 
     def forward(self, losses, preference_weights=None, ideal_vals=None, mu=1.0):
-        print("\n[STCHLoss] === Forward Pass Start ===")
-
         if preference_weights is None:
             if self.preference_weights is not None:
                 preference_weights = self.preference_weights
@@ -54,7 +52,6 @@ class STCHLoss(nn.Module):
 
         stch_losses = []
         for idx, (preference_weight, loss, ideal_val) in enumerate(zip(preference_weights, losses, ideal_vals)):
-            print(f"\n[STCHLoss] Loss {idx}:")
             if not torch.is_tensor(loss):
                 loss = torch.tensor(loss, dtype=torch.float64, device=self.device)
             elif loss.dtype == torch.float16 or loss.dtype == torch.float32:
@@ -67,45 +64,31 @@ class STCHLoss(nn.Module):
             if not torch.is_tensor(preference_weight):
                 preference_weight = torch.tensor(preference_weight, dtype=torch.float64, device=self.device)
 
-            print(f"  Raw loss: {loss.item()}, Ideal: {ideal_val.item()}, Weight: {preference_weight.item()}")
-
             stch_loss = loss - ideal_val  # distance to ideal value
-            print(f"\tstch_loss = {stch_loss.item()}")
-
             stch_loss = stch_loss * preference_weight  # applies the weight for this loss
-            print(f"\tstch_loss after weight = {stch_loss.item()}")
-
             stch_loss = stch_loss / mu  # divides by a smoothing factor
-            print(f"\tstch_loss after smoothing = {stch_loss.item()}")
-
             if torch.isinf(stch_loss) or torch.isnan(stch_loss):
-                print(f"\tERROR: stch_loss is invalid (inf/nan)")
+                print(f"\tERROR: stch_loss is {stch_loss.item()}")
 
             stch_loss = torch.exp(stch_loss)  # takes the exponential
-            print(f"\texp(stch_loss) = {stch_loss.item()}")
-
             if torch.isinf(stch_loss) or torch.isnan(stch_loss):
-                print(f"\tERROR: Exponential produced inf or nan!")
+                print(f"\tERROR: after torch.exp(), stch_loss is {stch_loss.item()}")
 
             stch_losses.append(stch_loss)
 
         stch_losses = torch.stack(stch_losses)
         stch_loss = torch.sum(stch_losses)
-
-        print(f"\n[STCHLoss] Sum of STCH-scalarized losses: {stch_loss.item()}")
         if torch.isinf(stch_loss) or torch.isnan(stch_loss):
-            print(f"ERROR: Sum of STCH-scalarized losses is invalid (inf/nan)")
+            print(f"ERROR: Sum of STCH-scalarized losses is {stch_loss.item()}")
 
         stch_loss = torch.log(stch_loss)  # log of summed losses
-        print(f"[STCHLoss] log(STCH sum): {stch_loss.item()}")
-
         if torch.isinf(stch_loss) or torch.isnan(stch_loss):
-            print(f"ERROR: Final STCH loss is invalid (inf/nan)")
+            print(f"ERROR: Final STCH loss is {stch_loss.item()}")
 
         stch_loss = stch_loss * mu  # scale by mu
-        print(f"[STCHLoss] Final scaled STCH loss: {stch_loss.item()}")
+        if torch.isinf(stch_loss) or torch.isnan(stch_loss):
+            print(f"ERROR: Final scaled STCH loss: {stch_loss.item()}")
 
-        print("[STCHLoss] === Forward Pass End ===\n")
         return stch_loss
 
 
