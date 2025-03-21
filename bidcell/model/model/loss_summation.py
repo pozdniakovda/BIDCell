@@ -35,34 +35,72 @@ class STCHLoss(nn.Module):
         self.device = device
 
     def forward(self, losses, preference_weights=None, ideal_vals=None, mu=1.0):
-        # Preference weights are equivalent to loss weights in the config
+        print("\n[STCHLoss] === Forward Pass Start ===")
+
         if preference_weights is None:
             if self.preference_weights is not None:
                 preference_weights = self.preference_weights
             else: 
                 preference_weights = np.ones(len(losses))
 
-        # These are used to evaluate the  distance to an ideal loss value
         if ideal_vals is None:
             ideal_vals = np.zeros(len(losses), dtype=float)
 
-        # Create a list of STCH-scalarized losses to sum
+        # Convert to torch tensors on device
+        if not torch.is_tensor(preference_weights):
+            preference_weights = torch.tensor(preference_weights, dtype=torch.float32, device=self.device)
+        if not torch.is_tensor(ideal_vals):
+            ideal_vals = torch.tensor(ideal_vals, dtype=torch.float32, device=self.device)
+
         stch_losses = []
-        for preference_weight, loss, ideal_val in zip(preference_weights, losses, ideal_vals):
-            stch_loss = loss - ideal_val # distance to idea value
-            stch_loss = stch_loss * preference_weight # applies the weight for this loss
-            stch_loss = stch_loss / mu # divides by a smoothing factor, usually between 0.5 and 2.0
-            stch_loss = torch.exp(stch_loss) # takes the exponential
+        for idx, (preference_weight, loss, ideal_val) in enumerate(zip(preference_weights, losses, ideal_vals)):
+            if not torch.is_tensor(loss):
+                loss = torch.tensor(loss, dtype=torch.float32, device=self.device)
+            if not torch.is_tensor(ideal_val):
+                ideal_val = torch.tensor(ideal_val, dtype=torch.float32, device=self.device)
+            if not torch.is_tensor(preference_weight):
+                preference_weight = torch.tensor(preference_weight, dtype=torch.float32, device=self.device)
+
+            print(f"\n[STCHLoss] Loss {idx}:")
+            print(f"  Raw loss: {loss.item()}, Ideal: {ideal_val.item()}, Weight: {preference_weight.item()}")
+
+            stch_loss = loss - ideal_val  # distance to ideal value
+            print(f"\tstch_loss = {stch_loss.item()}")
+
+            stch_loss = stch_loss * preference_weight  # applies the weight for this loss
+            print(f"\tstch_loss after weight = {stch_loss.item()}")
+
+            stch_loss = stch_loss / mu  # divides by a smoothing factor
+            print(f"\tstch_loss after smoothing = {stch_loss.item()}")
+
+            if torch.isinf(stch_loss) or torch.isnan(stch_loss):
+                print(f"\tERROR: stch_loss is invalid (inf/nan)")
+
+            stch_loss = torch.exp(stch_loss)  # takes the exponential
+            print(f"\texp(stch_loss) = {stch_loss.item()}")
+
+            if torch.isinf(stch_loss) or torch.isnan(stch_loss):
+                print(f"\tERROR: Exponential produced inf or nan!")
+
             stch_losses.append(stch_loss)
 
-        # Sum the STCH-scalarized loss terms
         stch_losses = torch.stack(stch_losses)
         stch_loss = torch.sum(stch_losses)
 
-        # Take the logarithm of the summed losses and scale by mu
-        stch_loss = torch.log(stch_loss)
-        stch_loss = stch_loss * mu
+        print(f"\n[STCHLoss] Sum of STCH-scalarized losses: {stch_loss.item()}")
+        if torch.isinf(stch_loss) or torch.isnan(stch_loss):
+            print(f"ERROR: Sum of STCH-scalarized losses is invalid (inf/nan)")
 
+        stch_loss = torch.log(stch_loss)  # log of summed losses
+        print(f"[STCHLoss] log(STCH sum): {stch_loss.item()}")
+
+        if torch.isinf(stch_loss) or torch.isnan(stch_loss):
+            print(f"ERROR: Final STCH loss is invalid (inf/nan)")
+
+        stch_loss = stch_loss * mu  # scale by mu
+        print(f"[STCHLoss] Final scaled STCH loss: {stch_loss.item()}")
+
+        print("[STCHLoss] === Forward Pass End ===\n")
         return stch_loss
 
 
