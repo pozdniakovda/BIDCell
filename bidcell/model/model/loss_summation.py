@@ -59,7 +59,7 @@ class STCHLoss(nn.Module):
                 loss = torch.tensor(loss, dtype=torch.float64, device=self.device)
             elif loss.dtype == torch.float16 or loss.dtype == torch.float32:
                 original_dtype = str(loss.dtype)
-                loss = loss.astype(torch.float64)
+                loss = loss.to(torch.float64)
                 print(f"Notice: loss dtype={original_dtype}, so was recast to {loss.dtype}")
             
             if not torch.is_tensor(ideal_val):
