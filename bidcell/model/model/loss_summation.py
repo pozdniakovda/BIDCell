@@ -54,14 +54,19 @@ class STCHLoss(nn.Module):
 
         stch_losses = []
         for idx, (preference_weight, loss, ideal_val) in enumerate(zip(preference_weights, losses, ideal_vals)):
-            if not torch.is_tensor(loss):
-                loss = torch.tensor(loss, dtype=torch.float32, device=self.device)
-            if not torch.is_tensor(ideal_val):
-                ideal_val = torch.tensor(ideal_val, dtype=torch.float32, device=self.device)
-            if not torch.is_tensor(preference_weight):
-                preference_weight = torch.tensor(preference_weight, dtype=torch.float32, device=self.device)
-
             print(f"\n[STCHLoss] Loss {idx}:")
+            if not torch.is_tensor(loss):
+                loss = torch.tensor(loss, dtype=torch.float64, device=self.device)
+            elif loss.dtype == torch.float16 or loss.dtype == torch.float32:
+                original_dtype = str(loss.dtype)
+                loss = loss.astype(torch.float64)
+                print(f"Notice: loss dtype={original_dtype}, so was recast to {loss.dtype}")
+            
+            if not torch.is_tensor(ideal_val):
+                ideal_val = torch.tensor(ideal_val, dtype=torch.float64, device=self.device)
+            if not torch.is_tensor(preference_weight):
+                preference_weight = torch.tensor(preference_weight, dtype=torch.float64, device=self.device)
+
             print(f"  Raw loss: {loss.item()}, Ideal: {ideal_val.item()}, Weight: {preference_weight.item()}")
 
             stch_loss = loss - ideal_val  # distance to ideal value
