@@ -217,6 +217,8 @@ class TrainingParams(BaseModel):
     combine_cc_pn: bool = False
     # non-contributing (spectator) losses
     non_contributing_losses: list = []
+    # normalize to first step
+    normalize_to_first = True
     # graphing params
     log_scale: bool = True
     # number of training steps per model save
