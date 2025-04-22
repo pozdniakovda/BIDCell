@@ -15,6 +15,7 @@ import torch.optim.lr_scheduler as lr_scheduler
 from torch.utils.data import DataLoader
 
 from .solvers.solvers import summed_solver, stch_solver, dbmtl_solver, procrustes_method
+from .solvers.solver_utils import to_scalar
 
 from .data_vis.plot_losses import (
     plot_overlaid_losses, 
@@ -450,10 +451,6 @@ def train(config: Config, learning_rate = None, selected_solver = None, device_i
     train_loader = initialise_dataloader(config, shuffle)
     logging.info(f"Total number of training examples: {len(train_loader)}")
 
-    # Extract loss weights and combination rules
-    loss_weight_params = parse_loss_weighting(config)
-    weights, combine_ne_ov, combine_os_ov, combine_cc_pn, non_contributing_losses = loss_weight_params
-
     # Get solver type and learning rate
     solver_params = get_solver_params(config, selected_solver, learning_rate)
     selected_solver, starting_solver, ending_solver, epochs_before_switch, dynamic_solvers, learning_rate = solver_params
@@ -463,6 +460,7 @@ def train(config: Config, learning_rate = None, selected_solver = None, device_i
     random_seed = 42
     sample_expr_binary = config.training_params.sample_expr_binary
     sample_expr_log = config.training_params.sample_expr_log
+    normalize_to_first = config.training_params.normalize_to_first
     experiment_path, paths_dict = generate_paths(config, make_new, learning_rate, dynamic_solvers, selected_solver, 
                                                  starting_solver, ending_solver, epochs_before_switch, training_repeats)
 
@@ -472,6 +470,10 @@ def train(config: Config, learning_rate = None, selected_solver = None, device_i
         initial_epoch = resume_epoch if resume_epoch is not None else 0
         global_step = 0
         tracked_losses = {}
+        
+        # Extract loss weights and combination rules
+        loss_weight_params = parse_loss_weighting(config)
+        weights, combine_ne_ov, combine_os_ov, combine_cc_pn, non_contributing_losses = loss_weight_params
         
         # Set up the model, optimizer, and LR scheduler
         logging.info("Initialising model")
@@ -571,6 +573,15 @@ def train(config: Config, learning_rate = None, selected_solver = None, device_i
                 computed_losses = compute_losses(seg_pred, batch_n, batch_sa, batch_pos, batch_neg, batch_expr_sum, 
                                                  weights, device, combine_ne_ov, combine_os_ov, combine_cc_pn, is_first_step)
                 loss_ne, loss_os, loss_cc, loss_ov, loss_mu, loss_pn, loss_ne_ov, loss_os_ov, loss_cc_pn, weights = computed_losses
+
+                # Optionally normalize to initial values
+                if step_epoch == 0:
+                    if normalize_to_first:
+                        weight_keys = ["ne", "os", "cc", "ov", "mu", "pn", "ne_ov", "os_ov", "cc_pn"]
+                        raw_weights = [weights.get(key) for key in weight_keys]
+                        for key, weight, loss in zip(weight_keys, raw_weights, computed_losses[:9]):
+                            loss_val = to_scalar(loss)
+                            weights[key] = weight / loss_val
                 
                 if "procrustes" in current_solver:
                     # Apply the Procrustes method
